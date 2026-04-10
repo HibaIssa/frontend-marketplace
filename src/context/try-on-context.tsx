@@ -24,6 +24,30 @@ export type TryOnJobPayload = {
   error_message?: string
 }
 
+function normalizeTryOnJob(raw: Record<string, unknown>): TryOnJobPayload {
+  const status = (raw.status as string) ?? (raw.job_status as string)
+  const resultUrl =
+    (raw.result_image_url as string) ??
+    (raw.resultImageUrl as string) ??
+    (raw.result_url as string)
+  const err =
+    (raw.error_message as string) ?? (raw.errorMessage as string) ?? (raw.error as string)
+  return {
+    status,
+    result_image_url: resultUrl,
+    error_message: err,
+  }
+}
+
+function extractJobPayload(res: unknown): TryOnJobPayload | null {
+  if (!res || typeof res !== 'object') return null
+  const r = res as Record<string, unknown>
+  if (r.job && typeof r.job === 'object') return normalizeTryOnJob(r.job as Record<string, unknown>)
+  const data = r.data
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>
+    if (d.job && typeof d.job === 'object') return normalizeTryOnJob(d.job as Record<string, unknown>)
+=======
 function extractJobPayload(res: unknown): TryOnJobPayload | null {
   if (!res || typeof res !== 'object') return null
   const r = res as Record<string, unknown>
@@ -32,6 +56,7 @@ function extractJobPayload(res: unknown): TryOnJobPayload | null {
   if (data && typeof data === 'object') {
     const d = data as Record<string, unknown>
     if (d.job && typeof d.job === 'object') return d.job as TryOnJobPayload
+
   }
   return null
 }
