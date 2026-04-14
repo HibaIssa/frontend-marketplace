@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useCallback, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { getStablePagination } from '@/lib/shopPagination'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import NextImage from 'next/image'
@@ -19,7 +20,7 @@ import {
   Camera,
   Upload,
 } from 'lucide-react'
-import { api } from '@/lib/api/client'
+import { api, type ApiResponse } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { ProductCard } from '@/components/product/ProductCard'
 import { SearchBar } from '@/components/search/SearchBar'
@@ -54,6 +55,9 @@ function SearchProductGrid({
       return (res as { data?: Record<string, { minPriceCents: number; maxPriceCents: number }> }).data ?? {}
     },
     enabled: ids.length > 0,
+    staleTime: 120_000,
+    refetchOnWindowFocus: false,
+    retry: false,
   })
 
   return (
@@ -125,7 +129,7 @@ function priceCentsFromRecord(raw: Record<string, unknown>): number {
 
 const TEXT_SEARCH_PAGE_SIZE = 24
 
-/** Normalize GET /search and GET /products/search responses for paginated text search */
+/** Normalize GET /products/search (and legacy GET /search) responses for paginated text search */
 function extractTextSearchPage(res: unknown): { results: unknown[]; total: number } {
   const r = res as {
     success?: boolean
@@ -133,7 +137,14 @@ function extractTextSearchPage(res: unknown): { results: unknown[]; total: numbe
     results?: unknown[]
     data?: unknown[] | { results?: unknown[] }
     total?: number
-    meta?: { open_search_total_estimate?: number; total_results?: number; total_above_threshold?: number }
+    meta?: {
+      open_search_total_estimate?: number
+      total_results?: number
+      total_above_threshold?: number
+      total?: number
+      pages?: number
+    }
+    pagination?: { total?: number; pages?: number }
   }
   if (r?.success === false) {
     throw new Error(r?.error?.message ?? 'Search failed')
@@ -145,11 +156,15 @@ function extractTextSearchPage(res: unknown): { results: unknown[]; total: numbe
     results = (r.data as { results: unknown[] }).results
   }
   let total = typeof r.total === 'number' && Number.isFinite(r.total) ? r.total : 0
+  const pag = r.pagination
+  if (!total && pag && typeof pag.total === 'number' && pag.total > 0) total = pag.total
   if (!total && r.meta && typeof r.meta === 'object') {
+    const mt = r.meta.total
     const est = r.meta.open_search_total_estimate
     const tr = r.meta.total_results
     const ta = r.meta.total_above_threshold
-    if (typeof est === 'number' && est > 0) total = est
+    if (typeof mt === 'number' && mt > 0) total = mt
+    else if (typeof est === 'number' && est > 0) total = est
     else if (typeof tr === 'number' && tr > 0) total = tr
     else if (typeof ta === 'number' && ta > 0) total = ta
   }
@@ -225,13 +240,16 @@ function SearchContent() {
   const inCompare = useCompareStore((s) => s.has)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [searchTrigger, setSearchTrigger] = useState(0)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [pageJumpDraft, setPageJumpDraft] = useState(() => String(pageFromUrl))
+
+  useEffect(() => {
+    setPageJumpDraft(String(pageFromUrl))
+  }, [pageFromUrl])
 
   useEffect(() => {
     if (mode !== 'shop') {
       setImageFile(null)
-      setSearchTrigger(0)
     }
   }, [mode])
 
@@ -245,41 +263,15 @@ function SearchContent() {
     return () => URL.revokeObjectURL(url)
   }, [imageFile])
 
-  const handleShopSearch = useCallback(() => setSearchTrigger((t) => t + 1), [])
-
   const imageKey = imageFile ? `${imageFile.name}-${imageFile.size}-${imageFile.lastModified}` : ''
 
   const textSearchActive = mode === 'text' && !!q.trim()
-  const shopSearchEnabled = mode === 'shop' && !!imageFile && searchTrigger > 0
 
-  const textSearchPaged = useQuery({
-    queryKey: ['search', 'text', 'page', q.trim(), TEXT_SEARCH_PAGE_SIZE, pageFromUrl],
-    queryFn: async () => {
-      let res = await api.get<unknown>(endpoints.search.text, {
-        q: q.trim(),
-        limit: TEXT_SEARCH_PAGE_SIZE,
-        page: pageFromUrl,
-      })
-      if ((res as { success?: boolean }).success === false) {
-        res = await api.get<unknown>(endpoints.products.search, {
-          q: q.trim(),
-          limit: TEXT_SEARCH_PAGE_SIZE,
-          page: pageFromUrl,
-        })
-      }
-      const { results, total } = extractTextSearchPage(res)
-      return { results, page: pageFromUrl, total }
-    },
-    enabled: textSearchActive,
-    placeholderData: (previousData) => previousData,
-  })
-
-  const shopSearchQuery = useQuery({
-    queryKey: ['search', 'shop', imageKey, searchTrigger] as const,
-    queryFn: async () => {
-      if (!imageFile) throw new Error('No image')
+  /** useMutation avoids double POST in React 18 Strict Mode (dev), which useQuery can trigger twice when `enabled` flips on. */
+  const shopImageSearch = useMutation({
+    mutationFn: async (file: File) => {
       const formData = new FormData()
-      formData.append('image', imageFile)
+      formData.append('image', file)
       const res = await api.postForm(endpoints.images.search, formData)
       const raw = res as Record<string, unknown>
       if (raw?.success === false) {
@@ -312,12 +304,60 @@ function SearchContent() {
         shopTheLookStats,
       }
     },
-    enabled: shopSearchEnabled,
+    retry: false,
+  })
+
+  const resetShopImageSearch = shopImageSearch.reset
+  useEffect(() => {
+    resetShopImageSearch()
+  }, [imageKey, resetShopImageSearch])
+
+  const handleShopSearch = useCallback(() => {
+    if (!imageFile || shopImageSearch.isPending) return
+    shopImageSearch.mutate(imageFile)
+  }, [imageFile, shopImageSearch])
+
+  const textSearchPaged = useQuery({
+    queryKey: ['search', 'text', 'page', q.trim(), TEXT_SEARCH_PAGE_SIZE, pageFromUrl],
+    queryFn: async () => {
+      const res = await api.get<unknown>(endpoints.products.search, {
+        q: q.trim(),
+        limit: TEXT_SEARCH_PAGE_SIZE,
+        page: pageFromUrl,
+        includeRelated: 'false',
+      })
+      if ((res as ApiResponse<unknown>).success === false) {
+        throw new Error((res as ApiResponse<unknown>).error?.message ?? 'Search failed')
+      }
+      const { results, total } = extractTextSearchPage(res)
+      const stable = getStablePagination(res as ApiResponse<unknown>, TEXT_SEARCH_PAGE_SIZE)
+      const totalItems = stable?.totalItems ?? total
+      const totalPages =
+        stable && stable.totalPages >= 1
+          ? stable.totalPages
+          : totalItems > 0
+            ? Math.max(1, Math.ceil(totalItems / TEXT_SEARCH_PAGE_SIZE))
+            : null
+      return {
+        results,
+        page: pageFromUrl,
+        totalItems,
+        totalPages,
+        resultCount: results.length,
+      }
+    },
+    enabled: textSearchActive,
+    placeholderData: (previousData) => previousData,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   })
 
   const products = textSearchActive ? toProducts(textSearchPaged.data?.results ?? []) : []
 
-  const shopPayload = shopSearchQuery.data as {
+  const shopPayload = shopImageSearch.data as {
     byDetection?: DetectionGroup[]
     shopImageMeta?: { width: number; height: number }
     shopTheLookStats?: ShopTheLookStats
@@ -328,33 +368,35 @@ function SearchContent() {
 
   const isLoadingState = textSearchActive
     ? textSearchPaged.isLoading || textSearchPaged.isFetching
-    : shopSearchEnabled
-      ? shopSearchQuery.isLoading || shopSearchQuery.isFetching
-      : false
+    : mode === 'shop' && !!imageFile && shopImageSearch.isPending
 
   const searchFailed = textSearchActive
     ? textSearchPaged.isError
-    : shopSearchEnabled
-      ? shopSearchQuery.isError
-      : false
+    : mode === 'shop' && !!imageFile && shopImageSearch.isError
 
-  const searchError = textSearchActive ? textSearchPaged.error : shopSearchQuery.error
+  const searchError = textSearchActive ? textSearchPaged.error : shopImageSearch.error
 
   const modeTabs = [
     { key: 'text', label: 'Text', Icon: Search, href: '/search', desc: 'Describe what you want' },
     { key: 'shop', label: 'Shop the look', Icon: Sparkles, href: '/search?mode=shop', desc: 'AI detects items' },
   ] as const
 
-  const textReportedTotal = textSearchPaged.data?.total ?? 0
-  const textPageResultCount = textSearchPaged.data?.results?.length ?? 0
-  const textTotalPages =
-    textReportedTotal > 0 ? Math.max(1, Math.ceil(textReportedTotal / TEXT_SEARCH_PAGE_SIZE)) : null
+  const textReportedTotal = textSearchPaged.data?.totalItems ?? 0
+  const textPageResultCount = textSearchPaged.data?.resultCount ?? textSearchPaged.data?.results?.length ?? 0
+  const totalPagesFromApi = textSearchPaged.data?.totalPages
+  const textTotalPagesDisplay =
+    totalPagesFromApi != null && totalPagesFromApi >= 1
+      ? totalPagesFromApi
+      : textReportedTotal > 0
+        ? Math.max(1, Math.ceil(textReportedTotal / TEXT_SEARCH_PAGE_SIZE))
+        : null
+  const knownTotalPages = totalPagesFromApi != null && totalPagesFromApi >= 1 ? totalPagesFromApi : 0
+  const hasFullTextPage = textPageResultCount >= TEXT_SEARCH_PAGE_SIZE
+  const canGoNextDiscover = knownTotalPages > 1 ? pageFromUrl < knownTotalPages : hasFullTextPage
   const textHasPrevPage = textSearchActive && pageFromUrl > 1
-  const textHasNextPage = textSearchActive
-    ? textTotalPages != null
-      ? pageFromUrl < textTotalPages
-      : textPageResultCount >= TEXT_SEARCH_PAGE_SIZE
-    : false
+  const textHasNextPage = textSearchActive && canGoNextDiscover
+  const textShowPagination =
+    textSearchActive && products.length > 0 && (pageFromUrl > 1 || textHasNextPage || knownTotalPages > 1)
 
   const suggestedSearches = [
     { label: 'Summer dresses', icon: Shirt, gradient: 'from-rose-500 to-orange-400' },
@@ -374,6 +416,8 @@ function SearchContent() {
       return raw.filter((p: { image_cdn?: string | null; image_url?: string | null }) => p.image_cdn || p.image_url).slice(0, 6)
     },
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
     enabled: !q && mode === 'text',
   })
 
@@ -447,17 +491,17 @@ function SearchContent() {
           {mode === 'shop' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
               {!imageFile ? (
-                <div className="relative p-8 sm:p-10 rounded-2xl border-2 border-dashed border-violet-200 bg-gradient-to-br from-violet-50/60 via-white to-fuchsia-50/40 hover:border-violet-300 transition-colors">
+                <div className="relative p-8 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-b from-white to-slate-50/80 hover:border-violet-200/80 transition-colors">
                   <div className="text-center">
                     <div className="relative w-16 h-16 mx-auto mb-4">
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-15 blur-lg" />
-                      <div className="relative w-16 h-16 rounded-xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-violet-600" />
+                      <div className="absolute inset-0 rounded-xl bg-violet-500/10 blur-lg" />
+                      <div className="relative w-16 h-16 rounded-xl bg-slate-100 ring-1 ring-slate-200/80 flex items-center justify-center">
+                        <Sparkles className="w-7 h-7 text-violet-600" strokeWidth={1.75} />
                       </div>
                     </div>
-                    <p className="text-base font-semibold text-neutral-800 mb-1">Upload an outfit photo</p>
-                    <p className="text-sm text-neutral-500 mb-6 max-w-sm mx-auto">
-                      AI will detect individual items and find similar products for each one.
+                    <p className="font-display text-base font-semibold text-slate-900 mb-1">Upload an outfit photo</p>
+                    <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto leading-relaxed">
+                      We detect pieces in your shot and match each one to similar products you can shop.
                     </p>
                     <input
                       type="file"
@@ -499,9 +543,9 @@ function SearchContent() {
                   </div>
                 </div>
               ) : (
-                <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm">
+                <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
                   <div className="flex items-start gap-5">
-                    <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 ring-1 ring-neutral-200">
+                    <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 ring-1 ring-slate-200/80">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imagePreviewUrl} alt="Preview" className="object-cover w-full h-full" />
                     </div>
@@ -512,7 +556,8 @@ function SearchContent() {
                         <button
                           type="button"
                           onClick={handleShopSearch}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-400 shadow-md shadow-violet-500/20 active:scale-[0.97] transition-all"
+                          disabled={shopImageSearch.isPending}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-400 shadow-md shadow-violet-500/20 active:scale-[0.97] transition-all disabled:opacity-60 disabled:pointer-events-none"
                         >
                           <Search className="w-4 h-4" />
                           Search
@@ -612,35 +657,112 @@ function SearchContent() {
                 inCompare={inCompare}
                 fromReturnPath={discoverReturnPath}
               />
-              {textSearchActive && (textHasPrevPage || textHasNextPage) ? (
+              {textShowPagination ? (
                 <nav
-                  className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+                  className="mt-10 flex flex-col items-center gap-5"
                   aria-label="Search results pagination"
                 >
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => goSearchPage(pageFromUrl - 1)}
-                      disabled={!textHasPrevPage || textSearchPaged.isFetching}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-violet-200 bg-white text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-3xl">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => goSearchPage(pageFromUrl - 1)}
+                        disabled={!textHasPrevPage || textSearchPaged.isFetching}
+                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                        aria-label="Previous page"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      <div className="flex items-center gap-1 px-1 flex-wrap justify-center max-w-[min(100vw-8rem,28rem)]">
+                        {(() => {
+                          const tp =
+                            knownTotalPages > 0
+                              ? knownTotalPages
+                              : pageFromUrl + (textHasNextPage ? 1 : 0)
+                          const windowSize = Math.min(Math.max(tp, 1), 7)
+                          return Array.from({ length: windowSize }).map((_, i) => {
+                            let pageNum: number
+                            if (tp <= 7) {
+                              pageNum = i + 1
+                            } else if (pageFromUrl <= 4) {
+                              pageNum = i + 1
+                            } else if (pageFromUrl >= tp - 3) {
+                              pageNum = tp - 6 + i
+                            } else {
+                              pageNum = pageFromUrl - 3 + i
+                            }
+                            return (
+                              <button
+                                key={pageNum}
+                                type="button"
+                                onClick={() => goSearchPage(pageNum)}
+                                disabled={textSearchPaged.isFetching}
+                                className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all shrink-0 ${
+                                  pageNum === pageFromUrl
+                                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-violet-500/20'
+                                    : 'text-neutral-600 hover:bg-violet-50 hover:text-violet-700'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            )
+                          })
+                        })()}
+
+                        {knownTotalPages === 0 && textHasNextPage && (
+                          <span className="w-9 h-9 flex items-center justify-center text-sm text-neutral-400" aria-hidden>
+                            …
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => goSearchPage(pageFromUrl + 1)}
+                        disabled={!textHasNextPage || textSearchPaged.isFetching}
+                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                        aria-label="Next page"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <form
+                      className="flex items-center gap-2 flex-wrap justify-center"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        const n = parseInt(pageJumpDraft, 10)
+                        if (!Number.isFinite(n) || n < 1) return
+                        const maxP = knownTotalPages > 0 ? knownTotalPages : n
+                        goSearchPage(knownTotalPages > 0 ? Math.min(n, maxP) : n)
+                      }}
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => goSearchPage(pageFromUrl + 1)}
-                      disabled={!textHasNextPage || textSearchPaged.isFetching}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-violet-200 bg-white text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                      <label htmlFor="discover-page-jump" className="text-sm text-neutral-500 whitespace-nowrap">
+                        Go to page
+                      </label>
+                      <input
+                        id="discover-page-jump"
+                        type="number"
+                        min={1}
+                        {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
+                        value={pageJumpDraft}
+                        onChange={(e) => setPageJumpDraft(e.target.value)}
+                        className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-2 rounded-lg text-sm font-semibold bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                      >
+                        Go
+                      </button>
+                    </form>
+
+                    <p className="text-sm text-neutral-500 tabular-nums whitespace-nowrap">
+                      Page {pageFromUrl}
+                      {textTotalPagesDisplay != null ? ` of ${textTotalPagesDisplay}` : ''}
+                    </p>
                   </div>
-                  <p className="text-sm text-neutral-500 tabular-nums">
-                    Page {pageFromUrl}
-                    {textTotalPages != null ? ` of ${textTotalPages}` : null}
-                  </p>
                 </nav>
               ) : null}
             </>
@@ -666,7 +788,11 @@ function SearchContent() {
               transition={{ delay: 0.15, duration: 0.5 }}
               className="py-12"
             >
-              {mode === 'shop' && !imageFile ? null : mode === 'shop' && imageFile && searchTrigger === 0 ? (
+              {mode === 'shop' && !imageFile ? null : mode === 'shop' &&
+                imageFile &&
+                !shopImageSearch.isPending &&
+                !shopImageSearch.data &&
+                !shopImageSearch.isError ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center max-w-md mx-auto py-6">
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center mx-auto mb-4">
                     <ArrowRight className="w-6 h-6 text-violet-600 -rotate-45" />
@@ -676,8 +802,7 @@ function SearchContent() {
                   </p>
                 </motion.div>
               ) : mode === 'shop' &&
-                shopSearchEnabled &&
-                shopSearchQuery.isFetched &&
+                shopImageSearch.isSuccess &&
                 shopDetections.length === 0 &&
                 imagePreviewUrl ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center max-w-md mx-auto py-6">

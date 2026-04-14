@@ -79,7 +79,10 @@ export function ProductDrawer({ product: p, onClose }: Props) {
   useEffect(() => {
     if (tab === 'style' && !styleData && !styleError) {
       setLoadingS(true)
-      const base = process.env.NEXT_PUBLIC_MARKETPLACE_API_URL || 'http://localhost:4000'
+      const base =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_MARKETPLACE_API_URL ||
+        'https://marketplace-550687605665.europe-west1.run.app'
       fetch(`${base}/products/${p.id}/complete-style?maxPerCategory=5&maxTotal=12`)
         .then((r) => r.json())
         .then((d) => {
