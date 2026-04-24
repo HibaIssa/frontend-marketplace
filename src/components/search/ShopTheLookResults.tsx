@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type MouseEvent } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import NextImage from 'next/image'
@@ -226,12 +226,137 @@ function boxStylePercents(box: DetectionBox, refW: number, refH: number) {
   return { left, top, width, height }
 }
 
-/** One restrained overlay system so the outfit photo stays the hero. */
+/** First detection meta in a group that has a usable bounding box (for 3D spotlight crop). */
+function firstBoxMeta(group: DetectionGroup): DetectionMeta | null {
+  for (const meta of detectionMetasWithBoxes(group)) {
+    const box = meta.box
+    if (box && [box.x1, box.y1, box.x2, box.y2].every((n) => typeof n === 'number' && Number.isFinite(n))) {
+      if (box.x2 > box.x1 && box.y2 > box.y1) return meta
+    }
+  }
+  return null
+}
+
+function clipInsetFromBoxPercents(left: number, top: number, width: number, height: number): string {
+  const right = Math.max(0, 100 - left - width)
+  const bottom = Math.max(0, 100 - top - height)
+  return `inset(${top}% ${right}% ${bottom}% ${left}%)`
+}
+
+/** Spotlight card: crop matches bbox aspect (wide shirt vs tall shoe), subtle stacked depth — no toy tilt. */
+function ShopTheLookSpotlight3D({
+  outfitImageUrl,
+  group,
+  refW,
+  refH,
+  formattedTitle,
+}: {
+  outfitImageUrl: string
+  group: DetectionGroup
+  refW: number
+  refH: number
+  formattedTitle: string
+}) {
+  const meta = firstBoxMeta(group)
+  const box = meta?.box
+  const perc =
+    box && refW > 0 && refH > 0 ? boxStylePercents(box, refW, refH) : null
+  const clip = perc ? clipInsetFromBoxPercents(perc.left, perc.top, perc.width, perc.height) : null
+
+  const pxAspect =
+    box && box.x2 > box.x1 && box.y2 > box.y1
+      ? (box.x2 - box.x1) / (box.y2 - box.y1)
+      : 3 / 4
+  const cropAspect = Number.isFinite(pxAspect) && pxAspect > 0 ? Math.min(2.4, Math.max(0.45, pxAspect)) : 3 / 4
+  const isWide = cropAspect >= 1.15
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="w-full max-w-lg mx-auto mt-6 px-1"
+    >
+      <div className="text-center mb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600/90">Selected piece</p>
+        <p className="font-display text-base font-semibold text-slate-900 mt-0.5">{formattedTitle}</p>
+        <p className="text-[11px] text-slate-500 mt-1">Matches for this region are right below.</p>
+      </div>
+
+      <div
+        className="relative mx-auto w-fit max-w-full [perspective:880px]"
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Stacked “plates” — reads as depth without rotating the photo awkwardly */}
+        <div
+          className="pointer-events-none absolute inset-x-3 top-3 bottom-0 rounded-2xl bg-violet-600/[0.07] shadow-sm"
+          style={{ transform: 'translateZ(-18px) translateY(10px) scale(0.94)' }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-x-2 top-2 bottom-0 rounded-2xl bg-violet-500/[0.09] ring-1 ring-violet-400/15"
+          style={{ transform: 'translateZ(-9px) translateY(5px) scale(0.97)' }}
+          aria-hidden
+        />
+
+        <div
+          className="relative rounded-2xl p-[2px] bg-gradient-to-b from-white/35 via-violet-200/25 to-violet-600/20 shadow-[0_18px_50px_-12px_rgba(15,23,42,0.35),0_0_0_1px_rgba(139,92,246,0.22)]"
+          style={{
+            transform: 'translateZ(0) rotateX(1.25deg)',
+            transformStyle: 'preserve-3d',
+          }}
+        >
+          <div
+            className={`relative mx-auto w-full overflow-hidden rounded-[14px] bg-slate-950 ring-1 ring-violet-500/25 ${
+              isWide
+                ? 'max-h-[min(9rem,18vh)] max-w-[min(100%,21rem)]'
+                : 'max-h-[min(36vh,13.5rem)] max-w-[min(100%,11.25rem)] sm:max-w-[12rem]'
+            }`}
+            style={{ aspectRatio: cropAspect }}
+          >
+            {clip ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={outfitImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-contain object-top select-none pointer-events-none"
+                draggable={false}
+                style={{
+                  clipPath: clip,
+                  transform: 'scale(1.04)',
+                  transformOrigin: `${perc!.left + perc!.width / 2}% ${perc!.top + perc!.height / 2}%`,
+                }}
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={outfitImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-contain object-top select-none pointer-events-none opacity-95"
+                draggable={false}
+              />
+            )}
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.12] via-transparent to-black/25"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/35"
+              aria-hidden
+            />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+/** Detection regions on hero — light glass, tighter highlight (not a huge “frame”). */
 const OVERLAY = {
-  border: 'border-white shadow-[0_0_0_1px_rgba(139,92,246,0.55)]',
-  fill: 'bg-violet-600/15',
-  fillHi: 'bg-violet-600/28',
-  ring: 'ring-2 ring-violet-400/90 ring-offset-2 ring-offset-black/20',
+  border: 'border-white/70 shadow-[0_0_0_1px_rgba(139,92,246,0.35)]',
+  fill: 'bg-violet-600/10',
+  fillHi: 'bg-violet-600/18',
+  ring: 'ring-1 ring-violet-300/80 ring-offset-1 ring-offset-black/25',
 } as const
 
 const SHOP_THE_LOOK_INITIAL = 6
@@ -255,9 +380,12 @@ export function ShopTheLookResults({
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const [hero3DActive, setHero3DActive] = useState(false)
+  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 })
   /** One expanded product at a time — shows other picks from the same detection below the row. */
   const [expandedProduct, setExpandedProduct] = useState<{ sectionKey: string; productId: number } | null>(null)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
+  const spotlightRef = useRef<HTMLDivElement | null>(null)
 
   const rows = groups.filter((g) => g.products && g.products.length > 0)
   if (rows.length === 0) return null
@@ -266,6 +394,8 @@ export function ShopTheLookResults({
     setSelectedIdx(null)
     setActiveIdx(null)
     setExpandedProduct(null)
+    setHero3DActive(false)
+    setHeroTilt({ x: 0, y: 0 })
     sectionRefs.current = []
   }, [outfitImageUrl])
 
@@ -284,7 +414,7 @@ export function ShopTheLookResults({
       const next = cur === i ? null : i
       if (next !== null) {
         requestAnimationFrame(() => {
-          sectionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          spotlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
       }
       return next
@@ -293,6 +423,21 @@ export function ShopTheLookResults({
 
   const boxHighlight = (i: number) => selectedIdx === i || (selectedIdx === null && activeIdx === i)
   const boxDimmed = (i: number) => selectedIdx !== null && selectedIdx !== i
+
+  const handleHeroMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (!hero3DActive) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const px = (e.clientX - rect.left) / rect.width
+    const py = (e.clientY - rect.top) / rect.height
+    const ry = (px - 0.5) * 8
+    const rx = (0.5 - py) * 7
+    setHeroTilt({
+      x: Math.max(-4, Math.min(4, rx)),
+      y: Math.max(-4.5, Math.min(4.5, ry)),
+    })
+  }
+
+  const resetHeroTilt = () => setHeroTilt({ x: 0, y: 0 })
 
   const productHref = useCallback(
     (id: number) =>
@@ -310,7 +455,7 @@ export function ShopTheLookResults({
           <div>
             <p className="font-display text-sm font-semibold text-slate-900">Pieces in your photo</p>
             <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-              Tap a chip or a highlighted area on the photo to see similar products for that piece only.
+              Tap a chip or a highlighted region — a compact preview of that piece opens here, with matches directly below.
             </p>
           </div>
           {selectedIdx !== null ? (
@@ -425,8 +570,36 @@ export function ShopTheLookResults({
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full"
         >
-          <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 bg-slate-950 shadow-xl shadow-slate-900/15">
-            <div className="relative inline-block w-full">
+          <motion.div
+            role="button"
+            tabIndex={0}
+            aria-pressed={hero3DActive}
+            onClick={() => setHero3DActive((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setHero3DActive((v) => !v)
+              }
+            }}
+            onMouseMove={handleHeroMouseMove}
+            onMouseLeave={() => {
+              setActiveIdx(null)
+              resetHeroTilt()
+            }}
+            transition={{ duration: 0.38, ease: 'easeInOut' }}
+            animate={{
+              rotateX: hero3DActive ? heroTilt.x : 0,
+              rotateY: hero3DActive ? heroTilt.y : 0,
+              scale: hero3DActive ? 1.035 : 1,
+            }}
+            style={{ transformPerspective: 1200, transformStyle: 'preserve-3d' }}
+            className={`relative rounded-3xl overflow-hidden border bg-slate-950 cursor-pointer transition-shadow duration-300 ${
+              hero3DActive
+                ? 'border-violet-300/90 shadow-2xl shadow-violet-900/35 ring-2 ring-violet-200/70'
+                : 'border-slate-200/90 shadow-xl shadow-slate-900/15'
+            }`}
+          >
+            <div className="relative inline-block w-full" style={{ transform: hero3DActive ? 'translateZ(18px)' : 'translateZ(0px)' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={outfitImageUrl}
@@ -459,11 +632,15 @@ export function ShopTheLookResults({
                             type="button"
                             aria-label={`Select region: ${formatDetectionLabel(String(label))}`}
                             aria-pressed={selectedIdx === i}
-                            className={`absolute rounded-lg transition-all duration-200 ${OVERLAY.border} ${
-                              hi ? `${OVERLAY.fillHi} ${OVERLAY.ring} z-10 scale-[1.01]` : `${OVERLAY.fill} hover:bg-violet-600/25`
-                            } ${dim ? 'opacity-35' : 'opacity-100'}`}
+                            className={`absolute rounded-md transition-all duration-200 ${OVERLAY.border} ${
+                              hi ? `${OVERLAY.fillHi} ${OVERLAY.ring} z-10` : `${OVERLAY.fill} hover:bg-violet-600/20`
+                            } ${dim ? 'opacity-40' : 'opacity-100'}`}
                             style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
-                            onClick={() => focusDetection(i)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              focusDetection(i)
+                              setHero3DActive(true)
+                            }}
                             onMouseEnter={() => setActiveIdx(i)}
                             onFocus={() => setActiveIdx(i)}
                             onBlur={() => setActiveIdx((cur) => (cur === i ? null : cur))}
@@ -472,8 +649,26 @@ export function ShopTheLookResults({
                       })
                       .filter(Boolean)
                   })}
+              {hero3DActive ? (
+                <div
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-300/18 via-transparent to-fuchsia-300/14 mix-blend-screen"
+                  style={{ transform: 'translateZ(26px)' }}
+                  aria-hidden
+                />
+              ) : null}
+              <div className="pointer-events-none absolute bottom-3 right-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold backdrop-blur-sm ${
+                    hero3DActive
+                      ? 'bg-violet-500/85 text-white shadow-md shadow-violet-900/40'
+                      : 'bg-black/45 text-white/90'
+                  }`}
+                >
+                  {hero3DActive ? '3D ON' : 'Tap for 3D'}
+                </span>
+              </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
 
         <motion.div
@@ -498,6 +693,20 @@ export function ShopTheLookResults({
           </div>
         </motion.div>
       </div>
+
+      {selectedIdx !== null && rows[selectedIdx] ? (
+        <div ref={spotlightRef}>
+          <ShopTheLookSpotlight3D
+            outfitImageUrl={outfitImageUrl}
+            group={rows[selectedIdx]}
+            refW={refW}
+            refH={refH}
+            formattedTitle={formatDetectionLabel(
+              String(rows[selectedIdx].detection?.label || rows[selectedIdx].category || 'Item'),
+            )}
+          />
+        </div>
+      ) : null}
 
       {/* Matches — single column, calm */}
       <div className="max-w-3xl mx-auto space-y-8 pb-4">

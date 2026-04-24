@@ -29,7 +29,7 @@ type NavItem = {
 }
 
 type CatalogLinkItem = {
-  href: string
+  segment: 'catalog' | 'catalog/vendors' | 'catalog/products' | 'catalog/prices' | 'catalog/freshness'
   label: string
   icon: LucideIcon
   color: string
@@ -38,11 +38,11 @@ type CatalogLinkItem = {
 const CATALOG_LINKS: { section: string; items: CatalogLinkItem[] } = {
   section: 'Catalog database',
   items: [
-    { href: '/admin/catalog', label: 'Scraper overview', icon: LayoutDashboard, color: 'bg-indigo-600' },
-    { href: '/admin/catalog/vendors', label: 'Vendors', icon: Store, color: 'bg-sky-500' },
-    { href: '/admin/catalog/products', label: 'Products', icon: Package, color: 'bg-indigo-500' },
-    { href: '/admin/catalog/prices', label: 'Prices', icon: TrendingUp, color: 'bg-emerald-500' },
-    { href: '/admin/catalog/freshness', label: 'Freshness', icon: Clock, color: 'bg-slate-500' },
+    { segment: 'catalog', label: 'Scraper overview', icon: LayoutDashboard, color: 'bg-indigo-600' },
+    { segment: 'catalog/vendors', label: 'Vendors', icon: Store, color: 'bg-sky-500' },
+    { segment: 'catalog/products', label: 'Products', icon: Package, color: 'bg-indigo-500' },
+    { segment: 'catalog/prices', label: 'Prices', icon: TrendingUp, color: 'bg-emerald-500' },
+    { segment: 'catalog/freshness', label: 'Freshness', icon: Clock, color: 'bg-slate-500' },
   ],
 }
 
@@ -127,9 +127,10 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
           <p className="px-4 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
             {CATALOG_LINKS.section}
           </p>
-          {CATALOG_LINKS.items.map(({ href, label, icon: Icon, color }) => {
+          {CATALOG_LINKS.items.map(({ segment, label, icon: Icon, color }) => {
+            const href = `${base}/${segment}`
             const active =
-              href === '/admin/catalog'
+              segment === 'catalog'
                 ? pathname === href || pathname === `${href}/`
                 : pathname === href || pathname.startsWith(`${href}/`)
             return (

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Search, Heart, User, Sparkles, Store, ShoppingCart, Shield } from 'lucide-react'
+import { Search, Heart, User, Sparkles, Store, Shield } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '@/store/auth'
 
@@ -22,6 +22,7 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const { isAuthenticated, logout, user } = useAuthStore()
+  const canSeeAdmin = mounted && isAuthenticated() && !!user?.is_admin
 
   useEffect(() => setMounted(true), [])
 
@@ -62,7 +63,7 @@ export function Navbar() {
                 </Link>
               )
             })}
-            {mounted && user?.is_admin && (
+            {canSeeAdmin && (
               <Link
                 href="/admin"
                 className={clsx(
@@ -103,13 +104,6 @@ export function Navbar() {
             {mounted && isAuthenticated() && (
               <>
                 <Link
-                  href="/cart"
-                  className="p-2 rounded-full text-neutral-500 hover:bg-violet-50 hover:text-violet-700 transition-colors"
-                  aria-label="Cart"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                </Link>
-                <Link
                   href="/favorites"
                   className="p-2 rounded-full text-neutral-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                   aria-label="Favorites"
@@ -128,8 +122,7 @@ export function Navbar() {
                 </button>
                 <div className="absolute right-0 mt-2 w-48 py-1.5 rounded-xl border border-neutral-200 bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <Link href="/account" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-violet-50/60">Account</Link>
-                  <Link href="/cart" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-violet-50/60">Cart</Link>
-                  {user?.is_admin && (
+                  {canSeeAdmin && (
                     <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-violet-50/60">
                       <Shield className="w-3.5 h-3.5" /> Admin
                     </Link>

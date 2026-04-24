@@ -40,7 +40,7 @@ const heroSlides = [
         <span className="text-gradient-accent">you buy</span>
       </>
     ),
-    desc: 'Preview any garment on yourself using AI — from the catalog or your own wardrobe. No dressing room needed.',
+    desc: 'Preview any garment on yourself using AI, from the catalog or your own wardrobe. No dressing room needed.',
     cta: { label: 'Try it on', href: '/try-on' },
     secondary: { label: 'Browse catalog', href: '/products', Icon: Shirt },
     hasSearch: false,
@@ -53,7 +53,7 @@ const heroSlides = [
         <span className="text-gradient-accent">digitized</span>
       </>
     ),
-    desc: 'Upload your closet, get outfit suggestions, and discover what\'s missing — powered by visual AI.',
+    desc: 'Upload your closet, get outfit suggestions, and discover what\'s missing, powered by visual AI.',
     cta: { label: 'Open wardrobe', href: '/wardrobe' },
     secondary: { label: 'Compare items', href: '/compare', Icon: Layers },
     hasSearch: false,
@@ -140,7 +140,7 @@ const features = [
   {
     icon: Search,
     title: 'Text Search',
-    desc: 'Describe mood, occasion, or silhouette — we translate intent into products you can act on.',
+    desc: 'Describe mood, occasion, or silhouette. We translate intent into products you can act on.',
     href: '/search',
     image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=900&h=700&fit=crop&q=80',
     iconBg: 'from-violet-500 to-indigo-600',
@@ -149,7 +149,7 @@ const features = [
   {
     icon: Shirt,
     title: 'Virtual Try-On',
-    desc: 'Preview garments on yourself with AI before you buy — from the catalog or your wardrobe.',
+    desc: 'Preview garments on yourself with AI before you buy, from the catalog or your wardrobe.',
     href: '/try-on',
     image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=900&h=700&fit=crop&q=80',
     iconBg: 'from-fuchsia-500 to-pink-600',
@@ -186,7 +186,7 @@ const benefits = [
   {
     icon: BarChart3,
     title: 'Smart Comparison',
-    desc: 'AI-backed context helps you compare products confidently — not guesswork.',
+    desc: 'AI-backed context helps you compare products confidently, not guesswork.',
     bg: 'bg-sky-50/90',
     border: 'border-sky-200/60',
     iconWrap: 'bg-sky-100 text-sky-700',
@@ -205,7 +205,7 @@ const capabilities = [
   {
     icon: Shirt,
     title: 'Virtual Try-On',
-    desc: 'Preview garments on yourself before committing — try styles from your wardrobe or the catalog.',
+    desc: 'Preview garments on yourself before committing. Try styles from your wardrobe or the catalog.',
     gradient: 'from-rose-500 via-pink-500 to-fuchsia-500',
     borderAccent: 'border-l-rose-500',
     href: '/try-on',
@@ -465,7 +465,7 @@ function TrendingSpotlight() {
             What&apos;s hot right now
           </h2>
           <p className="mt-4 text-lg text-neutral-600">
-            Fresh picks from the catalog — updated live, tap to explore.
+            Fresh picks from the catalog, updated live. Tap to explore.
           </p>
         </Reveal>
 
@@ -556,7 +556,7 @@ export default function HomePage() {
               Find what fits your moment
             </h2>
             <p className="mt-5 text-lg text-neutral-600 leading-relaxed">
-              Search by mood, occasion, or silhouette — then browse try-on and comparison tools when you want to go deeper.
+              Search by mood, occasion, or silhouette, then browse try-on and comparison tools when you want to go deeper.
             </p>
           </Reveal>
 
@@ -696,7 +696,7 @@ export default function HomePage() {
               <p className="section-eyebrow mb-3">Catalog</p>
               <h2 className="heading-display text-3xl sm:text-4xl mb-5 leading-tight">Where the assortment leans</h2>
               <p className="text-lg text-neutral-600 leading-relaxed mb-8">
-                Live facet data shows category density — a quick read on what you&apos;ll find most when you browse.
+                Live facet data shows category density, a quick read on what you&apos;ll find most when you browse.
               </p>
               <div className="surface-card p-6 sm:p-8 mb-8">
                 <div className="flex items-center gap-3 mb-2">
@@ -735,7 +735,7 @@ export default function HomePage() {
                     Ready when you are
                   </h2>
                   <p className="mt-4 text-white/90 text-lg max-w-md mx-auto lg:mx-0">
-                    Jump into Discover or open your wardrobe — same account, same experience.
+                    Jump into Discover or open your wardrobe. Same account, same experience.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-end">

@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useCallback, useEffect, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { getStablePagination } from '@/lib/shopPagination'
+import { compressImageForShopUpload } from '@/lib/image/compressImageForShopUpload'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import NextImage from 'next/image'
@@ -33,6 +34,17 @@ import {
 import { useCompareStore } from '@/store/compare'
 import type { Product } from '@/types/product'
 
+const TRYON_SHOP_SESSION_KEY = 'styleai_tryon_shop_payload'
+
+type HydratedShopPayload = {
+  byDetection?: DetectionGroup[]
+  shopImageMeta?: { width: number; height: number }
+  shopTheLookStats?: ShopTheLookStats
+  outfitImageUrl?: string
+  source?: string
+  savedAt?: number
+}
+
 function SearchProductGrid({
   products,
   addToCompare,
@@ -44,54 +56,21 @@ function SearchProductGrid({
   inCompare: (id: number) => boolean
   fromReturnPath?: string
 }) {
-  const ids = products.map((p) => p.id)
-  const { data: variantsData } = useQuery({
-    queryKey: ['variants', ids.join(',')],
-    queryFn: async () => {
-      const res = await api.post<Record<string, { minPriceCents: number; maxPriceCents: number }>>(
-        endpoints.products.variantsBatch,
-        { productIds: ids }
-      )
-      return (res as { data?: Record<string, { minPriceCents: number; maxPriceCents: number }> }).data ?? {}
-    },
-    enabled: ids.length > 0,
-    staleTime: 120_000,
-    refetchOnWindowFocus: false,
-    retry: false,
-  })
-
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        visible: { transition: { staggerChildren: 0.05 } },
-        hidden: {},
-      }}
-      className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6"
-    >
-      {products.map((product, i) => {
-        const v = variantsData?.[String(product.id)]
-        const variantPrice = v && v.minPriceCents !== v.maxPriceCents
-          ? { minPriceCents: v.minPriceCents, maxPriceCents: v.maxPriceCents }
-          : undefined
-        return (
-          <motion.div
-            key={product.id}
-            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-          >
-            <ProductCard
-              product={product}
-              index={i}
-              fromReturnPath={fromReturnPath}
-              onAddToCompare={addToCompare}
-              inCompare={inCompare(product.id)}
-              variantPrice={variantPrice}
-            />
-          </motion.div>
-        )
-      })}
-    </motion.div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+      {products.map((product, i) => (
+        <div key={product.id}>
+          <ProductCard
+            product={product}
+            index={i}
+            snappyMotion
+            fromReturnPath={fromReturnPath}
+            onAddToCompare={addToCompare}
+            inCompare={inCompare(product.id)}
+          />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -241,6 +220,7 @@ function SearchContent() {
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [hydratedShop, setHydratedShop] = useState<HydratedShopPayload | null>(null)
   const [pageJumpDraft, setPageJumpDraft] = useState(() => String(pageFromUrl))
 
   useEffect(() => {
@@ -250,8 +230,32 @@ function SearchContent() {
   useEffect(() => {
     if (mode !== 'shop') {
       setImageFile(null)
+      setHydratedShop(null)
     }
   }, [mode])
+
+  useEffect(() => {
+    if (mode !== 'shop' || imageFile) return
+    try {
+      const raw = sessionStorage.getItem(TRYON_SHOP_SESSION_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as HydratedShopPayload
+      const detections = Array.isArray(parsed?.byDetection) ? parsed.byDetection : []
+      if (!detections.length || !parsed?.outfitImageUrl) return
+      setHydratedShop({
+        byDetection: detections,
+        shopImageMeta: parsed.shopImageMeta,
+        shopTheLookStats: parsed.shopTheLookStats,
+        outfitImageUrl: parsed.outfitImageUrl,
+        source: parsed.source,
+        savedAt: parsed.savedAt,
+      })
+      setImagePreviewUrl(parsed.outfitImageUrl)
+      sessionStorage.removeItem(TRYON_SHOP_SESSION_KEY)
+    } catch {
+      // ignore invalid session payload
+    }
+  }, [mode, imageFile])
 
   useEffect(() => {
     if (!imageFile) {
@@ -270,8 +274,9 @@ function SearchContent() {
   /** useMutation avoids double POST in React 18 Strict Mode (dev), which useQuery can trigger twice when `enabled` flips on. */
   const shopImageSearch = useMutation({
     mutationFn: async (file: File) => {
+      const uploadFile = await compressImageForShopUpload(file)
       const formData = new FormData()
-      formData.append('image', file)
+      formData.append('image', uploadFile)
       const res = await api.postForm(endpoints.images.search, formData)
       const raw = res as Record<string, unknown>
       if (raw?.success === false) {
@@ -310,7 +315,8 @@ function SearchContent() {
   const resetShopImageSearch = shopImageSearch.reset
   useEffect(() => {
     resetShopImageSearch()
-  }, [imageKey, resetShopImageSearch])
+    if (imageFile) setHydratedShop(null)
+  }, [imageFile, imageKey, resetShopImageSearch])
 
   const handleShopSearch = useCallback(() => {
     if (!imageFile || shopImageSearch.isPending) return
@@ -355,19 +361,32 @@ function SearchContent() {
     retry: false,
   })
 
-  const products = textSearchActive ? toProducts(textSearchPaged.data?.results ?? []) : []
+  const products = useMemo(() => {
+    if (!textSearchActive) return []
+    const list = toProducts(textSearchPaged.data?.results ?? [])
+    const seen = new Set<number>()
+    return list.filter((p) => {
+      if (p.id < 1 || seen.has(p.id)) return false
+      seen.add(p.id)
+      return true
+    })
+  }, [textSearchActive, textSearchPaged.data])
 
   const shopPayload = shopImageSearch.data as {
     byDetection?: DetectionGroup[]
     shopImageMeta?: { width: number; height: number }
     shopTheLookStats?: ShopTheLookStats
   } | null
-  const shopDetections: DetectionGroup[] = shopPayload?.byDetection ?? []
-  const shopImageMeta = shopPayload?.shopImageMeta
-  const shopTheLookStats = shopPayload?.shopTheLookStats
+  const shopDetections: DetectionGroup[] = shopPayload?.byDetection ?? hydratedShop?.byDetection ?? []
+  const shopImageMeta = shopPayload?.shopImageMeta ?? hydratedShop?.shopImageMeta
+  const shopTheLookStats = shopPayload?.shopTheLookStats ?? hydratedShop?.shopTheLookStats
+
+  /** Don’t replace the grid with skeletons while paginating — `placeholderData` keeps prior `data` during fetch. */
+  const textSearchBlocking =
+    textSearchActive && !textSearchPaged.data && textSearchPaged.fetchStatus === 'fetching'
 
   const isLoadingState = textSearchActive
-    ? textSearchPaged.isLoading || textSearchPaged.isFetching
+    ? textSearchBlocking
     : mode === 'shop' && !!imageFile && shopImageSearch.isPending
 
   const searchFailed = textSearchActive
@@ -447,7 +466,11 @@ function SearchContent() {
               </div>
             </div>
 
-            <SearchBar placeholder='Search "red summer dress", "casual sneakers"...' initialQuery={q} />
+            <SearchBar
+              placeholder='Search "red summer dress", "casual sneakers"...'
+              initialQuery={q}
+              isLoading={textSearchActive && textSearchPaged.isFetching}
+            />
 
             <div className="grid grid-cols-2 gap-2 mt-5">
               {modeTabs.map((tab, i) => (
@@ -903,6 +926,7 @@ function SearchContent() {
                           >
                             <Link
                               href={`/products/${p.id}`}
+                              prefetch={false}
                               className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-1 transition-all duration-300"
                             >
                               <div className="relative aspect-[3/4] bg-neutral-100">
@@ -910,7 +934,8 @@ function SearchContent() {
                                   src={p.image_cdn || p.image_url || ''}
                                   alt={p.title}
                                   fill
-                                  sizes="(max-width: 640px) 33vw, 16vw"
+                                  unoptimized
+                                  sizes="(max-width: 640px) 33vw, 120px"
                                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

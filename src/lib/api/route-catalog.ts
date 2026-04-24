@@ -44,28 +44,6 @@ export const routeCatalog: CatalogRoute[] = [
     defaultBody: '{\n  "email": "new@example.com"\n}',
   },
 
-  // —— Cart ——
-  { id: 'cart-get', group: 'Cart', label: 'Get cart', method: 'GET', path: '/api/cart' },
-  {
-    id: 'cart-add',
-    group: 'Cart',
-    label: 'Add to cart',
-    method: 'POST',
-    path: '/api/cart',
-    defaultBody: '{\n  "product_id": 1,\n  "quantity": 1\n}',
-  },
-  {
-    id: 'cart-patch',
-    group: 'Cart',
-    label: 'Update quantity (0 removes)',
-    method: 'PATCH',
-    path: '/api/cart/:productId',
-    pathParams: [{ name: 'productId', label: 'Product ID', placeholder: '123' }],
-    defaultBody: '{\n  "quantity": 2\n}',
-  },
-  { id: 'cart-delete-item', group: 'Cart', label: 'Remove line', method: 'DELETE', path: '/api/cart/:productId', pathParams: [{ name: 'productId', label: 'Product ID' }] },
-  { id: 'cart-clear', group: 'Cart', label: 'Clear cart', method: 'DELETE', path: '/api/cart/clear' },
-
   // —— Favorites ——
   { id: 'fav-list', group: 'Favorites', label: 'List favorites', method: 'GET', path: '/api/favorites' },
   {

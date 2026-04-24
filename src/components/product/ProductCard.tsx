@@ -9,6 +9,8 @@ import type { Product } from '@/types/product'
 interface ProductCardProps {
   product: Product
   index?: number
+  /** Lighter motion for dense grids (e.g. Discover) so results feel snappier */
+  snappyMotion?: boolean
   /** When set, product link includes `?from=` so the detail page can return to Discover with the same query. */
   fromReturnPath?: string
   onFavorite?: (productId: number) => void
@@ -35,9 +37,17 @@ function formatPrice(cents: number, currency = 'USD') {
   }).format(cents / 100)
 }
 
+/** Skip Next image optimizer for remote catalog URLs — one browser fetch, avoids duplicate `/_next/image` work. */
+function useDirectRemoteImage(url: string): boolean {
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return false
+  if (url.includes('placehold.co')) return false
+  return true
+}
+
 export function ProductCard({
   product,
   index = 0,
+  snappyMotion = false,
   fromReturnPath,
   onFavorite,
   isFavorite,
@@ -48,6 +58,7 @@ export function ProductCard({
   variantPrice,
 }: ProductCardProps) {
   const imgUrl = product.image_cdn || product.image_url || '/placeholder-product.jpg'
+  const imageUnoptimized = useDirectRemoteImage(imgUrl)
   const productHref =
     fromReturnPath && fromReturnPath.startsWith('/search')
       ? `/products/${product.id}?from=${encodeURIComponent(fromReturnPath)}`
@@ -61,23 +72,32 @@ export function ProductCard({
   const showActionBar = hasCompare || hasWardrobe
   const wardrobePinned = wardrobeStatus === 'added' || wardrobeStatus === 'loading'
 
+  const capped = Math.min(index, 10)
+  const delay = snappyMotion ? capped * 0.012 : index * 0.04
+  const duration = snappyMotion ? 0.22 : 0.4
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: snappyMotion ? 8 : 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-24px' }}
-      transition={{ duration: 0.4, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -6 }}
+      transition={{ duration, delay, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={snappyMotion ? { y: -3 } : { y: -6 }}
       className="group"
     >
-      <Link href={productHref} className="block">
+      <Link
+        href={productHref}
+        className="block"
+        prefetch={fromReturnPath ? false : undefined}
+      >
         <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-100 to-neutral-150 ring-1 ring-neutral-200/90 shadow-sm transition-all duration-300 group-hover:ring-violet-300/60 group-hover:shadow-xl group-hover:shadow-violet-500/10">
           <Image
             src={imgUrl}
             alt={product.title}
             fill
+            unoptimized={imageUnoptimized}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
             onError={(e) => {
               e.currentTarget.src = 'https://placehold.co/400x533/f5f5f5/737373?text=No+Image'
             }}

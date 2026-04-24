@@ -229,8 +229,7 @@ export default function ComparePage() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600/80 mb-1">Style decision lab</p>
                   <h1 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">Compare</h1>
                   <p className="text-sm text-neutral-600 mt-2 max-w-xl leading-relaxed">
-                    Choose which saved pieces go into the analysis, optionally say which one caught your eye first, then
-                    run the comparison — you get a balanced breakdown, not just one &quot;winner.&quot;
+                    Pick 2–5 items and run comparison.
                   </p>
                 </div>
               </div>
@@ -419,31 +418,21 @@ export default function ComparePage() {
                             <p className="text-sm font-bold text-neutral-900 mt-1">{formatPrice(p.price_cents)}</p>
                           </Link>
 
-                          <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-neutral-200/90 bg-white px-2.5 py-2 shadow-sm hover:border-violet-200 transition-colors">
+                          <label
+                            className={`flex items-center gap-2.5 cursor-pointer rounded-xl border bg-white px-2.5 py-2 shadow-sm transition-colors ${
+                              isSelectedForRun
+                                ? 'border-violet-300 ring-1 ring-violet-200/70'
+                                : 'border-neutral-200/90 hover:border-violet-200'
+                            }`}
+                          >
                             <input
                               type="checkbox"
                               className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500"
                               checked={isSelectedForRun}
                               onChange={() => toggleCompareSelection(pid)}
-                              aria-describedby={`compare-include-hint-${pid}`}
                             />
-                            <span className="min-w-0">
-                              <span className="block text-xs font-semibold text-neutral-800">Include in comparison</span>
-                              <span id={`compare-include-hint-${pid}`} className="block text-[11px] text-neutral-500 mt-0.5 leading-snug">
-                                Counts toward the 2–5 item analysis
-                              </span>
-                            </span>
+                            <span className="text-xs font-semibold text-neutral-800">Include in comparison</span>
                           </label>
-
-                          {isSelectedForRun ? (
-                            <p className="text-[11px] text-center text-violet-700/90 px-2 py-2 rounded-xl bg-violet-50/80 border border-violet-100">
-                              When you run the comparison, you&apos;ll choose which piece caught your eye first.
-                            </p>
-                          ) : (
-                            <p className="text-[11px] text-center text-neutral-400 px-1 py-1.5 rounded-lg bg-neutral-100/80">
-                              Include this item to add it to the comparison form
-                            </p>
-                          )}
                         </div>
                       </motion.div>
                     )
@@ -669,69 +658,46 @@ export default function ComparePage() {
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
-                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">In this comparison</p>
-                <ul className="space-y-3">
-                  {loadingProducts ? (
-                    <li className="text-sm text-neutral-500 py-6 text-center">Loading product details…</li>
-                  ) : (
-                    selectedForCompare.map((id) => {
-                      const p = compareTrayProducts?.find((x) => normalizeCompareProductId(x.id) === id)
-                      const title = p?.title ?? `Product #${id}`
-                      const img = p?.image_cdn || p?.image_url || 'https://placehold.co/80x100/f5f5f5/a3a3a3?text=+'
-                      return (
-                        <li
-                          key={id}
-                          className="flex gap-3 rounded-2xl border border-neutral-200/80 bg-neutral-50/50 p-3"
-                        >
-                          <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-neutral-100 ring-1 ring-neutral-200/60">
-                            <Image src={img} alt="" fill className="object-cover" sizes="64px" />
-                          </div>
-                          <div className="min-w-0 flex-1 py-0.5">
-                            <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wider truncate">
-                              {p?.brand || p?.category || 'Product'}
-                            </p>
-                            <p className="text-sm font-medium text-neutral-900 line-clamp-2 leading-snug">{title}</p>
-                            {p ? (
-                              <p className="text-xs font-bold text-neutral-800 mt-1">{formatPrice(p.price_cents)}</p>
-                            ) : null}
-                          </div>
-                        </li>
-                      )
-                    })
-                  )}
-                </ul>
-
                 <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 px-4 py-4">
                   <p className="text-sm font-semibold text-neutral-900 mb-3">First glance</p>
-                  <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
-                    Pick the item that pulled your attention first, or say none — this nudges the read, not the final
-                    winner.
-                  </p>
-                  <fieldset className="space-y-2">
+                  <fieldset className="space-y-3">
                     <legend className="sr-only">First glance product</legend>
-                    {selectedForCompare.map((id) => {
-                      const p = compareTrayProducts?.find((x) => normalizeCompareProductId(x.id) === id)
-                      const label = p?.title ?? `Product #${id}`
-                      return (
-                        <label
-                          key={id}
-                          className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
-                            prepFirstGlance === id
-                              ? 'border-violet-400 bg-white shadow-sm ring-1 ring-violet-200/60'
-                              : 'border-neutral-200/80 bg-white/70 hover:border-violet-200'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="compare-first-glance"
-                            className="h-4 w-4 text-violet-600 border-neutral-300 focus:ring-violet-500"
-                            checked={prepFirstGlance === id}
-                            onChange={() => setPrepFirstGlance(id)}
-                          />
-                          <span className="text-sm text-neutral-800 line-clamp-2">{label}</span>
-                        </label>
-                      )
-                    })}
+                    {loadingProducts ? (
+                      <div className="text-sm text-neutral-500 py-6 text-center">Loading products…</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedForCompare.map((id) => {
+                          const p = compareTrayProducts?.find((x) => normalizeCompareProductId(x.id) === id)
+                          const label = p?.title ?? `Product #${id}`
+                          const img =
+                            p?.image_cdn || p?.image_url || 'https://placehold.co/300x380/f5f5f5/a3a3a3?text=No+Image'
+                          return (
+                            <label
+                              key={id}
+                              className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all ${
+                                prepFirstGlance === id
+                                  ? 'border-violet-400 shadow-md ring-2 ring-violet-200/70'
+                                  : 'border-neutral-200/80 hover:border-violet-200'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="compare-first-glance"
+                                className="sr-only"
+                                checked={prepFirstGlance === id}
+                                onChange={() => setPrepFirstGlance(id)}
+                              />
+                              <div className="relative aspect-[3/4] bg-neutral-100">
+                                <Image src={img} alt={label} fill className="object-cover" sizes="(max-width: 640px) 100vw, 280px" />
+                              </div>
+                              <div className="px-3 py-2.5">
+                                <p className="text-sm font-semibold text-neutral-900 line-clamp-2">{label}</p>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
                     <label
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
                         prepFirstGlance === 'none'

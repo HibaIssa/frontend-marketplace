@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 
 interface SearchBarProps {
   variant?: 'default' | 'hero'
   placeholder?: string
   initialQuery?: string
+  isLoading?: boolean
 }
 
-export function SearchBar({ variant = 'default', placeholder, initialQuery = '' }: SearchBarProps) {
+export function SearchBar({ variant = 'default', placeholder, initialQuery = '', isLoading = false }: SearchBarProps) {
   const [q, setQ] = useState(initialQuery)
   const router = useRouter()
 
@@ -52,13 +53,21 @@ export function SearchBar({ variant = 'default', placeholder, initialQuery = '' 
         />
         <button
           type="submit"
+          disabled={isLoading}
           className={`absolute right-2 px-4 sm:px-5 py-2 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all duration-200
             ${isHero
               ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-fuchsia-400'
               : 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white hover:from-violet-500 hover:to-fuchsia-400'
-            }`}
+            } disabled:opacity-70 disabled:pointer-events-none`}
         >
-          Search
+          {isLoading ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Searching...
+            </span>
+          ) : (
+            'Search'
+          )}
         </button>
       </div>
     </form>

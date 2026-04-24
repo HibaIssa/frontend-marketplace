@@ -78,11 +78,6 @@ export const endpoints = {
     check: (productId: number | string) => `/api/favorites/check/${productId}`,
     checkBatch: '/api/favorites/check',
   },
-  cart: {
-    root: '/api/cart',
-    item: (productId: number | string) => `/api/cart/${productId}`,
-    clear: '/api/cart/clear',
-  },
   wardrobe: {
     items: '/api/wardrobe/items',
     item: (id: number | string) => `/api/wardrobe/items/${id}`,

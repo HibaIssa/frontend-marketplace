@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import {
@@ -14,16 +15,24 @@ import {
   CheckCircle2,
   ArrowRight,
   User,
+  RefreshCcw,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useTryOn } from '@/context/try-on-context'
 import { TryOnCompleteStylePanel } from '@/components/try-on/TryOnCompleteStylePanel'
+import { api } from '@/lib/api/client'
+import { endpoints } from '@/lib/api/endpoints'
+
+const TRYON_SHOP_SESSION_KEY = 'styleai_tryon_shop_payload'
 
 export default function TryOnPage() {
+  const router = useRouter()
   const isAuth = useAuthStore((s) => s.isAuthenticated())
   const [personFile, setPersonFile] = useState<File | null>(null)
   const [garmentFile, setGarmentFile] = useState<File | null>(null)
   const [copyDone, setCopyDone] = useState(false)
+  const [shopFromResultPending, setShopFromResultPending] = useState(false)
+  const [shopFromResultError, setShopFromResultError] = useState<string | null>(null)
   const personRef = useRef<HTMLInputElement>(null)
   const garmentRef = useRef<HTMLInputElement>(null)
 
@@ -78,6 +87,49 @@ export default function TryOnPage() {
     }
   }
 
+  const handleShopTheLook = useCallback(async () => {
+    if (!resultUrl) {
+      router.push('/search?mode=shop')
+      return
+    }
+    if (shopFromResultPending) return
+    setShopFromResultError(null)
+    setShopFromResultPending(true)
+    try {
+      // Backend expects `url` (not `image_url`) for /api/images/search/url
+      const res = await api.post<unknown>(endpoints.images.searchUrl, { url: resultUrl })
+      const raw = res as Record<string, unknown>
+      if (raw?.success === false) {
+        const err = raw.error as { message?: string } | string | undefined
+        const msg = typeof err === 'string' ? err : err?.message
+        throw new Error(msg ?? 'Shop the look failed')
+      }
+      const sp = (raw.similarProducts ?? raw.data) as {
+        byDetection?: unknown[]
+        shopTheLookStats?: unknown
+      } | undefined
+      const byDetection = Array.isArray(sp?.byDetection ?? raw.byDetection) ? (sp?.byDetection ?? raw.byDetection) : []
+      const image = raw.image as { width?: number; height?: number } | undefined
+      const payload = {
+        byDetection,
+        shopImageMeta:
+          image && typeof image.width === 'number' && typeof image.height === 'number'
+            ? { width: image.width, height: image.height }
+            : undefined,
+        shopTheLookStats: sp?.shopTheLookStats,
+        outfitImageUrl: resultUrl,
+        source: 'try-on',
+        savedAt: Date.now(),
+      }
+      sessionStorage.setItem(TRYON_SHOP_SESSION_KEY, JSON.stringify(payload))
+      router.push('/search?mode=shop')
+    } catch (e) {
+      setShopFromResultError((e as Error)?.message ?? 'Could not analyze the generated image.')
+    } finally {
+      setShopFromResultPending(false)
+    }
+  }, [resultUrl, router, shopFromResultPending])
+
   if (!isAuth) {
     return (
       <div className="relative min-h-[70vh] overflow-hidden">
@@ -117,14 +169,35 @@ export default function TryOnPage() {
                 back here anytime.
               </p>
             </div>
-            <Link
-              href="/search?mode=shop"
-              className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-violet-200 hover:text-violet-700"
-            >
-              <Sparkles className="h-4 w-4" />
-              Shop the look
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleShopTheLook()}
+                disabled={shopFromResultPending}
+                className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-violet-200 hover:text-violet-700 disabled:opacity-60 disabled:pointer-events-none"
+              >
+                <Sparkles className="h-4 w-4" />
+                {shopFromResultPending ? 'Analyzing look…' : 'Shop the look'}
+              </button>
+              {showCompleteStyle ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearTryOn()
+                    setPersonFile(null)
+                    setGarmentFile(null)
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 hover:border-violet-300"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  Try another image
+                </button>
+              ) : null}
+            </div>
           </div>
+          {shopFromResultError ? (
+            <p className="mb-5 text-sm text-rose-600">{shopFromResultError}</p>
+          ) : null}
 
           {jobStatus === 'completed' && resultUrl ? (
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -172,9 +245,10 @@ export default function TryOnPage() {
                         setPersonFile(null)
                         setGarmentFile(null)
                       }}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300"
                     >
-                      Try another look
+                      <RefreshCcw className="h-4 w-4" />
+                      Try another image
                     </button>
                   </div>
                   <p className="mt-4 text-xs text-neutral-500">

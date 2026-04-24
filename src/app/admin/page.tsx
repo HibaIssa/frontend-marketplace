@@ -1,7 +1,5 @@
-'use client'
-
-import { AdminOverviewSection } from '@/components/admin/AdminOverviewSection'
+import { redirect } from 'next/navigation'
 
 export default function AdminOverviewPage() {
-  return <AdminOverviewSection />
+  redirect('/admin/catalog')
 }

@@ -587,7 +587,7 @@ export function CompareDecisionResults({
         <SectionHeader
           icon={BarChart3}
           title="Per-product breakdown"
-          subtitle="Scores, friction, and story for each item — winners in a context show a ribbon."
+          subtitle="Scores for each item. Winners show a ribbon."
         />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {ids.map((productId, idx) => {
@@ -678,7 +678,7 @@ export function CompareDecisionResults({
                         )}
                       </p>
 
-                      <p className="text-xs font-semibold text-neutral-500 uppercase">Compliment vibe</p>
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Compliments</p>
                       <p className="text-neutral-800">
                         {COMPLIMENT_COPY[insight.complimentPrediction.type]} ({normalizeScoreDisplay(insight.complimentPrediction.score)})
                       </p>
@@ -691,13 +691,13 @@ export function CompareDecisionResults({
                         />
                       )}
 
-                      <p className="text-xs font-semibold text-neutral-500 uppercase">Wear frequency</p>
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Wear rate</p>
                       <p className="text-neutral-800">
                         ~{insight.wearFrequency.estimatedMonthlyWear}/mo (conf.{' '}
                         {normalizeScoreDisplay(insight.wearFrequency.confidence)})
                       </p>
 
-                      <p className="text-xs font-semibold text-neutral-500 uppercase">Photo vs reality</p>
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Photo vs real</p>
                       <p className="text-neutral-800">{PHOTO_LABEL_COPY[insight.photoRealityGap.label]}</p>
                       {insight.photoRealityGap.explanation?.length > 0 && (
                         <BulletList

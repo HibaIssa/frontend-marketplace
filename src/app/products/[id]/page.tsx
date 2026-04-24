@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Heart, Shirt, ArrowLeft, ShoppingBag } from 'lucide-react'
+import { Heart, Shirt, ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { useAuthStore } from '@/store/auth'
@@ -121,11 +121,6 @@ function ProductDetailContent() {
     },
   })
 
-  const addToCart = useMutation({
-    mutationFn: () => api.post(endpoints.cart.root, { product_id: numericId, quantity: 1 }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['cart'] }),
-  })
-
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -236,19 +231,10 @@ function ProductDetailContent() {
                 <Link href="/login" className="text-neutral-800 font-medium hover:underline">
                   Sign in
                 </Link>{' '}
-                to save items or add them to your bag.
+                to save items.
               </p>
             )}
             <div className="flex flex-wrap gap-4">
-              <button
-                type="button"
-                className="btn-primary flex items-center gap-2"
-                disabled={!isAuth || addToCart.isPending}
-                onClick={() => addToCart.mutate()}
-              >
-                <ShoppingBag className="w-5 h-5" />
-                {addToCart.isPending ? 'Adding…' : 'Add to bag'}
-              </button>
               <button
                 type="button"
                 className="btn-secondary flex items-center gap-2"
@@ -260,16 +246,7 @@ function ProductDetailContent() {
                 />
                 {favorited ? 'Saved' : 'Save'}
               </button>
-              {isAuth && (
-                <Link href="/cart" className="btn-secondary text-sm flex items-center">
-                  View cart
-                </Link>
-              )}
             </div>
-            {addToCart.isError && (
-              <p className="text-sm text-neutral-800">Could not add to cart. Try again.</p>
-            )}
-            {addToCart.isSuccess && <p className="text-sm text-green-700">Added to your bag.</p>}
           </div>
 
           <div className="mt-12 pt-8 border-t border-neutral-200">
