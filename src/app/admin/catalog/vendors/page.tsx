@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { fetchVendorStats } from '@/lib/catalog-queries'
 import { PageHeader, Section, Badge, HealthBar } from '@/components/catalog-admin/ui'
 import { formatRelativeTime } from '@/lib/utils/catalog-quality'
@@ -42,7 +42,7 @@ export default async function VendorsPage() {
                     <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors group">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-red-400' : 'bg-indigo-400'}`} />
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-red-400' : 'bg-orange-500'}`} />
                           <div>
                             <Link
                               href={`/admin/catalog/vendors/${v.id}`}
@@ -61,7 +61,7 @@ export default async function VendorsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 font-medium tabular-nums">{v.total_products.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-indigo-600 font-medium tabular-nums">{v.available_products.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-blue-700 font-medium tabular-nums">{v.available_products.toLocaleString()}</td>
                       <td className="px-4 py-3 text-red-500 tabular-nums">{v.unavailable_products.toLocaleString()}</td>
                       <td className="px-4 py-3">
                         {v.missing_category > 0 ? (

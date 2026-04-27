@@ -33,6 +33,17 @@ type ProductAggregateRow = {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const BATCH_SIZE = 1000
+const AGGREGATE_CACHE_TTL_MS = 60_000
+
+let aggregateCache: {
+  data: ProductAggregateRow[] | null
+  expiresAt: number
+  inFlight: Promise<ProductAggregateRow[]> | null
+} = {
+  data: null,
+  expiresAt: 0,
+  inFlight: null,
+}
 
 function isBlank(value: string | null | undefined): boolean {
   return !value || value.trim() === ''
@@ -50,38 +61,54 @@ function isMissingImageUrls(value: unknown): boolean {
 }
 
 async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
-  const rows: ProductAggregateRow[] = []
-  let from = 0
-
-  while (true) {
-    const to = from + BATCH_SIZE - 1
-    const { data, error } = await sb
-      .from('products')
-      .select(`
-        vendor_id,
-        category,
-        color,
-        size,
-        image_url,
-        image_urls,
-        variant_id,
-        parent_product_url,
-        sales_price_cents,
-        last_seen,
-        availability
-      `)
-      .range(from, to)
-
-    if (error) throw error
-
-    const batch = (data as ProductAggregateRow[]) ?? []
-    rows.push(...batch)
-
-    if (batch.length < BATCH_SIZE) break
-    from += BATCH_SIZE
+  const now = Date.now()
+  if (aggregateCache.data && aggregateCache.expiresAt > now) {
+    return aggregateCache.data
   }
+  if (aggregateCache.inFlight) return aggregateCache.inFlight
 
-  return rows
+  aggregateCache.inFlight = (async () => {
+    const rows: ProductAggregateRow[] = []
+    let from = 0
+
+    while (true) {
+      const to = from + BATCH_SIZE - 1
+      const { data, error } = await sb
+        .from('products')
+        .select(`
+          vendor_id,
+          category,
+          color,
+          size,
+          image_url,
+          image_urls,
+          variant_id,
+          parent_product_url,
+          sales_price_cents,
+          last_seen,
+          availability
+        `)
+        .range(from, to)
+
+      if (error) throw error
+
+      const batch = (data as ProductAggregateRow[]) ?? []
+      rows.push(...batch)
+
+      if (batch.length < BATCH_SIZE) break
+      from += BATCH_SIZE
+    }
+
+    aggregateCache.data = rows
+    aggregateCache.expiresAt = Date.now() + AGGREGATE_CACHE_TTL_MS
+    return rows
+  })()
+
+  try {
+    return await aggregateCache.inFlight
+  } finally {
+    aggregateCache.inFlight = null
+  }
 }
 
 async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {

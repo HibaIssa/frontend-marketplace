@@ -6,11 +6,26 @@
   :root {
     --font-display: 'Inter', system-ui, sans-serif;
     --font-sans: 'Inter', system-ui, sans-serif;
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 24px -4px rgba(109, 40, 217, 0.07),
-      0 0 0 1px rgba(0, 0, 0, 0.03);
-    --shadow-card-hover: 0 12px 40px -12px rgba(109, 40, 217, 0.18), 0 4px 16px -4px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(139, 92, 246, 0.12);
-    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+    /* Cool pastel wash (sky / violet / blush) — avoids beige-yellow “cream” */
+    --tz-page-lime: #f4f7fd;
+    --tz-pink-50: #ffffff;
+    --tz-pink-100: #e5eeff;
+    --tz-pink-200: #b8deff;
+    --tz-pink-300: #ffd6e8;
+    --tz-pink-400: #e8dffd;
+    --tz-cream: #ffffff;
+    --tz-cream-2: #fffef6;
+    --tz-burgundy: #0a0a0a;
+    --tz-burgundy-strong: #000000;
+    --tz-burgundy-soft: #ff6b9d;
+    --tz-ink: #0a0a0a;
+
+    --shadow-card: 0 1px 2px rgba(22, 22, 22, 0.05), 0 8px 28px -8px rgba(22, 22, 22, 0.1),
+      0 0 0 1px rgba(22, 22, 22, 0.04);
+    --shadow-card-hover: 0 14px 44px -14px rgba(22, 22, 22, 0.2), 0 4px 16px -4px rgba(22, 22, 22, 0.1),
+      0 0 0 1px rgba(22, 22, 22, 0.1);
+    --shadow-soft: 0 1px 3px rgba(22, 22, 22, 0.06), 0 1px 2px rgba(22, 22, 22, 0.04);
   }
 
   html {
@@ -23,35 +38,112 @@
   }
 
   ::selection {
-    @apply bg-fuchsia-200/80 text-violet-900;
+    background: rgba(255, 107, 157, 0.22);
+    color: var(--tz-burgundy);
   }
 }
 
 @layer components {
+  /* Full-page wash — class name kept for back-compat */
+  .tz-pink-bg {
+    background-color: #f4f7fd;
+    background-image:
+      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(147, 197, 253, 0.38) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(196, 181, 253, 0.3) 0%, transparent 52%),
+      radial-gradient(ellipse 95% 70% at 50% 105%, rgba(251, 207, 232, 0.34) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(186, 230, 253, 0.22) 0%, transparent 46%);
+    background-attachment: fixed;
+  }
+
+  .tz-flowers-strip {
+    background-image: url('/brand/tz-hero-banner.png');
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+  }
+
+  .tz-cream-card {
+    background-color: var(--tz-cream);
+  }
+
+  .tz-burgundy {
+    color: var(--tz-burgundy);
+  }
+  .tz-burgundy-strong {
+    color: var(--tz-burgundy-strong);
+  }
+
+  .tz-headline {
+    color: var(--tz-burgundy);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    text-transform: none;
+  }
+  .tz-headline em {
+    font-style: normal;
+    font-weight: 800;
+    text-transform: none;
+    color: var(--tz-burgundy-soft);
+    margin-right: 0.25em;
+    letter-spacing: -0.02em;
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+  .tz-headline-xl {
+    font-size: clamp(2.25rem, 7vw, 4.25rem);
+    line-height: 1.02;
+  }
+
+  .tz-eyebrow {
+    color: var(--tz-burgundy);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .tz-link {
+    color: var(--tz-burgundy);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .tz-link:hover {
+    color: var(--tz-burgundy-strong);
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           text-white shadow-md shadow-violet-500/25
-           bg-gradient-to-r from-violet-600 via-violet-500 to-fuchsia-500
-           hover:from-violet-500 hover:via-fuchsia-500 hover:to-rose-500 hover:shadow-lg hover:shadow-fuchsia-500/20
+           text-white shadow-md
+           bg-[#0a0a0a]
+           hover:bg-black hover:shadow-lg
            active:scale-[0.98] transition-all duration-300;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-violet-900 border-2 border-violet-200/80
-           hover:bg-violet-50 hover:border-violet-300 hover:shadow-md hover:shadow-violet-500/10
-           transition-all duration-200 active:scale-[0.98];
+           bg-white text-[#0a0a0a] border-2 border-[#0a0a0a]
+           hover:bg-[#e5eeff] active:scale-[0.98]
+           transition-all duration-200;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-medium text-sm
-           text-neutral-600 hover:bg-violet-50 hover:text-violet-800
+           text-neutral-700 hover:bg-white/60 hover:text-neutral-900
            transition-all duration-200;
   }
 
   .btn-on-dark {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-violet-900 shadow-lg shadow-black/10 hover:bg-violet-50
+           bg-white text-[#0a0a0a] shadow-lg shadow-black/10 hover:bg-[#e5eeff]
            active:scale-[0.98] transition-all duration-200;
   }
 
@@ -69,59 +161,82 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border border-neutral-200/80 bg-white/95 backdrop-blur-sm;
+    @apply rounded-2xl border border-[#0a0a0a]/10 bg-white/95 backdrop-blur-sm;
     box-shadow: var(--shadow-card);
   }
   .surface-card:hover {
-    @apply border-violet-200/70;
+    border-color: rgba(10, 10, 10, 0.18);
     box-shadow: var(--shadow-card-hover);
   }
 
+  .tz-sheet {
+    background: var(--tz-cream);
+    border-radius: 28px;
+    box-shadow: 0 24px 60px -40px rgba(10, 10, 10, 0.18);
+    overflow: hidden;
+    @apply ring-1 ring-black/5;
+  }
+
+  .tz-product-card {
+    @apply relative overflow-hidden rounded-[22px];
+    background: #ffffff;
+  }
+
+  .tz-icon-btn {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0a] shadow-md transition-all hover:scale-105 hover:bg-[#e5eeff];
+  }
+
   .text-gradient-accent {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-500;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(90deg, var(--tz-burgundy) 0%, var(--tz-burgundy-soft) 100%);
   }
 
   .heading-display {
-    @apply font-display font-bold tracking-tight text-neutral-900;
+    @apply font-display font-bold tracking-tight;
+    color: var(--tz-burgundy);
   }
 
   .section-eyebrow {
-    @apply text-xs font-semibold uppercase tracking-[0.15em] text-violet-600;
+    color: var(--tz-burgundy);
+    @apply text-xs font-semibold uppercase tracking-[0.15em];
   }
 
   .section-divider {
-    @apply h-1 w-12 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-400 mx-auto mb-5;
+    background: var(--tz-burgundy);
+    @apply h-1 w-12 rounded-full mx-auto mb-5;
   }
 
   .section-divider-left {
-    @apply h-1 w-12 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-400 mb-4;
+    background: var(--tz-burgundy);
+    @apply h-1 w-12 rounded-full mb-4;
   }
 
   .glass-panel {
     @apply rounded-[1.75rem] border border-white/70 bg-white/55 backdrop-blur-md shadow-xl;
-    box-shadow: 0 4px 32px -8px rgba(109, 40, 217, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+    box-shadow: 0 4px 32px -8px rgba(10, 10, 10, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset,
       var(--shadow-soft);
   }
 
   .mesh-bg {
-    background-image: radial-gradient(at 40% 20%, rgba(167, 139, 250, 0.35) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(244, 114, 182, 0.22) 0px, transparent 45%),
-      radial-gradient(at 0% 50%, rgba(56, 189, 248, 0.15) 0px, transparent 45%),
-      radial-gradient(at 80% 100%, rgba(251, 191, 36, 0.12) 0px, transparent 40%);
+    background-image:
+      radial-gradient(at 40% 20%, rgba(184, 222, 255, 0.45) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(255, 214, 232, 0.4) 0px, transparent 45%),
+      radial-gradient(at 0% 50%, rgba(232, 223, 253, 0.45) 0px, transparent 45%),
+      radial-gradient(at 80% 100%, rgba(207, 244, 249, 0.35) 0px, transparent 40%);
   }
 
-  /** Admin / business dashboard shell — slate + indigo (same layout as catalog tools, separate palette from shop). */
   .admin-mesh-bg {
-    background-image: radial-gradient(at 35% 15%, rgba(99, 102, 241, 0.22) 0px, transparent 52%),
-      radial-gradient(at 85% 10%, rgba(51, 65, 85, 0.12) 0px, transparent 48%),
-      radial-gradient(at 0% 55%, rgba(14, 165, 233, 0.1) 0px, transparent 46%),
-      radial-gradient(at 90% 95%, rgba(99, 102, 241, 0.08) 0px, transparent 42%);
+    background-color: #f0f4ff;
+    background-image: radial-gradient(at 35% 15%, rgba(255, 255, 255, 0.92) 0px, transparent 52%),
+      radial-gradient(at 85% 10%, rgba(147, 197, 253, 0.28) 0px, transparent 48%),
+      radial-gradient(at 0% 55%, rgba(233, 213, 255, 0.22) 0px, transparent 46%),
+      radial-gradient(at 90% 95%, rgba(251, 207, 232, 0.2) 0px, transparent 42%);
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white
+    @apply w-full px-4 py-3 rounded-xl border border-[#0a0a0a]/12 bg-white
            text-neutral-800 placeholder-neutral-400
-           focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400
+           focus:outline-none focus:ring-2 focus:ring-[#0a0a0a]/15 focus:border-[#0a0a0a]
            transition-all duration-200;
   }
 
@@ -140,13 +255,33 @@
   }
 
   .skeleton-shimmer {
-    @apply relative overflow-hidden bg-neutral-200/80 rounded-2xl;
+    @apply relative overflow-hidden rounded-2xl;
+    background: rgba(10, 10, 10, 0.06);
   }
   .skeleton-shimmer::after {
     content: '';
     @apply absolute inset-0 -translate-x-full;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
     animation: shimmer-skeleton 1.5s ease-in-out infinite;
+  }
+
+  @keyframes tz-float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  .tz-float-slow {
+    animation: tz-float 6s ease-in-out infinite;
+  }
+  .tz-float-mid {
+    animation: tz-float 5s ease-in-out infinite;
+  }
+  .tz-float-fast {
+    animation: tz-float 4s ease-in-out infinite;
   }
 }
 
@@ -156,11 +291,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-neutral-100 rounded-full;
+  background: rgba(10, 10, 10, 0.06);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-neutral-300 rounded-full hover:bg-neutral-400;
+  background: rgba(10, 10, 10, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 10, 10, 0.4);
 }
 
 .scrollbar-hide {

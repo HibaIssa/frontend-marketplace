@@ -71,7 +71,7 @@ export default function LoginPage() {
       >
         <div className="bg-white rounded-3xl shadow-elevated border border-neutral-200 p-8">
           <h1 className="font-display text-2xl font-bold text-neutral-800 text-center">Welcome back</h1>
-          <p className="text-neutral-500 text-center mt-2">Sign in to your StyleAI account</p>
+          <p className="text-neutral-500 text-center mt-2">Sign in to your TrendZone account</p>
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>

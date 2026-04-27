@@ -17,8 +17,8 @@ import type { Product } from '@/types/product'
 function chipClass(active: boolean) {
   return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
     active
-      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-violet-500/20'
-      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-violet-200 hover:text-violet-700 hover:bg-violet-50/50'
+      ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
+      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-blue-100 hover:text-blue-900 hover:bg-sky-50/50'
   }`
 }
 
@@ -139,14 +139,14 @@ function ProductsContent() {
   return (
     <>
       {/* ── Header with gradient background ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-violet-50 via-fuchsia-50/40 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-violet-200/40 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-fuchsia-200/30 blur-3xl" aria-hidden />
+      <div className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-sky-50/40 to-neutral-100 border-b border-neutral-200/60">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-blue-100/40 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-blue-100/30 blur-3xl" aria-hidden />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/20">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white shadow-md shadow-blue-600/20">
                 <ShoppingBag className="w-5 h-5" />
               </div>
               <div>
@@ -162,7 +162,7 @@ function ProductsContent() {
             {/* Search */}
             <form
               onSubmit={onSearchSubmit}
-              className="relative flex items-center w-full max-w-2xl rounded-2xl bg-white border border-neutral-200 shadow-sm h-12 focus-within:ring-2 focus-within:ring-violet-500/30 focus-within:border-violet-400 transition-all"
+              className="relative flex items-center w-full max-w-2xl rounded-2xl bg-white border border-neutral-200 shadow-sm h-12 focus-within:ring-2 focus-within:ring-blue-600/30 focus-within:border-orange-500 transition-all"
             >
               <Search className="absolute left-4 w-5 h-5 text-neutral-400" />
               <input
@@ -174,7 +174,7 @@ function ProductsContent() {
               />
               <button
                 type="submit"
-                className="absolute right-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-400 shadow-sm shadow-violet-500/20 transition-all active:scale-[0.97]"
+                className="absolute right-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-sm shadow-blue-600/20 transition-all active:scale-[0.97]"
               >
                 Search
               </button>
@@ -216,7 +216,7 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={() => router.push(pathname)}
-                  className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200/60 hover:bg-rose-100 transition-colors"
+                  className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-700 bg-sky-50 border border-blue-100/60 hover:bg-sky-100 transition-colors"
                 >
                   <X className="w-3 h-3" />
                   Clear{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
@@ -277,7 +277,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -304,8 +304,8 @@ function ProductsContent() {
                             onClick={() => setPage(pageNum)}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
-                                ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-violet-500/20'
-                                : 'text-neutral-600 hover:bg-violet-50 hover:text-violet-700'
+                                ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
+                                : 'text-neutral-600 hover:bg-sky-50 hover:text-blue-900'
                             }`}
                           >
                             {pageNum}
@@ -323,7 +323,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!canGoNext}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -348,9 +348,9 @@ function ProductsContent() {
                     {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
-                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
+                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-blue-100 focus:border-sky-200"
                   />
-                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors">
+                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-100 text-blue-900 hover:bg-blue-100 transition-colors">
                     Go
                   </button>
                 </form>
@@ -368,9 +368,9 @@ function ProductsContent() {
             className="text-center py-20 max-w-md mx-auto"
           >
             <div className="relative w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-20 blur-xl" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center">
-                <ShoppingBag className="w-9 h-9 text-violet-600" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-20 blur-xl" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
+                <ShoppingBag className="w-9 h-9 text-blue-800" />
               </div>
             </div>
             <p className="font-bold text-neutral-900 text-lg mb-2">No products found</p>
@@ -379,7 +379,7 @@ function ProductsContent() {
               <button
                 type="button"
                 onClick={() => router.push(pathname)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-400 shadow-md shadow-violet-500/20 transition-all active:scale-[0.97]"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-md shadow-blue-600/20 transition-all active:scale-[0.97]"
               >
                 <X className="w-4 h-4" />
                 Clear all filters
@@ -396,7 +396,7 @@ export default function ProductsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-violet-300 border-t-violet-600 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-sky-200 border-t-blue-800 animate-spin" />
       </div>
     }>
       <ProductsContent />

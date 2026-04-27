@@ -213,20 +213,20 @@ export default function ComparePage() {
 
   return (
     <>
-      <div className="relative overflow-hidden bg-gradient-to-b from-violet-100/80 via-fuchsia-50/50 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-20 -right-10 h-72 w-72 rounded-full bg-violet-300/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-fuchsia-300/25 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-32 w-96 rounded-full bg-rose-200/20 blur-3xl" aria-hidden />
+      <div className="relative overflow-hidden bg-gradient-to-b from-sky-100/80 via-sky-50/50 to-neutral-100 border-b border-neutral-200/60">
+        <div className="pointer-events-none absolute -top-20 -right-10 h-72 w-72 rounded-full bg-sky-200/35 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-sky-200/25 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 h-32 w-96 rounded-full bg-blue-100/20 blur-3xl" aria-hidden />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div className="flex items-start gap-4">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30 ring-4 ring-white/50">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-800 to-blue-600 text-white shadow-lg shadow-blue-600/30 ring-4 ring-white/50">
                   <GitCompare className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600/80 mb-1">Style decision lab</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-800/80 mb-1">Style decision lab</p>
                   <h1 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">Compare</h1>
                   <p className="text-sm text-neutral-600 mt-2 max-w-xl leading-relaxed">
                     Pick 2–5 items and run comparison.
@@ -246,16 +246,16 @@ export default function ComparePage() {
             className="py-16 max-w-lg mx-auto text-center"
           >
             <div className="relative w-24 h-24 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-15 blur-xl" />
-              <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center">
-                <GitCompare className="w-10 h-10 text-violet-600" />
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-15 blur-xl" />
+              <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
+                <GitCompare className="w-10 h-10 text-blue-800" />
               </div>
             </div>
             <h2 className="font-display text-xl font-bold text-neutral-900 mb-2">No products to compare</h2>
             <p className="text-neutral-500 mb-8">Browse the shop and tap the compare button on any product card.</p>
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white font-semibold shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 active:scale-[0.97] transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 active:scale-[0.97] transition-all"
             >
               Browse products
               <ArrowRight className="w-4 h-4" />
@@ -272,7 +272,7 @@ export default function ComparePage() {
                   ·
                 </span>
                 <span className="text-neutral-500">
-                  <span className="font-semibold text-violet-700">{selectedForCompare.length}</span> included in analysis
+                  <span className="font-semibold text-blue-900">{selectedForCompare.length}</span> included in analysis
                 </span>
                 {!canCompare && selectedForCompare.length === 1 && (
                   <span className="text-amber-700 font-medium">Add one more to compare</span>
@@ -285,7 +285,7 @@ export default function ComparePage() {
                 <button
                   type="button"
                   onClick={selectAllInTray}
-                  className="text-sm font-semibold text-violet-600 hover:text-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                  className="text-sm font-semibold text-blue-800 hover:text-blue-950 px-2 py-1 rounded-lg hover:bg-sky-50 transition-colors"
                 >
                   Include all
                 </button>
@@ -299,7 +299,7 @@ export default function ComparePage() {
                 <button
                   type="button"
                   onClick={clear}
-                  className="text-sm text-neutral-400 hover:text-rose-600 px-2 py-1 transition-colors"
+                  className="text-sm text-neutral-400 hover:text-blue-700 px-2 py-1 transition-colors"
                 >
                   Empty tray
                 </button>
@@ -308,7 +308,7 @@ export default function ComparePage() {
                     type="button"
                     onClick={openComparePrepModal}
                     disabled={compareMutation.isPending}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold shadow-md shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 active:scale-[0.97] transition-all disabled:opacity-60"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold shadow-md shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 active:scale-[0.97] transition-all disabled:opacity-60"
                   >
                     {compareMutation.isPending ? (
                       <>
@@ -326,16 +326,16 @@ export default function ComparePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-white to-fuchsia-50/40 px-4 py-4 sm:px-5 sm:py-4 mb-6 shadow-sm">
+            <div className="rounded-2xl border border-blue-100/70 bg-gradient-to-br from-sky-50/90 via-white to-sky-50/40 px-4 py-4 sm:px-5 sm:py-4 mb-6 shadow-sm">
               <div className="flex gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm ring-1 ring-violet-100">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-blue-800 shadow-sm ring-1 ring-sky-100">
                   <Info className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-neutral-900">How to use this page</p>
                   <ol className="mt-2 space-y-2 text-sm text-neutral-600 leading-relaxed list-none">
                     <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-800 text-[11px] font-bold text-white">
                         1
                       </span>
                       <span>
@@ -344,7 +344,7 @@ export default function ComparePage() {
                       </span>
                     </li>
                     <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-800">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-blue-950">
                         2
                       </span>
                       <span>
@@ -352,7 +352,7 @@ export default function ComparePage() {
                       </span>
                     </li>
                     <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-[11px] font-bold text-fuchsia-800">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-blue-950">
                         3
                       </span>
                       <span>
@@ -386,19 +386,19 @@ export default function ComparePage() {
                         transition={{ delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                         className={`relative flex-shrink-0 w-[200px] snap-start rounded-2xl p-2 transition-shadow duration-300 ${
                           isSelectedForRun
-                            ? 'bg-white ring-2 ring-violet-500/90 shadow-lg shadow-violet-500/10'
+                            ? 'bg-white ring-2 ring-blue-600/90 shadow-lg shadow-blue-600/10'
                             : 'bg-neutral-50/80 ring-1 ring-neutral-200/80 hover:ring-neutral-300'
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => remove(pid)}
-                          className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-white/95 shadow-md border border-neutral-200/80 text-neutral-400 hover:text-rose-500 hover:border-rose-200 transition-colors"
+                          className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-white/95 shadow-md border border-neutral-200/80 text-neutral-400 hover:text-blue-600 hover:border-blue-100 transition-colors"
                           aria-label="Remove from compare tray"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
-                        <Link href={`/products/${pid}`} className="block rounded-xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
+                        <Link href={`/products/${pid}`} className="block rounded-xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
                           <div className="aspect-[3/4] rounded-xl overflow-hidden bg-neutral-100">
                             <Image
                               src={p.image_cdn || p.image_url || 'https://placehold.co/200x260/f5f5f5/737373?text=No+Image'}
@@ -411,7 +411,7 @@ export default function ComparePage() {
                         </Link>
                         <div className="mt-2.5 px-0.5 space-y-2.5">
                           <Link href={`/products/${pid}`} className="block min-h-[3.25rem]">
-                            <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wider truncate">
+                            <p className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider truncate">
                               {p.brand || p.category || 'Product'}
                             </p>
                             <p className="text-sm font-medium text-neutral-800 line-clamp-2 leading-snug mt-0.5">{p.title}</p>
@@ -421,13 +421,13 @@ export default function ComparePage() {
                           <label
                             className={`flex items-center gap-2.5 cursor-pointer rounded-xl border bg-white px-2.5 py-2 shadow-sm transition-colors ${
                               isSelectedForRun
-                                ? 'border-violet-300 ring-1 ring-violet-200/70'
-                                : 'border-neutral-200/90 hover:border-violet-200'
+                                ? 'border-sky-200 ring-1 ring-blue-100/70'
+                                : 'border-neutral-200/90 hover:border-blue-100'
                             }`}
                           >
                             <input
                               type="checkbox"
-                              className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500"
+                              className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-800 focus:ring-blue-600"
                               checked={isSelectedForRun}
                               onChange={() => toggleCompareSelection(pid)}
                             />
@@ -439,10 +439,10 @@ export default function ComparePage() {
                   })}
             </div>
 
-            <div className="relative rounded-3xl mb-8 p-[1px] bg-gradient-to-br from-violet-200 via-fuchsia-200/80 to-rose-200/60 shadow-xl shadow-violet-500/10">
+            <div className="relative rounded-3xl mb-8 p-[1px] bg-gradient-to-br from-blue-100 via-blue-100/80 to-blue-100/60 shadow-xl shadow-blue-600/10">
               <div className="rounded-[1.4rem] bg-white p-5 sm:p-7">
               <div className="flex items-center gap-3 mb-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-blue-900">
                   <SlidersHorizontal className="w-5 h-5" />
                 </span>
                 <div>
@@ -456,7 +456,7 @@ export default function ComparePage() {
                 <div>
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Goal</label>
                   <select
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-300"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-sky-200"
                     value={form.compareGoal ?? ''}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -476,7 +476,7 @@ export default function ComparePage() {
                 <div>
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Occasion</label>
                   <select
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-300"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-sky-200"
                     value={form.occasion ?? ''}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -497,7 +497,7 @@ export default function ComparePage() {
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-neutral-300 text-violet-600"
+                      className="h-4 w-4 rounded border-neutral-300 text-blue-800"
                       checked={form.mode === 'alter_ego'}
                       onChange={(e) => setForm((f) => ({ ...f, mode: e.target.checked ? 'alter_ego' : 'standard' }))}
                     />
@@ -508,7 +508,7 @@ export default function ComparePage() {
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Current self (tags)</label>
                   <input
                     type="text"
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-300"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-sky-200"
                     placeholder="e.g. minimal, practical, office"
                     value={form.currentSelfRaw}
                     onChange={(e) => setForm((f) => ({ ...f, currentSelfRaw: e.target.value }))}
@@ -518,7 +518,7 @@ export default function ComparePage() {
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Aspirational self (tags)</label>
                   <input
                     type="text"
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-300"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-sky-200"
                     placeholder="e.g. bold, artful, statement"
                     value={form.aspirationalSelfRaw}
                     onChange={(e) => setForm((f) => ({ ...f, aspirationalSelfRaw: e.target.value }))}
@@ -529,7 +529,7 @@ export default function ComparePage() {
                 <div className="rounded-2xl bg-neutral-50/80 px-3 py-3 ring-1 ring-neutral-200/60">
                   <label className="block text-xs font-medium text-neutral-700 mb-2">
                     Safe <span className="text-neutral-400">↔</span> bold{' '}
-                    <span className="float-right tabular-nums font-bold text-violet-700">{sliderPct(form.safeBoldPreference)}%</span>
+                    <span className="float-right tabular-nums font-bold text-blue-900">{sliderPct(form.safeBoldPreference)}%</span>
                   </label>
                   <input
                     type="range"
@@ -537,13 +537,13 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.safeBoldPreference)}
                     onChange={(e) => setPreferenceSlider('safeBoldPreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-violet-600"
+                    className="w-full h-2 rounded-full accent-blue-800"
                   />
                 </div>
                 <div className="rounded-2xl bg-neutral-50/80 px-3 py-3 ring-1 ring-neutral-200/60">
                   <label className="block text-xs font-medium text-neutral-700 mb-2">
                     Practical <span className="text-neutral-400">↔</span> expressive{' '}
-                    <span className="float-right tabular-nums font-bold text-violet-700">
+                    <span className="float-right tabular-nums font-bold text-blue-900">
                       {sliderPct(form.practicalExpressivePreference)}%
                     </span>
                   </label>
@@ -553,13 +553,13 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.practicalExpressivePreference)}
                     onChange={(e) => setPreferenceSlider('practicalExpressivePreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-violet-600"
+                    className="w-full h-2 rounded-full accent-blue-800"
                   />
                 </div>
                 <div className="rounded-2xl bg-neutral-50/80 px-3 py-3 ring-1 ring-neutral-200/60">
                   <label className="block text-xs font-medium text-neutral-700 mb-2">
                     Polished <span className="text-neutral-400">↔</span> effortless{' '}
-                    <span className="float-right tabular-nums font-bold text-violet-700">
+                    <span className="float-right tabular-nums font-bold text-blue-900">
                       {sliderPct(form.polishedEffortlessPreference)}%
                     </span>
                   </label>
@@ -569,7 +569,7 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.polishedEffortlessPreference)}
                     onChange={(e) => setPreferenceSlider('polishedEffortlessPreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-violet-600"
+                    className="w-full h-2 rounded-full accent-blue-800"
                   />
                 </div>
               </div>
@@ -580,7 +580,7 @@ export default function ComparePage() {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200/60 text-rose-800 mb-8"
+                className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 border border-blue-100/60 text-blue-900 mb-8"
               >
                 <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                 <p className="text-sm">{(compareMutation.error as Error)?.message ?? 'Comparison failed'}</p>
@@ -592,9 +592,9 @@ export default function ComparePage() {
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-5 rounded-2xl bg-violet-50/80 border border-violet-200/60 text-violet-900 text-sm mb-6"
+                  className="flex items-center gap-3 p-5 rounded-2xl bg-sky-50/80 border border-blue-100/60 text-blue-950 text-sm mb-6"
                 >
-                  <div className="h-9 w-9 rounded-xl border-2 border-violet-300 border-t-violet-600 animate-spin shrink-0" aria-hidden />
+                  <div className="h-9 w-9 rounded-xl border-2 border-sky-200 border-t-blue-800 animate-spin shrink-0" aria-hidden />
                   <p>Loading product names and images for your comparison…</p>
                 </motion.div>
               ) : null}
@@ -636,9 +636,9 @@ export default function ComparePage() {
               className="w-full max-w-lg max-h-[min(90vh,640px)] flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-neutral-200/80"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="shrink-0 border-b border-neutral-100 px-5 py-4 flex items-start justify-between gap-3 bg-gradient-to-r from-violet-50/90 to-fuchsia-50/50">
+              <div className="shrink-0 border-b border-neutral-100 px-5 py-4 flex items-start justify-between gap-3 bg-gradient-to-r from-sky-50/90 to-sky-50/50">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 mb-1">Compare</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800 mb-1">Compare</p>
                   <h2 id="compare-prep-title" className="font-display font-bold text-lg text-neutral-900 leading-tight">
                     Confirm your lineup
                   </h2>
@@ -658,7 +658,7 @@ export default function ComparePage() {
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
-                <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 px-4 py-4">
+                <div className="rounded-2xl border border-blue-100/70 bg-sky-50/40 px-4 py-4">
                   <p className="text-sm font-semibold text-neutral-900 mb-3">First glance</p>
                   <fieldset className="space-y-3">
                     <legend className="sr-only">First glance product</legend>
@@ -676,8 +676,8 @@ export default function ComparePage() {
                               key={id}
                               className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all ${
                                 prepFirstGlance === id
-                                  ? 'border-violet-400 shadow-md ring-2 ring-violet-200/70'
-                                  : 'border-neutral-200/80 hover:border-violet-200'
+                                  ? 'border-orange-500 shadow-md ring-2 ring-blue-100/70'
+                                  : 'border-neutral-200/80 hover:border-blue-100'
                               }`}
                             >
                               <input
@@ -701,14 +701,14 @@ export default function ComparePage() {
                     <label
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
                         prepFirstGlance === 'none'
-                          ? 'border-violet-400 bg-white shadow-sm ring-1 ring-violet-200/60'
-                          : 'border-neutral-200/80 bg-white/70 hover:border-violet-200'
+                          ? 'border-orange-500 bg-white shadow-sm ring-1 ring-blue-100/60'
+                          : 'border-neutral-200/80 bg-white/70 hover:border-blue-100'
                       }`}
                     >
                       <input
                         type="radio"
                         name="compare-first-glance"
-                        className="h-4 w-4 text-violet-600 border-neutral-300 focus:ring-violet-500"
+                        className="h-4 w-4 text-blue-800 border-neutral-300 focus:ring-blue-600"
                         checked={prepFirstGlance === 'none'}
                         onChange={() => setPrepFirstGlance('none')}
                       />
@@ -731,7 +731,7 @@ export default function ComparePage() {
                   type="button"
                   onClick={confirmComparePrep}
                   disabled={prepFirstGlance === 'unset' || compareMutation.isPending || loadingProducts}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold shadow-md shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold shadow-md shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {compareMutation.isPending ? (
                     <>

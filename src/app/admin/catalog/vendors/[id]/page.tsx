@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { supabaseAdmin as sb } from '@/lib/supabase/client'
 import { fetchVendorStats } from '@/lib/catalog-queries'
@@ -245,12 +245,12 @@ export default async function VendorDetailPage({ params }: Props) {
                     <td className="px-3 py-2 text-xs font-medium tabular-nums">
                       {formatCents(p.price_cents)}
                       {p.sales_price_cents && (
-                        <span className="text-indigo-600 ml-1">{formatCents(p.sales_price_cents)}</span>
+                        <span className="text-blue-700 ml-1">{formatCents(p.sales_price_cents)}</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
                       {p.availability ? (
-                        <span className="text-indigo-600 text-xs font-medium">In</span>
+                        <span className="text-blue-700 text-xs font-medium">In</span>
                       ) : (
                         <span className="text-red-400 text-xs">Out</span>
                       )}

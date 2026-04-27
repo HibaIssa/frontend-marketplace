@@ -254,16 +254,16 @@ export default function WardrobePage() {
       <div className="min-h-[60vh] flex items-center justify-center px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md text-center">
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-15 blur-xl" />
-            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center">
-              <Shirt className="w-9 h-9 text-violet-600" />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-15 blur-xl" />
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
+              <Shirt className="w-9 h-9 text-blue-800" />
             </div>
           </div>
           <h2 className="font-display text-2xl font-bold text-neutral-900 mb-2">Sign in for your wardrobe</h2>
           <p className="text-neutral-500 mb-8">Upload your clothes, get style suggestions, and complete looks with AI.</p>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white font-semibold shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 active:scale-[0.97] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 active:scale-[0.97] transition-all"
           >
             Sign in
           </a>
@@ -278,7 +278,7 @@ export default function WardrobePage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="max-w-md text-center">
-          <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-5">
+          <div className="w-16 h-16 rounded-2xl bg-sky-100 text-blue-700 flex items-center justify-center mx-auto mb-5">
             <Shirt className="w-8 h-8" />
           </div>
           <p className="text-neutral-900 font-bold text-lg mb-2">Unable to load wardrobe</p>
@@ -301,15 +301,15 @@ export default function WardrobePage() {
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
 
       {/* ── Header ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-violet-50 via-fuchsia-50/40 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-violet-200/40 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-fuchsia-200/30 blur-3xl" aria-hidden />
+      <div className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-sky-50/40 to-neutral-100 border-b border-neutral-200/60">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-blue-100/40 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-blue-100/30 blur-3xl" aria-hidden />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/20">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white shadow-md shadow-blue-600/20">
                   <Shirt className="w-5 h-5" />
                 </div>
                 <div>
@@ -324,7 +324,7 @@ export default function WardrobePage() {
                 <button
                   onClick={() => cameraInputRef.current?.click()}
                   disabled={addMutation.isPending}
-                  className="p-2.5 rounded-xl border border-neutral-200/80 bg-white/80 text-neutral-500 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50/50 backdrop-blur-sm transition-all"
+                  className="p-2.5 rounded-xl border border-neutral-200/80 bg-white/80 text-neutral-500 hover:text-blue-800 hover:border-blue-100 hover:bg-sky-50/50 backdrop-blur-sm transition-all"
                   title="Take a photo"
                 >
                   <Camera className="w-5 h-5" />
@@ -332,7 +332,7 @@ export default function WardrobePage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={addMutation.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white font-semibold shadow-md shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 active:scale-[0.97] transition-all disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-md shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 active:scale-[0.97] transition-all disabled:opacity-60"
                 >
                   {addMutation.isPending ? (
                     <>
@@ -353,7 +353,7 @@ export default function WardrobePage() {
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200/60 px-4 py-2 rounded-xl"
+                className="mt-3 text-sm text-blue-700 bg-sky-50 border border-blue-100/60 px-4 py-2 rounded-xl"
               >
                 {(addMutation.error as Error)?.message ?? 'Upload failed'}
               </motion.p>
@@ -381,9 +381,9 @@ export default function WardrobePage() {
             className="py-16 max-w-lg mx-auto text-center"
           >
             <div className="relative w-24 h-24 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 opacity-15 blur-xl" />
-              <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center">
-                <Shirt className="w-10 h-10 text-violet-600" />
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-15 blur-xl" />
+              <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
+                <Shirt className="w-10 h-10 text-blue-800" />
               </div>
             </div>
             <h2 className="font-display text-xl font-bold text-neutral-900 mb-2">Your wardrobe is empty</h2>
@@ -392,7 +392,7 @@ export default function WardrobePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={addMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white font-semibold shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 active:scale-[0.97] transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 active:scale-[0.97] transition-all"
               >
                 <Upload className="w-4 h-4" />
                 Choose photo
@@ -400,7 +400,7 @@ export default function WardrobePage() {
               <button
                 onClick={() => cameraInputRef.current?.click()}
                 disabled={addMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200 active:scale-[0.97] transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-sky-100 text-blue-900 font-semibold hover:bg-blue-100 active:scale-[0.97] transition-all"
               >
                 <Camera className="w-4 h-4" />
                 Take a photo
@@ -418,7 +418,7 @@ export default function WardrobePage() {
               <motion.div
                 key={item.id}
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                className="group relative rounded-2xl overflow-hidden bg-white border border-neutral-200/60 shadow-sm hover:shadow-xl hover:shadow-violet-500/10 hover:-translate-y-0.5 transition-all duration-300"
+                className="group relative rounded-2xl overflow-hidden bg-white border border-neutral-200/60 shadow-sm hover:shadow-xl hover:shadow-blue-600/10 hover:-translate-y-0.5 transition-all duration-300"
               >
                 <div className="aspect-square relative bg-neutral-100 overflow-hidden">
                   {(item.image_url || item.image_cdn) ? (
@@ -439,7 +439,7 @@ export default function WardrobePage() {
                     <button
                       type="button"
                       onClick={() => openCompleteStyle(item)}
-                      className="flex-1 min-w-[6rem] flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-violet-700 text-[11px] font-semibold hover:bg-white transition-colors"
+                      className="flex-1 min-w-[6rem] flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-blue-900 text-[11px] font-semibold hover:bg-white transition-colors"
                     >
                       <Wand2 className="w-3.5 h-3.5 shrink-0" />
                       Style
@@ -447,7 +447,7 @@ export default function WardrobePage() {
                     <button
                       type="button"
                       onClick={() => openEditModal(item)}
-                      className="p-2 rounded-xl bg-white/90 backdrop-blur-sm text-neutral-500 hover:text-violet-600 hover:bg-white transition-colors"
+                      className="p-2 rounded-xl bg-white/90 backdrop-blur-sm text-neutral-500 hover:text-blue-800 hover:bg-white transition-colors"
                       title="Edit details"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -455,7 +455,7 @@ export default function WardrobePage() {
                     <button
                       type="button"
                       onClick={() => deleteMutation.mutate(item.id)}
-                      className="p-2 rounded-xl bg-white/90 backdrop-blur-sm text-neutral-500 hover:text-rose-500 hover:bg-white transition-colors"
+                      className="p-2 rounded-xl bg-white/90 backdrop-blur-sm text-neutral-500 hover:text-blue-600 hover:bg-white transition-colors"
                       title="Remove item"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -467,7 +467,7 @@ export default function WardrobePage() {
                   <p className="font-semibold text-neutral-800 text-sm truncate">{item.name || 'Unnamed item'}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {item.category && (
-                      <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">{item.category}</span>
+                      <span className="text-xs font-medium text-blue-800 bg-sky-50 px-2 py-0.5 rounded-full">{item.category}</span>
                     )}
                     {item.color && (
                       <span className="text-xs text-neutral-500">{item.color}</span>
@@ -513,7 +513,7 @@ export default function WardrobePage() {
               {/* Modal header */}
               <div className="shrink-0 z-10 bg-white/90 backdrop-blur-md border-b border-neutral-100 px-6 py-4 flex items-center justify-between rounded-t-3xl">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white">
                     <Wand2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -545,7 +545,7 @@ export default function WardrobePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-neutral-800 text-sm truncate">{selectedItem.name || 'Your item'}</p>
-                    {selectedItem.category && <p className="text-xs text-violet-600 mt-0.5">{selectedItem.category}</p>}
+                    {selectedItem.category && <p className="text-xs text-blue-800 mt-0.5">{selectedItem.category}</p>}
                   </div>
                   <span className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Styling for</span>
                 </div>
@@ -586,7 +586,7 @@ export default function WardrobePage() {
                       >
                         <Link
                           href={`/products/${pid}`}
-                          className="block group rounded-2xl border border-neutral-200/60 bg-white overflow-hidden hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5 transition-all duration-300"
+                          className="block group rounded-2xl border border-neutral-200/60 bg-white overflow-hidden hover:shadow-lg hover:shadow-blue-600/10 hover:-translate-y-0.5 transition-all duration-300"
                         >
                           <div className="aspect-[3/4] relative bg-neutral-100 overflow-hidden">
                             <Image
@@ -598,7 +598,7 @@ export default function WardrobePage() {
                             />
                             {s.reason && (
                               <div className="absolute top-2 left-2 right-2">
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-semibold text-violet-700 shadow-sm line-clamp-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-semibold text-blue-900 shadow-sm line-clamp-2">
                                   <Sparkles className="w-3 h-3 shrink-0" />
                                   {s.reason}
                                 </span>
@@ -606,11 +606,11 @@ export default function WardrobePage() {
                             )}
                           </div>
                           <div className="p-3">
-                            <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wider">{s.brand || s.category || ''}</p>
+                            <p className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider">{s.brand || s.category || ''}</p>
                             <p className="text-sm font-semibold text-neutral-900 line-clamp-2 mt-0.5">{s.title}</p>
                             <div className="flex items-center justify-between mt-1.5 gap-2">
-                              <p className="text-sm font-bold text-violet-700 tabular-nums">{priceLabel}</p>
-                              <span className="text-xs text-violet-600 font-semibold flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <p className="text-sm font-bold text-blue-900 tabular-nums">{priceLabel}</p>
+                              <span className="text-xs text-blue-800 font-semibold flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                 View <ChevronRight className="w-3 h-3" />
                               </span>
                             </div>
@@ -653,7 +653,7 @@ export default function WardrobePage() {
                               ),
                             )
                           }
-                          className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-2.5 rounded-full border border-violet-200 bg-white text-sm font-semibold text-violet-700 hover:bg-violet-50"
+                          className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-2.5 rounded-full border border-blue-100 bg-white text-sm font-semibold text-blue-900 hover:bg-sky-50"
                         >
                           <ChevronDown className="w-4 h-4" />
                           Show more
@@ -708,7 +708,7 @@ export default function WardrobePage() {
               </div>
               {metaFields(uploadMeta, setUploadMeta)}
               {addMutation.isError && (
-                <p className="mt-3 text-sm text-rose-600">{(addMutation.error as Error)?.message ?? 'Upload failed'}</p>
+                <p className="mt-3 text-sm text-red-600">{(addMutation.error as Error)?.message ?? 'Upload failed'}</p>
               )}
               <div className="flex gap-2 mt-5">
                 <button
@@ -725,7 +725,7 @@ export default function WardrobePage() {
                   type="button"
                   disabled={addMutation.isPending}
                   onClick={() => addMutation.mutate({ file: pendingUploadFile, meta: uploadMeta })}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold disabled:opacity-60"
                 >
                   {addMutation.isPending ? 'Uploading…' : 'Upload'}
                 </button>
@@ -770,7 +770,7 @@ export default function WardrobePage() {
               </div>
               {metaFields(editMeta, setEditMeta)}
               {editMutation.isError && (
-                <p className="mt-3 text-sm text-rose-600">{(editMutation.error as Error)?.message ?? 'Update failed'}</p>
+                <p className="mt-3 text-sm text-red-600">{(editMutation.error as Error)?.message ?? 'Update failed'}</p>
               )}
               <div className="flex gap-2 mt-5">
                 <button
@@ -784,7 +784,7 @@ export default function WardrobePage() {
                   type="button"
                   disabled={editMutation.isPending}
                   onClick={() => editMutation.mutate({ id: editingItem.id, meta: editMeta })}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-sm font-semibold disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold disabled:opacity-60"
                 >
                   {editMutation.isPending ? 'Saving…' : 'Save'}
                 </button>

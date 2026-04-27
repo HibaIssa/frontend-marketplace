@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+﻿import { Suspense } from 'react'
 import { fetchOverviewKPIs, fetchVendorProductCounts, fetchCategoryCounts } from '@/lib/catalog-queries'
 import { PageHeader, KpiCard, Section, Skeleton } from '@/components/catalog-admin/ui'
 import { CatalogOverviewCharts } from '@/components/catalog-admin/CatalogOverviewCharts'
@@ -6,11 +6,18 @@ import { CatalogOverviewCharts } from '@/components/catalog-admin/CatalogOvervie
 const EMPTY = '—'
 
 export default async function OverviewPage() {
-  const [kpis, vendorCounts, catCounts] = await Promise.all([
-    fetchOverviewKPIs().catch(() => null),
-    fetchVendorProductCounts().catch(() => []),
-    fetchCategoryCounts().catch(() => []),
+  const [kpisResult, vendorCountsResult, catCountsResult] = await Promise.allSettled([
+    fetchOverviewKPIs(),
+    fetchVendorProductCounts(),
+    fetchCategoryCounts(),
   ])
+  const kpis = kpisResult.status === 'fulfilled' ? kpisResult.value : null
+  const vendorCounts = vendorCountsResult.status === 'fulfilled' ? vendorCountsResult.value : []
+  const catCounts = catCountsResult.status === 'fulfilled' ? catCountsResult.value : []
+  const loadError =
+    kpisResult.status === 'rejected'
+      ? (kpisResult.reason instanceof Error ? kpisResult.reason.message : String(kpisResult.reason))
+      : null
 
   const hasAnyData =
     (kpis?.total_products ?? 0) > 0 || vendorCounts.length > 0 || catCounts.length > 0
@@ -21,7 +28,7 @@ export default async function OverviewPage() {
         title="Overview"
         sub="Real-time scraper output summary"
         actions={
-          <span className="inline-flex items-center gap-1.5 text-xs text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 font-medium">
+          <span className="inline-flex items-center gap-1.5 text-xs text-blue-950 bg-sky-50 px-2.5 py-1 rounded-full border border-blue-100 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Live
           </span>
@@ -31,19 +38,27 @@ export default async function OverviewPage() {
       <div className="p-6 flex flex-col gap-6">
         {!hasAnyData && (
           <Section>
-            <div className="flex flex-col gap-2 text-sm text-neutral-800 border border-indigo-100 rounded-xl bg-gradient-to-r from-indigo-50/80 to-slate-50/80 px-4 py-3">
+            <div className="flex flex-col gap-2 text-sm text-neutral-800 border border-sky-100 rounded-xl bg-gradient-to-r from-sky-50/80 to-slate-50/80 px-4 py-3">
               <p className="font-medium font-display">No catalog data loaded yet</p>
               <p className="text-xs text-neutral-600 leading-relaxed">
-                This page reads your scraper database through Supabase. The app now picks up{' '}
-                <code className="text-indigo-950 bg-white/80 px-1 rounded">SUPABASE_URL</code>,{' '}
-                <code className="text-indigo-950 bg-white/80 px-1 rounded">SUPABASE_ANON_KEY</code>, and{' '}
-                <code className="text-indigo-950 bg-white/80 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> from the
-                repo root <code className="text-indigo-950 bg-white/80 px-1 rounded">.env</code> automatically (same as
-                before). If it&apos;s still empty, confirm those values exist, restart{' '}
-                <code className="text-indigo-950 bg-white/80 px-1 rounded">pnpm dev</code>, and ensure SQL functions
-                like <code className="text-indigo-950 bg-white/80 px-1 rounded">get_overview_kpis</code> exist in
+                This page reads your scraper database through Supabase. The app accepts either{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> /{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">SUPABASE_URL</code>,{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> /{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">SUPABASE_ANON_KEY</code>, and{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> (or legacy{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">SUPABASE_ADMIN_KEY</code>) from the repo
+                root <code className="text-blue-950 bg-white/80 px-1 rounded">.env</code>. If it&apos;s still empty,
+                confirm those values exist, restart{' '}
+                <code className="text-blue-950 bg-white/80 px-1 rounded">pnpm dev</code>, and ensure SQL functions
+                like <code className="text-blue-950 bg-white/80 px-1 rounded">get_overview_kpis</code> exist in
                 Supabase.
               </p>
+              {loadError && (
+                <p className="text-xs text-blue-800 bg-sky-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                  Load error: {loadError}
+                </p>
+              )}
             </div>
           </Section>
         )}

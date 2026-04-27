@@ -38,15 +38,15 @@ export function TryOnCompleteStylePanel({ garmentFile, jobId, enabled }: Props) 
 
   if (!garmentFile) {
     return (
-      <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 p-6 text-center">
-        <Sparkles className="mx-auto mb-3 h-8 w-8 text-violet-400" />
+      <div className="rounded-2xl border border-dashed border-blue-100 bg-sky-50/40 p-6 text-center">
+        <Sparkles className="mx-auto mb-3 h-8 w-8 text-orange-500" />
         <p className="text-sm font-medium text-neutral-800">Complete the look</p>
         <p className="mt-1 text-xs text-neutral-500">
           Outfit ideas use your garment photo. Start a new try-on to unlock suggestions here.
         </p>
         <Link
           href="/search"
-          className="mt-4 inline-flex text-sm font-semibold text-violet-600 hover:text-violet-700"
+          className="mt-4 inline-flex text-sm font-semibold text-blue-800 hover:text-blue-900"
         >
           Search the catalog →
         </Link>
@@ -56,8 +56,8 @@ export function TryOnCompleteStylePanel({ garmentFile, jobId, enabled }: Props) 
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-violet-100 bg-white/80 py-12 shadow-sm">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-sky-100 bg-white/80 py-12 shadow-sm">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         <p className="mt-3 text-sm font-medium text-neutral-700">Building your outfit…</p>
         <p className="mt-1 max-w-xs text-center text-xs text-neutral-500">
           Matching your garment to the catalog and pulling complementary pieces.
@@ -98,7 +98,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white shadow-md shadow-blue-600/25">
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
@@ -108,7 +108,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
       </div>
 
       {data.outfitSuggestion && (
-        <p className="rounded-xl border border-violet-100 bg-violet-50/80 px-4 py-3 text-sm leading-relaxed text-neutral-700">
+        <p className="rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm leading-relaxed text-neutral-700">
           {data.outfitSuggestion}
         </p>
       )}
@@ -124,7 +124,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600">Anchor piece</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-800">Anchor piece</p>
           <p className="line-clamp-2 text-sm font-semibold text-neutral-900">{source.title}</p>
           {data.detectedCategory && (
             <p className="mt-0.5 text-xs text-neutral-500">{data.detectedCategory}</p>
@@ -135,7 +135,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
       {data.recommendations.map((rec, idx) => (
         <section key={`${rec.category}-${idx}`}>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Shirt className="h-4 w-4 text-violet-600" />
+            <Shirt className="h-4 w-4 text-blue-800" />
             <h4 className="font-display text-base font-bold text-neutral-800">{rec.category}</h4>
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
               {rec.priorityLabel}
@@ -166,7 +166,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
                   >
                     <Link
                       href={`/products/${id}?from=${encodeURIComponent('/try-on')}`}
-                      className="group block overflow-hidden rounded-xl border border-neutral-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md hover:shadow-violet-500/10"
+                      className="group block overflow-hidden rounded-xl border border-neutral-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-md hover:shadow-blue-600/10"
                     >
                       <div className="relative aspect-[3/4] bg-neutral-100">
                         {shot && (
@@ -181,13 +181,13 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
                       </div>
                       <div className="p-2.5">
                         {p.brand && (
-                          <p className="truncate text-[9px] font-semibold uppercase tracking-wider text-violet-600">
+                          <p className="truncate text-[9px] font-semibold uppercase tracking-wider text-blue-800">
                             {p.brand}
                           </p>
                         )}
                         <p className="line-clamp-2 text-xs font-semibold text-neutral-900">{p.title}</p>
                         {cents > 0 && (
-                          <p className="mt-1 text-xs font-bold tabular-nums text-violet-700">
+                          <p className="mt-1 text-xs font-bold tabular-nums text-blue-900">
                             {formatPrice(cents, p.currency || 'USD')}
                           </p>
                         )}

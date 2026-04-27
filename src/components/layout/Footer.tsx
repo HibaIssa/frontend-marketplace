@@ -1,59 +1,53 @@
 'use client'
 
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-neutral-300 bg-gradient-to-b from-neutral-200 to-neutral-300 text-neutral-600">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-12">
+    <footer className="mt-auto px-3 sm:px-5 lg:px-8 pb-6">
+      <div className="tz-sheet px-6 sm:px-10 py-12 lg:py-14">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 lg:gap-12">
           <div className="col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="inline-flex items-center gap-2.5 font-display text-lg font-bold text-neutral-900 tracking-tight"
+              className="inline-flex items-center gap-2.5 font-display text-lg font-bold tracking-tight tz-burgundy"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-md shadow-violet-500/20">
-                <Sparkles className="w-4 h-4 text-white" />
-              </span>
-              StyleAI
+              TrendZone
             </Link>
-            <p className="mt-4 text-sm text-neutral-500 leading-relaxed max-w-xs">
-              Fashion discovery powered by AI — search, compare, wardrobe, and try-on in one colorful experience.
+            <p className="mt-4 text-sm text-[#0a0a0a]/65 leading-relaxed max-w-xs">
+              Fashion discovery powered by AI: search, compare, wardrobe, and try-on in one seamless experience.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link href="/#about" className="px-3 py-1.5 rounded-full text-[12px] font-semibold tz-burgundy bg-[#e5eeff] ring-1 ring-black/10 hover:bg-[#c7d7fe] transition-colors">
+                About us
+              </Link>
+            </div>
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700 mb-4">Shop</h4>
+            <h4 className="tz-eyebrow mb-4">Shop</h4>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/products" className="hover:text-violet-700 transition-colors">All products</Link></li>
-              <li><Link href="/search" className="hover:text-fuchsia-600 transition-colors">Discover</Link></li>
-              <li><Link href="/products?category=dresses" className="hover:text-rose-600 transition-colors">Dresses</Link></li>
-              <li><Link href="/products?category=shoes" className="hover:text-sky-600 transition-colors">Shoes</Link></li>
+              <li><Link href="/products" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">All products</Link></li>
+              <li><Link href="/search" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Discover</Link></li>
+              <li><Link href="/sales" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Sale</Link></li>
+              <li><Link href="/favorites" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Favorites</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700 mb-4">Product</h4>
+            <h4 className="tz-eyebrow mb-4">Tools</h4>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/wardrobe" className="hover:text-emerald-600 transition-colors">Wardrobe</Link></li>
-              <li><Link href="/try-on" className="hover:text-fuchsia-600 transition-colors">Virtual try-on</Link></li>
-              <li><Link href="/compare" className="hover:text-amber-600 transition-colors">Compare</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700 mb-4">Company</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/about" className="hover:text-violet-700 transition-colors">About</Link></li>
-              <li><Link href="/contact" className="hover:text-violet-700 transition-colors">Contact</Link></li>
+              <li><Link href="/search?mode=shop" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Shop the look</Link></li>
+              <li><Link href="/wardrobe" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Wardrobe</Link></li>
+              <li><Link href="/try-on" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Virtual try-on</Link></li>
+              <li><Link href="/compare" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Compare</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-neutral-300/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
-          <p>&copy; {new Date().getFullYear()} StyleAI. All rights reserved.</p>
-          <p className="text-gradient-accent font-medium">Fashion meets intelligence.</p>
+        <div className="mt-12 pt-8 border-t border-black/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#0a0a0a]/65">
+          <p>&copy; {new Date().getFullYear()} TrendZone. All rights reserved.</p>
+          <p className="font-semibold tz-burgundy">We don&apos;t follow trends — we create them.</p>
         </div>
       </div>
     </footer>

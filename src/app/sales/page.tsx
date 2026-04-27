@@ -18,8 +18,8 @@ import type { Product } from '@/types/product'
 function chipClass(active: boolean) {
   return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
     active
-      ? 'bg-gradient-to-r from-rose-600 to-fuchsia-500 text-white shadow-md shadow-rose-500/20'
-      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-rose-200 hover:text-rose-700 hover:bg-rose-50/50'
+      ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white shadow-md shadow-blue-600/20'
+      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-blue-100 hover:text-blue-800 hover:bg-sky-50/50'
   }`
 }
 
@@ -131,15 +131,15 @@ function SalesContent() {
 
   return (
     <>
-      <div className="relative overflow-hidden bg-gradient-to-b from-rose-50 via-fuchsia-50/40 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-rose-200/40 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-fuchsia-200/30 blur-3xl" aria-hidden />
+      <div className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-sky-50/40 to-neutral-100 border-b border-neutral-200/60">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-blue-100/40 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-blue-100/30 blur-3xl" aria-hidden />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-rose-600 to-fuchsia-500 text-white shadow-md shadow-rose-500/20">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-700 to-blue-600 text-white shadow-md shadow-blue-600/20">
                   <Percent className="w-5 h-5" />
                 </div>
                 <div>
@@ -153,7 +153,7 @@ function SalesContent() {
               </div>
               <Link
                 href="/products"
-                className="text-sm font-semibold text-violet-600 hover:text-violet-800 shrink-0"
+                className="text-sm font-semibold text-blue-800 hover:text-blue-950 shrink-0"
               >
                 Browse full shop →
               </Link>
@@ -214,7 +214,7 @@ function SalesContent() {
                     className="relative"
                   >
                     {pct != null && pct > 0 ? (
-                      <span className="absolute top-2 right-2 z-[5] rounded-full bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-md">
+                      <span className="absolute top-2 right-2 z-[5] rounded-full bg-blue-700 text-white text-[10px] font-bold px-2 py-0.5 shadow-md">
                         −{pct}%
                       </span>
                     ) : null}
@@ -244,7 +244,7 @@ function SalesContent() {
                     type="button"
                     onClick={() => setQuery({ page: String(Math.max(1, page - 1)) })}
                     disabled={page <= 1}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 disabled:opacity-40 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-800 disabled:opacity-40 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -270,8 +270,8 @@ function SalesContent() {
                             onClick={() => setQuery({ page: String(pageNum) })}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
-                                ? 'bg-gradient-to-r from-rose-600 to-fuchsia-500 text-white shadow-md shadow-rose-500/20'
-                                : 'text-neutral-600 hover:bg-rose-50 hover:text-rose-700'
+                                ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white shadow-md shadow-blue-600/20'
+                                : 'text-neutral-600 hover:bg-sky-50 hover:text-blue-800'
                             }`}
                           >
                             {pageNum}
@@ -287,7 +287,7 @@ function SalesContent() {
                     type="button"
                     onClick={() => setQuery({ page: String(page + 1) })}
                     disabled={!canGoNext}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 disabled:opacity-40 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-800 disabled:opacity-40 transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -312,11 +312,11 @@ function SalesContent() {
                     {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
-                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-rose-200 focus:border-rose-300"
+                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-blue-100 focus:border-sky-200"
                   />
                   <button
                     type="submit"
-                    className="px-3 py-2 rounded-lg text-sm font-semibold bg-rose-100 text-rose-800 hover:bg-rose-200 transition-colors"
+                    className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-100 text-blue-900 hover:bg-blue-100 transition-colors"
                   >
                     Go
                   </button>
@@ -336,16 +336,16 @@ function SalesContent() {
             className="text-center py-20 max-w-md mx-auto"
           >
             <div className="relative w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-rose-500 to-fuchsia-500 opacity-20 blur-xl" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-rose-100 to-fuchsia-100 flex items-center justify-center">
-                <ShoppingBag className="w-9 h-9 text-rose-600" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-20 blur-xl" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
+                <ShoppingBag className="w-9 h-9 text-blue-700" />
               </div>
             </div>
             <p className="font-bold text-neutral-900 text-lg mb-2">No sale items right now</p>
             <p className="text-neutral-500 mb-5">Check back soon or browse the full catalog.</p>
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white font-semibold shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-fuchsia-400 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-600/20 hover:from-blue-600 hover:to-orange-500 transition-all"
             >
               Go to shop
             </Link>
@@ -361,7 +361,7 @@ export default function SalesPage() {
     <Suspense
       fallback={
         <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-rose-300 border-t-rose-600 animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-sky-200 border-t-blue-700 animate-spin" />
         </div>
       }
     >

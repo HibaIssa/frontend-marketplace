@@ -1,417 +1,231 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowRight, Image as ImageIcon, Layers, Search, Shirt,
-  TrendingUp, Zap, Eye, BarChart3, Sparkles,
+  ArrowUpRight, Heart, ShoppingBag, Search, Shirt, Layers, Sparkles,
+  Brain, Eye, Wand2, GitCompare,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
-import { ProductGrid } from '@/components/product/ProductGrid'
-import { SearchBar } from '@/components/search/SearchBar'
+import type { Product } from '@/types/product'
 import { Reveal } from '@/components/motion/Reveal'
 
-/* ── Hero carousel slides ── */
-const heroSlides = [
-  {
-    eyebrow: 'Visual fashion discovery',
-    headline: (
-      <>
-        <span className="text-neutral-900">Shop with </span>
-        <span className="text-gradient-accent">color, clarity,</span>
-        <span className="text-neutral-900"> and AI</span>
-      </>
-    ),
-    desc: 'See it, search it, save it. Describe what you want in plain language and browse products that match.',
-    cta: { label: 'Start exploring', href: '/search' },
-    secondary: { label: 'Browse products', href: '/products', Icon: Shirt },
-    hasSearch: true,
-  },
-  {
-    eyebrow: 'Virtual try-on',
-    headline: (
-      <>
-        <span className="text-neutral-900">Try before </span>
-        <span className="text-gradient-accent">you buy</span>
-      </>
-    ),
-    desc: 'Preview any garment on yourself using AI, from the catalog or your own wardrobe. No dressing room needed.',
-    cta: { label: 'Try it on', href: '/try-on' },
-    secondary: { label: 'Browse catalog', href: '/products', Icon: Shirt },
-    hasSearch: false,
-  },
-  {
-    eyebrow: 'Smart wardrobe',
-    headline: (
-      <>
-        <span className="text-neutral-900">Your wardrobe, </span>
-        <span className="text-gradient-accent">digitized</span>
-      </>
-    ),
-    desc: 'Upload your closet, get outfit suggestions, and discover what\'s missing, powered by visual AI.',
-    cta: { label: 'Open wardrobe', href: '/wardrobe' },
-    secondary: { label: 'Compare items', href: '/compare', Icon: Layers },
-    hasSearch: false,
-  },
-]
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hooks / helpers
+   ────────────────────────────────────────────────────────────────────────── */
 
-/* Per-slide card layouts — unique design for each slide */
-const slideLayouts: Array<Array<{
-  cls: string; rotate: number; z: number; enterDelay: number; floatDur: number
-  initial: Record<string, number>
-}>> = [
-  /* Slide 0 – Discovery: fanned cards, all clearly visible */
-  [
-    { cls: 'top-[3%] right-[0%] w-[54%] max-w-[255px]', rotate: 4, z: 30, enterDelay: 0.08, floatDur: 4.2,
-      initial: { y: 70, rotate: 12 } },
-    { cls: 'top-[18%] left-[0%] w-[46%] max-w-[215px]', rotate: -3, z: 20, enterDelay: 0.22, floatDur: 4.8,
-      initial: { x: -60, rotate: -12 } },
-    { cls: 'bottom-[0%] left-[28%] w-[50%] max-w-[235px]', rotate: 1, z: 25, enterDelay: 0.36, floatDur: 5.3,
-      initial: { y: 70, rotate: -4 } },
-  ],
-  /* Slide 1 – Try-On: hero card center + two satellites */
-  [
-    { cls: 'top-[2%] left-[14%] w-[62%] max-w-[285px]', rotate: 0, z: 30, enterDelay: 0.1, floatDur: 4.5,
-      initial: { scale: 0.7, y: 30 } },
-    { cls: 'top-[8%] right-[-2%] w-[40%] max-w-[185px]', rotate: 8, z: 20, enterDelay: 0.28, floatDur: 5.0,
-      initial: { x: 80, rotate: 20 } },
-    { cls: 'bottom-[4%] left-[2%] w-[42%] max-w-[195px]', rotate: -5, z: 25, enterDelay: 0.4, floatDur: 4.3,
-      initial: { x: -70, rotate: -16 } },
-  ],
-  /* Slide 2 – Wardrobe: horizontal cascade spread */
-  [
-    { cls: 'top-[2%] left-[-2%] w-[44%] max-w-[205px]', rotate: -6, z: 20, enterDelay: 0.06, floatDur: 4.0,
-      initial: { x: -50, y: -30, rotate: -18 } },
-    { cls: 'top-[5%] left-[26%] w-[52%] max-w-[245px]', rotate: 0, z: 30, enterDelay: 0.2, floatDur: 4.6,
-      initial: { y: -50, scale: 0.85 } },
-    { cls: 'bottom-[0%] right-[-2%] w-[46%] max-w-[215px]', rotate: 6, z: 25, enterDelay: 0.35, floatDur: 5.2,
-      initial: { x: 60, y: 30, rotate: 18 } },
-  ],
-]
-
-function CategoryChart() {
-  const { data } = useQuery({
-    queryKey: ['facets-chart'],
+function useProducts(limit = 8, offset = 0) {
+  return useQuery({
+    queryKey: ['home-products', limit, offset],
     queryFn: async () => {
-      const res = await api.get<{ data?: { categories?: Array<{ value: string; count: number }> } }>(
-        endpoints.products.facets,
-      )
-      return res
-    },
-  })
-
-  const categories =
-    (data?.data as { categories?: Array<{ value: string; count: number }> })?.categories?.slice(0, 6) ?? []
-  const chartData = categories.map((c) => ({ name: c.value || 'Other', count: c.count }))
-  const palette = ['#7c3aed', '#a855f7', '#c026d3', '#db2777', '#0ea5e9', '#059669']
-
-  if (chartData.length === 0) return null
-
-  return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
-          <XAxis type="number" hide />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={100}
-            tick={{ fontSize: 12, fill: '#525252' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Bar dataKey="count" radius={[0, 8, 8, 0]}>
-            {chartData.map((_, i) => (
-              <Cell key={i} fill={palette[i % palette.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
-
-const features = [
-  {
-    icon: Search,
-    title: 'Text Search',
-    desc: 'Describe mood, occasion, or silhouette. We translate intent into products you can act on.',
-    href: '/search',
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=900&h=700&fit=crop&q=80',
-    iconBg: 'from-violet-500 to-indigo-600',
-    strip: 'from-violet-500 via-fuchsia-500 to-indigo-500',
-  },
-  {
-    icon: Shirt,
-    title: 'Virtual Try-On',
-    desc: 'Preview garments on yourself with AI before you buy, from the catalog or your wardrobe.',
-    href: '/try-on',
-    image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=900&h=700&fit=crop&q=80',
-    iconBg: 'from-fuchsia-500 to-pink-600',
-    strip: 'from-fuchsia-500 via-rose-500 to-pink-600',
-  },
-  {
-    icon: Layers,
-    title: 'Compare & Decide',
-    desc: 'Side-by-side comparison helps you pick sizes, colors, and prices with confidence.',
-    href: '/compare',
-    image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=900&h=700&fit=crop&q=80',
-    iconBg: 'from-sky-500 to-cyan-600',
-    strip: 'from-sky-500 via-cyan-500 to-emerald-500',
-  },
-]
-
-const benefits = [
-  {
-    icon: Zap,
-    title: 'Instant Discovery',
-    desc: 'Reduces frustration and speeds up product discovery, increasing likelihood of finding what you want.',
-    bg: 'bg-violet-50/90',
-    border: 'border-violet-200/60',
-    iconWrap: 'bg-violet-100 text-violet-700',
-  },
-  {
-    icon: Eye,
-    title: 'Visual & Intuitive',
-    desc: 'Clear layouts and smart search so you spend less time hunting and more time deciding.',
-    bg: 'bg-fuchsia-50/90',
-    border: 'border-fuchsia-200/60',
-    iconWrap: 'bg-fuchsia-100 text-fuchsia-700',
-  },
-  {
-    icon: BarChart3,
-    title: 'Smart Comparison',
-    desc: 'AI-backed context helps you compare products confidently, not guesswork.',
-    bg: 'bg-sky-50/90',
-    border: 'border-sky-200/60',
-    iconWrap: 'bg-sky-100 text-sky-700',
-  },
-]
-
-const capabilities = [
-  {
-    icon: Search,
-    title: 'AI-Powered Search',
-    desc: 'Fashion-aware search identifies patterns, colors, textures, and styles to deliver results that match.',
-    gradient: 'from-violet-500 via-purple-500 to-fuchsia-500',
-    borderAccent: 'border-l-violet-500',
-    href: '/search',
-  },
-  {
-    icon: Shirt,
-    title: 'Virtual Try-On',
-    desc: 'Preview garments on yourself before committing. Try styles from your wardrobe or the catalog.',
-    gradient: 'from-rose-500 via-pink-500 to-fuchsia-500',
-    borderAccent: 'border-l-rose-500',
-    href: '/try-on',
-  },
-  {
-    icon: ImageIcon,
-    title: 'Curated browsing',
-    desc: 'Explore categories, filters, and facets to narrow in on the right look.',
-    gradient: 'from-sky-500 via-cyan-500 to-emerald-500',
-    borderAccent: 'border-l-sky-500',
-    href: '/products',
-  },
-]
-
-/* ── Hero carousel component ── */
-function HeroCarousel() {
-  const [current, setCurrent] = useState(0)
-  const touchX = useRef(0)
-  const timerRef = useRef<ReturnType<typeof setInterval>>()
-
-  const { data: heroProducts } = useQuery({
-    queryKey: ['hero-carousel-products'],
-    queryFn: async () => {
-      const res = await api.get<Array<{
-        id: number; title: string; brand?: string | null; category?: string | null
-        price_cents: number; currency?: string; image_cdn?: string | null; image_url?: string | null
-      }>>(endpoints.products.list, { limit: 15, page: 1 })
-      const raw = Array.isArray(res?.data) ? res.data : []
-      return raw.filter((p) => p.image_cdn || p.image_url).slice(0, 9)
+      const page = Math.floor(offset / limit) + 1
+      const res = await api.get<Product[]>(endpoints.products.list, { limit, page })
+      const arr = Array.isArray(res?.data) ? (res.data as Product[]) : []
+      const seen = new Set<number>()
+      return arr.filter((p) => {
+        if (p?.id == null || seen.has(p.id)) return false
+        seen.add(p.id)
+        return true
+      })
     },
     staleTime: 5 * 60_000,
   })
+}
 
-  const products = heroProducts ?? []
+type FacetBucket = { value?: string; count?: number; key?: string; doc_count?: number }
+type FacetsResponse = {
+  brands?: FacetBucket[]
+  categories?: FacetBucket[]
+  colors?: FacetBucket[]
+  materials?: FacetBucket[]
+  styles?: FacetBucket[]
+  genders?: FacetBucket[]
+  patterns?: FacetBucket[]
+  fits?: FacetBucket[]
+}
 
-  const resetTimer = () => {
-    clearInterval(timerRef.current)
-    timerRef.current = setInterval(() => {
-      setCurrent((p) => (p + 1) % heroSlides.length)
-    }, 6000)
-  }
+/** Backend caps facet aggregations at these sizes — used to display a "+" suffix when truncated. */
+const FACET_CAP = { brands: 100, categories: 50, styles: 30 } as const
 
+function useCatalogStats() {
+  return useQuery({
+    queryKey: ['home-stats'],
+    queryFn: async () => {
+      const [facetsRes, salesRes] = await Promise.allSettled([
+        api.get<FacetsResponse>(endpoints.products.facets),
+        api.get<Product[]>(endpoints.products.sales, { limit: 1, page: 1 }),
+      ])
+
+      const facets =
+        facetsRes.status === 'fulfilled' ? facetsRes.value?.data : undefined
+      const sales = salesRes.status === 'fulfilled' ? salesRes.value : undefined
+
+      const sumBuckets = (b?: FacetBucket[]) =>
+        Array.isArray(b)
+          ? b.reduce((s, x) => s + (Number(x.count ?? x.doc_count ?? 0) || 0), 0)
+          : 0
+
+      // Each product appears in exactly one category bucket. Categories has only
+      // ~10–20 distinct values in a fashion catalog so its size:50 cap rarely
+      // truncates — that makes the category sum the most reliable total.
+      const totalFromCategories = sumBuckets(facets?.categories)
+      const totalFromBrands = sumBuckets(facets?.brands)
+      const totalProducts = Math.max(totalFromCategories, totalFromBrands)
+
+      const brandsLen = Array.isArray(facets?.brands) ? facets!.brands!.length : 0
+      const categoriesLen = Array.isArray(facets?.categories) ? facets!.categories!.length : 0
+      const stylesLen = Array.isArray(facets?.styles) ? facets!.styles!.length : 0
+
+      const onSaleTotal =
+        Number(sales?.pagination?.total ?? sales?.meta?.total ?? 0) || 0
+
+      return {
+        ok: facetsRes.status === 'fulfilled' || salesRes.status === 'fulfilled',
+        totalProducts,
+        brandsCount: brandsLen,
+        brandsCapped: brandsLen >= FACET_CAP.brands,
+        categoriesCount: categoriesLen,
+        categoriesCapped: categoriesLen >= FACET_CAP.categories,
+        stylesCount: stylesLen,
+        onSaleTotal,
+      }
+    },
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
+}
+
+function formatPrice(p: Product) {
+  const raw =
+    typeof p.price_cents === 'string' ? parseInt(p.price_cents, 10) : p.price_cents
+  const pc = Number.isFinite(raw as number) ? (raw as number) : 0
+  if (pc <= 0) return null
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: p.currency || 'USD',
+    minimumFractionDigits: 2,
+  }).format(pc / 100)
+}
+
+function CountUp({ to, suffix = '', durationMs = 1400 }: { to: number; suffix?: string; durationMs?: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-80px' })
+  const [val, setVal] = useState(0)
   useEffect(() => {
-    resetTimer()
-    return () => clearInterval(timerRef.current)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!inView) return
+    const start = performance.now()
+    let raf = 0
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / durationMs)
+      const eased = 1 - Math.pow(1 - k, 3)
+      setVal(Math.round(to * eased))
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, to, durationMs])
+  return <span ref={ref}>{val.toLocaleString()}{suffix}</span>
+}
 
-  const goTo = (i: number) => {
-    setCurrent(i)
-    resetTimer()
-  }
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hero — pastel split cards (sky / blush) + tool chips
+   ────────────────────────────────────────────────────────────────────────── */
 
-  const slide = heroSlides[current]
-  const slideCards = products.length >= 3
-    ? [
-        products[(current * 3) % products.length],
-        products[(current * 3 + 1) % products.length],
-        products[(current * 3 + 2) % products.length],
-      ]
-    : products.slice(0, 3)
+function Hero() {
+  const easeOut = [0.22, 1, 0.36, 1] as const
 
   return (
-    <section
-      className="relative bg-neutral-100 overflow-hidden mesh-bg"
-      onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
-      onTouchEnd={(e) => {
-        const dx = e.changedTouches[0].clientX - touchX.current
-        if (dx < -50) goTo((current + 1) % heroSlides.length)
-        else if (dx > 50) goTo((current - 1 + heroSlides.length) % heroSlides.length)
-      }}
-    >
-      <div className="pointer-events-none absolute -top-32 -left-24 h-96 w-96 rounded-full bg-violet-300/35 blur-3xl" aria-hidden />
-      <div className="pointer-events-none absolute top-20 right-0 h-[28rem] w-[28rem] rounded-full bg-fuchsia-300/30 blur-3xl" aria-hidden />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-amber-200/25 blur-3xl" aria-hidden />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-18 lg:py-24">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          {/* ── Left: text content (unique animation per slide) ── */}
-          <div className="min-h-[380px] sm:min-h-[420px] flex flex-col justify-center">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                initial={
-                  current === 0 ? { opacity: 0, y: 30 }
-                  : current === 1 ? { opacity: 0, x: -40 }
-                  : { opacity: 0, scale: 0.94, y: 20 }
-                }
-                animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <p className="section-eyebrow mb-4">{slide.eyebrow}</p>
-                <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.5rem] font-display font-bold tracking-tight leading-[1.06]">
-                  {slide.headline}
-                </h1>
-                <p className="mt-5 text-lg sm:text-xl text-neutral-600 leading-relaxed max-w-xl">
-                  {slide.desc}
-                </p>
-
-                {slide.hasSearch && (
-                  <div className="mt-7 max-w-xl">
-                    <SearchBar variant="hero" />
-                  </div>
-                )}
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link href={slide.cta.href} className="btn-primary">{slide.cta.label}</Link>
-                  <Link href={slide.secondary.href} className="btn-secondary">
-                    <slide.secondary.Icon className="w-4 h-4" />
-                    {slide.secondary.label}
-                  </Link>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* ── Right: floating product cards (unique layout per slide) ── */}
-          <div className="relative h-[380px] sm:h-[440px] lg:h-[500px] hidden sm:block">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                className="relative w-full h-full"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {slideCards.map((product, i) => {
-                  const layouts = slideLayouts[current] ?? slideLayouts[0]
-                  const layout = layouts[i]
-                  if (!product || !layout) return null
-                  const imgUrl = product.image_cdn || product.image_url || ''
-                  const rawPrice = typeof product.price_cents === 'string' ? parseInt(product.price_cents, 10) : product.price_cents
-                  const priceCents = Number.isFinite(rawPrice) ? rawPrice : 0
-                  const price = priceCents > 0
-                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: product.currency || 'USD', minimumFractionDigits: 0 }).format(priceCents / 100)
-                    : null
-
-                  return (
-                    <motion.div
-                      key={`${current}-${product.id}`}
-                      className={`absolute ${layout.cls}`}
-                      style={{ zIndex: layout.z }}
-                      initial={{ opacity: 0, scale: 1, x: 0, y: 0, rotate: 0, ...layout.initial }}
-                      animate={{ opacity: 1, y: 0, x: 0, rotate: layout.rotate, scale: 1 }}
-                      transition={{ delay: layout.enterDelay, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: layout.floatDur, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Link
-                          href={`/products/${product.id}`}
-                          className="block bg-white rounded-2xl shadow-xl shadow-violet-500/12 overflow-hidden ring-1 ring-neutral-200/60 hover:shadow-2xl hover:shadow-violet-500/20 transition-shadow duration-300"
-                        >
-                          <div className="relative aspect-[3/4]">
-                            <Image
-                              src={imgUrl}
-                              alt={product.title}
-                              fill
-                              className="object-cover"
-                              sizes="280px"
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://placehold.co/400x533/f5f5f5/737373?text=No+Image'
-                              }}
-                            />
-                          </div>
-                          <div className="p-3">
-                            <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wider">
-                              {product.brand || product.category || 'Trending'}
-                            </p>
-                            <p className="text-[13px] font-semibold text-neutral-900 line-clamp-1 mt-0.5">
-                              {product.title}
-                            </p>
-                            {price && <p className="text-sm font-bold text-violet-700 mt-0.5">{price}</p>}
-                          </div>
-                        </Link>
-                      </motion.div>
-                    </motion.div>
-                  )
-                })}
-              </motion.div>
-            </AnimatePresence>
-
-            {products.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-64 aspect-[3/4] rounded-2xl skeleton-shimmer" />
-              </div>
-            )}
-          </div>
+    <section className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-5">
+      <div className="tz-sheet relative isolate p-5 sm:p-8 lg:p-10">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 lg:mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: easeOut }}
+          >
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#0a0a0a]">TrendZone</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#0a0a0a] leading-tight">
+              New in — shop your way
+            </h1>
+            <p className="mt-2 max-w-lg text-sm text-[#0a0a0a]/65 leading-relaxed">
+              Bright looks for everyone. Tap a lane, or jump into our AI tools below.
+            </p>
+          </motion.div>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0a0a0a] shrink-0 hover:opacity-80 transition-opacity"
+          >
+            View all <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
 
-        {/* ── Dot indicators ── */}
-        <div className="flex justify-center gap-2.5 mt-10">
-          {heroSlides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className={`h-2.5 rounded-full transition-all duration-300 ${
-                i === current
-                  ? 'w-8 bg-gradient-to-r from-violet-600 to-fuchsia-500'
-                  : 'w-2.5 bg-neutral-300 hover:bg-neutral-400'
-              }`}
-              aria-label={`Slide ${i + 1}`}
-            />
+        <div className="grid md:grid-cols-2 gap-4 lg:gap-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, ease: easeOut, delay: 0.05 }}
+          >
+            <Link
+              href="/products?gender=men"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-[#b8deff] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+            >
+              <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
+                For him
+              </span>
+              <Image
+                src="/brand/tz-hero-for-him.png"
+                alt="Men's fashion — editorial"
+                fill
+                priority
+                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </Link>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, ease: easeOut, delay: 0.12 }}
+          >
+            <Link
+              href="/products?gender=women"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-[#ffd6e8] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+            >
+              <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
+                For her
+              </span>
+              <Image
+                src="/brand/tz-hero-for-her.png"
+                alt="Women's fashion — editorial"
+                fill
+                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </Link>
+          </motion.div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {[
+            { href: '/search?mode=shop', label: 'Shop the look', icon: Sparkles },
+            { href: '/search', label: 'Text search', icon: Search },
+            { href: '/wardrobe', label: 'Wardrobe', icon: Shirt },
+            { href: '/try-on', label: 'Try-on', icon: Layers },
+            { href: '/compare', label: 'Compare', icon: GitCompare },
+            { href: '/sales', label: 'Sale', icon: Heart },
+          ].map((chip) => (
+            <Link
+              key={chip.label}
+              href={chip.href}
+              className="flex items-center justify-center gap-2 rounded-full bg-[#e5eeff] hover:bg-[#c7d7fe] border-2 border-[#0a0a0a]/10 px-3 py-2.5 text-[11px] sm:text-xs font-bold text-[#0a0a0a] transition-colors"
+            >
+              <chip.icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{chip.label}</span>
+            </Link>
           ))}
         </div>
       </div>
@@ -419,119 +233,235 @@ function HeroCarousel() {
   )
 }
 
-function TrendingSpotlight() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['trending-looks'],
-    queryFn: async () => {
-      const res = await api.get<Array<{
-        id: number; title: string; brand?: string | null; category?: string | null
-        price_cents: number; currency?: string; image_cdn?: string | null; image_url?: string | null
-      }>>(endpoints.products.list, { limit: 20, page: 1 })
-      const raw = Array.isArray(res?.data) ? res.data : []
-      return raw.filter((p) => p.image_cdn || p.image_url).slice(0, 2)
-    },
-    staleTime: 5 * 60_000,
-  })
+/* ─────────────────────────────────────────────────────────────────────────────
+   Featured + Bestsellers — square cream cards with heart/bag overlays
+   ────────────────────────────────────────────────────────────────────────── */
 
-  const products = data ?? []
+const PRODUCT_PASTELS = ['#e8dffd', '#ede5d8', '#e6ebef', '#cff4f9'] as const
 
-  if (isLoading) {
-    return (
-      <section className="py-20 lg:py-28 bg-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="section-divider" />
-            <div className="h-8 w-48 mx-auto rounded-lg skeleton-shimmer mt-4" />
-          </div>
-          <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-            {[0, 1].map((i) => (
-              <div key={i} className="aspect-[3/4] rounded-3xl skeleton-shimmer ring-1 ring-neutral-200/60" />
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  if (products.length === 0) return null
+function ProductCardEditorial({ product, index }: { product: Product; index: number }) {
+  const img = product.image_cdn || product.image_url || ''
+  const price = formatPrice(product)
+  const easeOut = [0.22, 1, 0.36, 1] as const
+  const frame = PRODUCT_PASTELS[index % PRODUCT_PASTELS.length]
 
   return (
-    <section className="py-20 lg:py-28 bg-neutral-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Reveal className="text-center max-w-2xl mx-auto mb-12">
-          <div className="section-divider" />
-          <p className="section-eyebrow mb-3">Trending now</p>
-          <h2 className="heading-display text-3xl sm:text-4xl lg:text-[2.85rem] leading-tight">
-            What&apos;s hot right now
-          </h2>
-          <p className="mt-4 text-lg text-neutral-600">
-            Fresh picks from the catalog, updated live. Tap to explore.
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.55, delay: index * 0.06, ease: easeOut }}
+      className="group"
+    >
+      <Link href={`/products/${product.id}`} className="block">
+        <div
+          className="rounded-[24px] p-2 sm:p-2.5 ring-1 ring-black/[0.05]"
+          style={{ backgroundColor: frame }}
+        >
+          <div className="tz-product-card aspect-square ring-0">
+          {img ? (
+            <Image
+              src={img}
+              alt={product.title}
+              fill
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              sizes="(max-width: 768px) 50vw, 25vw"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/600x600/ffffff/0a0a0a?text=TrendZone'
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-[#0a0a0a]/35 text-sm">No image</div>
+          )}
+          <div className="absolute right-3 top-3 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+              className="tz-icon-btn"
+              aria-label="Save"
+            >
+              <Heart className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+              className="tz-icon-btn"
+              aria-label="Quick view"
+            >
+              <ShoppingBag className="h-4 w-4" />
+            </button>
+          </div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="tz-eyebrow tz-burgundy uppercase text-[0.72rem] truncate">
+            {product.title}
           </p>
-        </Reveal>
+          {price && (
+            <p className="text-[0.95rem] font-extrabold tz-burgundy whitespace-nowrap">
+              {price}
+            </p>
+          )}
+        </div>
+        {product.brand || product.category ? (
+          <p className="mt-1 text-[12px] text-[#0a0a0a]/60 line-clamp-2">
+            {product.brand ? <span className="font-medium">{product.brand}</span> : null}
+            {product.brand && product.category ? ' · ' : ''}
+            {product.category}
+          </p>
+        ) : null}
+      </Link>
+    </motion.div>
+  )
+}
 
-        <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-          {products.map((product, i) => {
-            const imgUrl = product.image_cdn || product.image_url || ''
-            const rawP = typeof product.price_cents === 'string' ? parseInt(product.price_cents, 10) : product.price_cents
-            const pc = Number.isFinite(rawP) ? rawP : 0
-            const price = pc > 0
-              ? new Intl.NumberFormat('en-US', { style: 'currency', currency: product.currency || 'USD', minimumFractionDigits: 0 }).format(pc / 100)
-              : null
-            const searchQ = product.brand
-              ? `${product.brand} ${product.category || ''}`.trim()
-              : product.title
+function ProductsRow({ title, eyebrow, products, href = '/products', count = 4 }: {
+  title: { italic: string; bold: string }
+  eyebrow?: string
+  products: Product[]
+  href?: string
+  count?: number
+}) {
+  const list = products.slice(0, count)
+  return (
+    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
+        <div className="flex items-end justify-between gap-4 mb-8">
+          <div>
+            {eyebrow && <p className="tz-eyebrow mb-3">{eyebrow}</p>}
+            <h2 className="tz-headline">
+              <em>{title.italic}</em>{title.bold}
+            </h2>
+          </div>
+          <Link href={href} className="inline-flex items-center gap-1 text-sm font-bold text-[#0a0a0a] hover:opacity-70">
+            View all <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7">
+          {list.length === 0
+            ? Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="tz-product-card aspect-square skeleton-shimmer" />
+              ))
+            : list.map((p, i) => <ProductCardEditorial key={p.id} product={p} index={i} />)}
+        </div>
+      </div>
+    </section>
+  )
+}
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Editorial banner — “We don't follow trends — we create them”
+   ────────────────────────────────────────────────────────────────────────── */
+
+function EditorialBanner() {
+  return (
+    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-100px' }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="tz-sheet relative grid lg:grid-cols-12 items-center overflow-hidden min-h-[320px] lg:min-h-[380px]"
+      >
+        <div className="lg:col-span-6 relative h-[260px] lg:h-full">
+          <Image
+            src="/brand/tz-hero-portrait.png"
+            alt="Editorial"
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white" />
+        </div>
+        <div className="lg:col-span-6 px-6 sm:px-10 py-8 lg:py-12">
+          <h2 className="tz-headline tz-headline-xl leading-[0.95]">
+            We Don&apos;t <em>Follow</em> Trends
+            <br />
+            <span className="opacity-90">— We <em>Create</em> Them.</span>
+          </h2>
+          <p className="mt-5 max-w-md text-[#0a0a0a]/65 text-sm leading-relaxed">
+            Our journey in fashion is built on innovation, quality, and a passion for contemporary design.
+            Step into a marketplace where every find is intentional.
+          </p>
+          <div className="mt-6">
+            <Link href="/products" className="btn-primary">Shop now</Link>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Stats — pulled from real catalog data
+   ────────────────────────────────────────────────────────────────────────── */
+
+function ProudStats() {
+  const { data, isLoading } = useCatalogStats()
+
+  const items = [
+    {
+      topNum: data?.totalProducts ?? 0,
+      suffix: '',
+      label: 'Products in catalog',
+      desc: 'Every garment is crawled, deduplicated, and embedded so you can search across the entire catalog at once.',
+    },
+    {
+      topNum: data?.brandsCount ?? 0,
+      suffix: data?.brandsCapped ? '+' : '',
+      label: 'Curated brands',
+      desc: 'Independent labels and global fashion houses, side-by-side, all searchable in one place.',
+    },
+    {
+      topNum: data?.categoriesCount ?? 0,
+      suffix: data?.categoriesCapped ? '+' : '',
+      label: 'Live categories',
+      desc: 'Dresses, tops, denim, knits, bags, shoes — automatically tagged from photos with our vision pipeline.',
+    },
+    {
+      topNum: data?.onSaleTotal ?? 0,
+      suffix: '',
+      label: 'Items on sale right now',
+      desc: 'We track price drops continuously, so the sale page stays fresh without you refreshing it.',
+    },
+  ]
+
+  return (
+    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
+        <p className="tz-eyebrow mb-3">Numbers from our catalog</p>
+        <h2 className="tz-headline mb-10">
+          <em>We Are</em> PROUD OF IT
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10">
+          {items.map((it, i) => {
+            const hasNumber = !isLoading && it.topNum > 0
             return (
-              <Reveal key={product.id} index={i}>
-                <div className="group relative aspect-[3/4] rounded-3xl shadow-xl shadow-violet-500/10 overflow-hidden ring-1 ring-neutral-200/80">
-                  <Image
-                    src={imgUrl}
-                    alt={product.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://placehold.co/700x950/f5f5f5/737373?text=No+Image'
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
-
-                  {/* Trending badge */}
-                  <div className="absolute top-4 left-4 z-10">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold text-violet-700 shadow-md">
-                      <TrendingUp className="w-3 h-3" />
-                      Trending
-                    </span>
-                  </div>
-
-                  {/* Product info + actions */}
-                  <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 z-10">
-                    <div className="bg-white/92 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-white/50">
-                      <p className="text-[0.65rem] font-semibold text-violet-600 uppercase tracking-[0.15em]">
-                        {product.brand || product.category || 'Trending'}
-                      </p>
-                      <h3 className="font-bold text-neutral-900 text-sm sm:text-base line-clamp-1 mt-0.5">
-                        {product.title}
-                      </h3>
-                      {price && <p className="text-sm font-semibold text-neutral-800 mt-1">{price}</p>}
-                      <div className="flex gap-2 mt-3">
-                        <Link
-                          href={`/products/${product.id}`}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-xs font-bold hover:from-violet-500 hover:to-fuchsia-400 transition-all shadow-md shadow-violet-500/25 active:scale-[0.97]"
-                        >
-                          View product
-                        </Link>
-                        <Link
-                          href={`/search?q=${encodeURIComponent(searchQ)}`}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border-2 border-violet-200 text-violet-700 text-xs font-bold hover:bg-violet-50 hover:border-violet-300 transition-all active:scale-[0.97]"
-                        >
-                          Find similar <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.6, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                className={`pl-5 ${i > 0 ? 'lg:border-l border-black/10' : ''}`}
+              >
+                <p className="text-[2.6rem] lg:text-[3.5rem] font-extrabold leading-none text-[#0a0a0a] tracking-tight">
+                  {isLoading ? (
+                    <span className="text-[#0a0a0a]/30">···</span>
+                  ) : hasNumber ? (
+                    <>
+                      <CountUp to={it.topNum} />
+                      {it.suffix}
+                    </>
+                  ) : (
+                    <span className="text-[#0a0a0a]/40">—</span>
+                  )}
+                </p>
+                <p className="mt-3 tz-eyebrow tz-burgundy">{it.label}</p>
+                <p className="mt-2 text-[12.5px] text-[#0a0a0a]/65 leading-relaxed">
+                  {it.desc}
+                </p>
+              </motion.div>
             )
           })}
         </div>
@@ -540,235 +470,256 @@ function TrendingSpotlight() {
   )
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   About Us — moved into the home page (as requested)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function AboutUs() {
+  const pillars = [
+    {
+      icon: Eye,
+      title: 'Visual search',
+      desc: 'Take a photo, paste a screenshot, drop a runway look — TrendZone finds matching pieces across every brand we index.',
+    },
+    {
+      icon: Brain,
+      title: 'Style intelligence',
+      desc: 'Our models read color, fit, material and silhouette so the “Complete the look” suggestions actually look good together.',
+    },
+    {
+      icon: Wand2,
+      title: 'Try-on & wardrobe',
+      desc: 'See garments on yourself before buying, save what you own to your wardrobe, and remix outfits without leaving the app.',
+    },
+  ]
+
+  return (
+    <section id="about" className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-100px' }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="tz-sheet relative grid lg:grid-cols-12 gap-8 lg:gap-12 items-stretch overflow-hidden"
+      >
+        <div className="lg:col-span-5 relative h-[280px] lg:h-auto min-h-[320px]">
+          <Image
+            src="/brand/tz-about-studio.png"
+            alt="The TrendZone studio"
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 40vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-white/40" />
+        </div>
+
+        <div className="lg:col-span-7 px-6 sm:px-10 py-8 lg:py-12 lg:pl-0">
+          <p className="tz-eyebrow mb-3">About us</p>
+          <h2 className="tz-headline">
+            <em>Fashion discovery,</em> RE-IMAGINED
+          </h2>
+          <p className="mt-6 max-w-xl text-[#0a0a0a]/70 text-sm lg:text-[15px] leading-relaxed">
+            TrendZone is a fashion marketplace built for the way people actually shop today —
+            visually. Instead of digging through filters, you upload a photo, describe a vibe, or
+            open your wardrobe, and our AI does the matching across hundreds of brands and
+            thousands of products. Every result links back to a real, in-stock piece you can buy.
+          </p>
+
+          <div className="mt-8 grid sm:grid-cols-3 gap-4">
+            {pillars.map((p, i) => (
+              <motion.div
+                key={p.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-2xl bg-[#e5eeff]/40 ring-1 ring-black/8 p-4"
+              >
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0a] ring-1 ring-black/10">
+                  <p.icon className="h-4 w-4" />
+                </span>
+                <p className="mt-3 tz-eyebrow tz-burgundy">{p.title}</p>
+                <p className="mt-1.5 text-[12.5px] text-[#0a0a0a]/65 leading-relaxed">{p.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link href="/products" className="btn-primary">Browse the catalog</Link>
+            <Link href="/search?mode=shop" className="btn-secondary">Try Shop the look</Link>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Features — Built For Every Moment (uses our local generated images)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function FeatureLinks() {
+  const items = [
+    { href: '/search?mode=shop', title: 'Shop the look', desc: 'Photo → pieces', img: '/brand/tz-feature-shop.png', bg: '#e8dffd' },
+    { href: '/search', title: 'Text search', desc: 'Describe the vibe', img: '/brand/tz-feature-search.png', bg: '#cff4f9' },
+    { href: '/wardrobe', title: 'My wardrobe', desc: 'Save & remix', img: '/brand/tz-feature-wardrobe.png', bg: '#ede5d8' },
+    { href: '/try-on', title: 'Virtual try-on', desc: 'Preview on you', img: '/brand/tz-feature-tryon.png', bg: '#ffd6e8' },
+    { href: '/compare', title: 'Compare', desc: '2–5 items', img: '/brand/tz-feature-complete.png', bg: '#e6ebef' },
+    { href: '/sales', title: 'Shop sale', desc: 'Fresh price drops', img: '/brand/tz-feature-sale.png', bg: '#fff4c8' },
+  ]
+  return (
+    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
+        <div className="flex items-end justify-between gap-4 mb-8">
+          <div>
+            <p className="tz-eyebrow mb-3">Categories</p>
+            <h2 className="tz-headline">
+              <em>Tools &</em> picks
+            </h2>
+          </div>
+          <Link href="/products" className="inline-flex items-center gap-1 text-sm font-bold text-[#0a0a0a] hover:opacity-70">
+            View all <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
+          {items.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
+              className="snap-start shrink-0 w-[46vw] max-w-[220px] sm:w-[200px] sm:max-w-none"
+            >
+              <Link
+                href={f.href}
+                className="group block relative aspect-[3/4] rounded-[22px] overflow-hidden ring-1 ring-black/[0.06] shadow-[0_16px_40px_-24px_rgba(10,10,10,0.35)]"
+                style={{ backgroundColor: f.bg }}
+              >
+                <Image
+                  src={f.img}
+                  alt={f.title}
+                  fill
+                  className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.04]"
+                  sizes="220px"
+                />
+                <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col items-center gap-1.5 bg-gradient-to-t from-black/25 to-transparent pt-16">
+                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-[#0a0a0a] shadow-md max-w-[95%] text-center leading-tight">
+                    {f.title}
+                  </span>
+                  <span className="text-[11px] font-semibold text-white drop-shadow-sm">{f.desc}</span>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Big closing banner — TRENDZONE wordmark + newsletter
+   (Dead links removed — only working CTAs remain.)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function ClosingBanner() {
+  return (
+    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="tz-sheet relative isolate overflow-hidden"
+      >
+        <div className="relative aspect-[16/8] sm:aspect-[16/6]">
+          <Image
+            src="/brand/tz-hero-banner.png"
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.25)_0%,rgba(229,238,255,0.55)_70%,#ffffff_100%)]" />
+          <div className="absolute inset-0 grid place-items-center px-4">
+            <div className="text-center">
+              <p className="tz-eyebrow mb-2 inline-flex items-center gap-2">
+                <ArrowUpRight className="h-3.5 w-3.5" /> Explore now
+              </p>
+              <h2
+                className="font-sans font-black leading-none tracking-tighter text-[#0a0a0a]"
+                style={{ fontSize: 'clamp(3rem, 14vw, 11rem)' }}
+              >
+                TRENDZONE
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-6 px-6 sm:px-10 py-7 lg:py-9 -mt-2 items-center">
+          <form className="flex items-center gap-3 max-w-md" onSubmit={(e) => e.preventDefault()}>
+            <input
+              type="email"
+              placeholder="Your email"
+              className="flex-1 bg-transparent border-b border-[#0a0a0a]/25 py-2 text-sm placeholder-[#0a0a0a]/45 focus:outline-none focus:border-[#0a0a0a]"
+            />
+            <button type="button" className="text-[#0a0a0a] hover:opacity-60 transition-opacity" aria-label="Subscribe">
+              <ArrowUpRight className="h-5 w-5" />
+            </button>
+          </form>
+          <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[13px]">
+            <Link href="/products" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">All products</Link>
+            <Link href="/sales" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">Sale</Link>
+            <Link href="/search" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">Discover</Link>
+            <Link href="#about" className="px-4 py-2 rounded-full bg-[#0a0a0a] text-white font-semibold text-sm hover:bg-black transition-colors">About us</Link>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Page
+   ────────────────────────────────────────────────────────────────────────── */
+
 export default function HomePage() {
+  const featured = useProducts(8, 0)
+  const bestsellers = useProducts(8, 8)
+
   return (
     <div className="overflow-x-hidden">
-      {/* ───── Hero carousel ───── */}
-      <HeroCarousel />
+      <Hero />
 
-      {/* ───── Features with images ───── */}
-      <section className="py-20 lg:py-28 bg-neutral-100 border-t border-neutral-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal className="text-center max-w-2xl mx-auto mb-16">
-            <div className="section-divider" />
-            <p className="section-eyebrow mb-3">Fashion search</p>
-            <h2 className="heading-display text-3xl sm:text-4xl lg:text-[2.85rem] leading-tight">
-              Find what fits your moment
-            </h2>
-            <p className="mt-5 text-lg text-neutral-600 leading-relaxed">
-              Search by mood, occasion, or silhouette, then browse try-on and comparison tools when you want to go deeper.
-            </p>
-          </Reveal>
+      <ProductsRow
+        eyebrow="Curated"
+        title={{ italic: 'Featured ', bold: 'PRODUCTS' }}
+        products={featured.data ?? []}
+        href="/products"
+        count={4}
+      />
 
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-10">
-            {features.map((f, i) => (
-              <Reveal key={f.title} index={i}>
-                <Link
-                  href={f.href}
-                  className="group block h-full rounded-3xl border border-neutral-200/70 bg-white overflow-hidden shadow-md hover:shadow-xl hover:shadow-violet-500/15 hover:-translate-y-1.5 transition-all duration-300 ring-1 ring-transparent hover:ring-violet-200/40"
-                >
-                  <div className={`h-1 w-full bg-gradient-to-r ${f.strip} opacity-90 group-hover:opacity-100 transition-opacity`} />
-                  <div className="relative h-52 overflow-hidden">
-                    <Image
-                      src={f.image}
-                      alt={f.title}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                    <div className="absolute bottom-4 left-4">
-                      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${f.iconBg} text-white shadow-lg`}>
-                        <f.icon className="w-5 h-5" />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-7 lg:p-8">
-                    <h3 className="text-xl font-bold text-neutral-900 mb-2">{f.title}</h3>
-                    <p className="text-neutral-600 leading-relaxed text-[15px]">{f.desc}</p>
-                    <span className="inline-flex items-center gap-2 mt-5 text-sm font-semibold text-violet-700 group-hover:gap-3 transition-all">
-                      Explore <ArrowRight className="w-4 h-4" />
-                    </span>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      <EditorialBanner />
 
-      {/* ───── Benefits ───── */}
-      <section className="py-20 lg:py-28 bg-white border-y border-neutral-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal className="text-center max-w-2xl mx-auto mb-16">
-            <div className="section-divider" />
-            <h2 className="heading-display text-3xl sm:text-4xl lg:text-[2.85rem] leading-tight">A smarter way to shop</h2>
-            <p className="mt-4 text-lg text-neutral-600">Built for people who think in outfits, not keywords.</p>
-          </Reveal>
+      <ProductsRow
+        eyebrow="Most loved"
+        title={{ italic: 'Our ', bold: 'BESTSELLERS' }}
+        products={bestsellers.data ?? []}
+        href="/products"
+        count={3}
+      />
 
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            {benefits.map((b, i) => (
-              <Reveal key={b.title} index={i}>
-                <div className={`h-full rounded-3xl border-2 ${b.border} ${b.bg} p-8 text-center shadow-sm hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5 transition-all duration-300 backdrop-blur-[2px]`}>
-                  <div className={`w-14 h-14 rounded-2xl ${b.iconWrap} flex items-center justify-center mx-auto mb-6`}>
-                    <b.icon className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-lg font-bold text-neutral-900 mb-3">{b.title}</h3>
-                  <p className="text-neutral-600 leading-relaxed text-sm sm:text-base">{b.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProudStats />
 
-      {/* ───── Trending spotlight ───── */}
-      <TrendingSpotlight />
+      <AboutUs />
 
-      {/* ───── AI + side image ───── */}
-      <section className="relative py-20 lg:py-28 bg-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <Reveal>
-              <div className="section-divider-left" />
-              <p className="section-eyebrow mb-3">AI-powered</p>
-              <h2 className="heading-display text-3xl sm:text-4xl lg:text-[2.85rem] mb-5 leading-tight">
-                Intelligence that understands style
-              </h2>
-              <p className="text-lg text-neutral-600 leading-relaxed mb-10 max-w-lg">
-                StyleAI connects search, try-on, and comparison so you can move from inspiration to a confident pick.
-              </p>
-              <div className="space-y-5">
-                {capabilities.map((c) => (
-                  <Link
-                    key={c.title}
-                    href={c.href}
-                    className={`group/cap flex gap-4 p-5 rounded-2xl bg-white border border-neutral-200/70 border-l-4 ${c.borderAccent} shadow-sm hover:shadow-md hover:shadow-violet-500/10 hover:-translate-x-1 transition-all duration-300`}
-                  >
-                    <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${c.gradient} flex items-center justify-center shadow-md`}>
-                      <c.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-neutral-900 mb-1 group-hover/cap:text-violet-700 transition-colors">{c.title}</h3>
-                      <p className="text-neutral-600 text-sm leading-relaxed">{c.desc}</p>
-                      <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-violet-600 group-hover/cap:gap-2.5 transition-all">
-                        Try it <ArrowRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </Reveal>
-            <Reveal index={1}>
-              <div className="relative aspect-[4/5] max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-violet-500/15 ring-1 ring-white/80 border border-neutral-200/60">
-                <Image
-                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&h=1000&fit=crop&q=80"
-                  alt="Fashion styling"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 90vw, 480px"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-violet-900/40 via-transparent to-fuchsia-500/10" />
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
+      <FeatureLinks />
 
-      {/* ───── Catalog + chart + image ───── */}
-      <section className="py-20 lg:py-28 bg-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <Reveal className="order-2 lg:order-1">
-              <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0 rounded-3xl overflow-hidden shadow-2xl shadow-violet-500/15 ring-1 ring-white/80 border border-neutral-200/60">
-                <Image
-                  src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&h=1000&fit=crop&q=80"
-                  alt="Boutique assortment"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 90vw, 480px"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-violet-900/50 via-transparent to-fuchsia-500/10" />
-              </div>
-            </Reveal>
-            <Reveal className="order-1 lg:order-2">
-              <div className="section-divider-left" />
-              <p className="section-eyebrow mb-3">Catalog</p>
-              <h2 className="heading-display text-3xl sm:text-4xl mb-5 leading-tight">Where the assortment leans</h2>
-              <p className="text-lg text-neutral-600 leading-relaxed mb-8">
-                Live facet data shows category density, a quick read on what you&apos;ll find most when you browse.
-              </p>
-              <div className="surface-card p-6 sm:p-8 mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-lg font-bold text-neutral-900">Top categories</h3>
-                </div>
-                <CategoryChart />
-              </div>
-              <Link href="/products" className="btn-primary">Shop all categories</Link>
-            </Reveal>
-          </div>
-        </div>
-      </section>
+      <ClosingBanner />
 
-      {/* ───── CTA ───── */}
-      <section className="py-16 lg:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal>
-            <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-700 via-fuchsia-600 to-rose-500 shadow-2xl shadow-fuchsia-500/25 ring-1 ring-white/20">
-              <div className="absolute inset-0 opacity-40">
-                <Image
-                  src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1400&h=800&fit=crop&q=80"
-                  alt=""
-                  fill
-                  className="object-cover mix-blend-overlay"
-                  sizes="100vw"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-900/88 via-fuchsia-900/72 to-rose-900/78" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_0%,rgba(255,255,255,0.12),transparent_50%)]" />
-              <div className="relative grid lg:grid-cols-2 gap-10 items-center px-8 py-14 lg:px-16 lg:py-16 text-center lg:text-left">
-                <div>
-                  <h2 className="text-3xl sm:text-4xl lg:text-[2.5rem] font-display font-bold text-white tracking-tight drop-shadow-sm">
-                    Ready when you are
-                  </h2>
-                  <p className="mt-4 text-white/90 text-lg max-w-md mx-auto lg:mx-0">
-                    Jump into Discover or open your wardrobe. Same account, same experience.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-end">
-                  <Link href="/search" className="btn-on-dark">Explore Discover</Link>
-                  <Link href="/wardrobe" className="btn-on-dark-ghost">Open wardrobe</Link>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ───── Featured products ───── */}
-      <section className="pb-24 lg:pb-32 pt-8 bg-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 lg:mb-12">
-            <Reveal>
-              <div className="section-divider-left max-sm:mx-auto sm:mx-0" />
-              <p className="section-eyebrow mb-2 max-sm:text-center">Curated</p>
-              <h2 className="heading-display text-3xl sm:text-4xl max-sm:text-center leading-tight">Fresh from the catalog</h2>
-            </Reveal>
-            <Reveal index={1} className="max-sm:flex max-sm:justify-center">
-              <Link href="/products" className="btn-secondary">
-                View all products
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Reveal>
-          </div>
-          <div className="rounded-[2rem] border border-neutral-200/70 bg-white/75 p-5 sm:p-7 lg:p-10 shadow-xl shadow-violet-500/[0.07] backdrop-blur-md ring-1 ring-white/50">
-            <ProductGrid limit={8} />
-          </div>
-        </div>
-      </section>
+      {/* Hidden Reveal anchor to keep import used in case other sections need it later */}
+      <Reveal className="hidden" aria-hidden> </Reveal>
     </div>
   )
 }

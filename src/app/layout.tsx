@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
@@ -18,16 +19,18 @@ const sans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'StyleAI — Fashion Marketplace Powered by AI',
+  title: 'TrendZone - Fashion Marketplace Powered by AI',
   description: 'Discover fashion with AI-powered search, virtual try-on, and personalized recommendations.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
-      <body className="font-sans min-h-screen flex flex-col bg-neutral-100 text-neutral-800">
+      <body className="font-sans min-h-screen flex flex-col tz-pink-bg text-[#0a0a0a]">
         <Providers>
-          <Navbar />
+          <Suspense fallback={<div className="h-[68px]" aria-hidden />}>
+            <Navbar />
+          </Suspense>
           <main className="flex-1">{children}</main>
           <Footer />
         </Providers>

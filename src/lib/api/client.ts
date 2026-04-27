@@ -4,7 +4,7 @@
  */
 
 /** Backend origin only (no trailing slash). Same join rules for GET and POST so paths stay consistent. */
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-550687605665.europe-west1.run.app').replace(
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-550687605665.asia-southeast1.run.app').replace(
   /\/+$/,
   '',
 )

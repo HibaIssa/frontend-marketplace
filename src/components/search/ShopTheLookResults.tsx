@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, type MouseEvent } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import NextImage from 'next/image'
@@ -13,7 +13,6 @@ import {
   Eye,
   ChevronDown,
   ScanSearch,
-  ArrowDown,
 } from 'lucide-react'
 import type { Product } from '@/types/product'
 
@@ -113,14 +112,14 @@ export interface ShopTheLookStats {
 }
 
 const CATEGORY_STYLES: Record<string, { icon: typeof Shirt; ring: string }> = {
-  tops: { icon: Shirt, ring: 'ring-violet-200' },
+  tops: { icon: Shirt, ring: 'ring-blue-100' },
   bottoms: { icon: Shirt, ring: 'ring-slate-200' },
-  dress: { icon: Sparkles, ring: 'ring-fuchsia-200' },
-  dresses: { icon: Sparkles, ring: 'ring-fuchsia-200' },
+  dress: { icon: Sparkles, ring: 'ring-blue-100' },
+  dresses: { icon: Sparkles, ring: 'ring-blue-100' },
   outerwear: { icon: Layers, ring: 'ring-amber-200' },
   shoes: { icon: Zap, ring: 'ring-emerald-200' },
-  bags: { icon: Eye, ring: 'ring-indigo-200' },
-  accessories: { icon: Sparkles, ring: 'ring-rose-200' },
+  bags: { icon: Eye, ring: 'ring-blue-100' },
+  accessories: { icon: Sparkles, ring: 'ring-blue-100' },
   default: { icon: Search, ring: 'ring-neutral-200' },
 }
 
@@ -237,128 +236,6 @@ function firstBoxMeta(group: DetectionGroup): DetectionMeta | null {
   return null
 }
 
-function clipInsetFromBoxPercents(left: number, top: number, width: number, height: number): string {
-  const right = Math.max(0, 100 - left - width)
-  const bottom = Math.max(0, 100 - top - height)
-  return `inset(${top}% ${right}% ${bottom}% ${left}%)`
-}
-
-/** Spotlight card: crop matches bbox aspect (wide shirt vs tall shoe), subtle stacked depth — no toy tilt. */
-function ShopTheLookSpotlight3D({
-  outfitImageUrl,
-  group,
-  refW,
-  refH,
-  formattedTitle,
-}: {
-  outfitImageUrl: string
-  group: DetectionGroup
-  refW: number
-  refH: number
-  formattedTitle: string
-}) {
-  const meta = firstBoxMeta(group)
-  const box = meta?.box
-  const perc =
-    box && refW > 0 && refH > 0 ? boxStylePercents(box, refW, refH) : null
-  const clip = perc ? clipInsetFromBoxPercents(perc.left, perc.top, perc.width, perc.height) : null
-
-  const pxAspect =
-    box && box.x2 > box.x1 && box.y2 > box.y1
-      ? (box.x2 - box.x1) / (box.y2 - box.y1)
-      : 3 / 4
-  const cropAspect = Number.isFinite(pxAspect) && pxAspect > 0 ? Math.min(2.4, Math.max(0.45, pxAspect)) : 3 / 4
-  const isWide = cropAspect >= 1.15
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full max-w-lg mx-auto mt-6 px-1"
-    >
-      <div className="text-center mb-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600/90">Selected piece</p>
-        <p className="font-display text-base font-semibold text-slate-900 mt-0.5">{formattedTitle}</p>
-        <p className="text-[11px] text-slate-500 mt-1">Matches for this region are right below.</p>
-      </div>
-
-      <div
-        className="relative mx-auto w-fit max-w-full [perspective:880px]"
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        {/* Stacked “plates” — reads as depth without rotating the photo awkwardly */}
-        <div
-          className="pointer-events-none absolute inset-x-3 top-3 bottom-0 rounded-2xl bg-violet-600/[0.07] shadow-sm"
-          style={{ transform: 'translateZ(-18px) translateY(10px) scale(0.94)' }}
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-x-2 top-2 bottom-0 rounded-2xl bg-violet-500/[0.09] ring-1 ring-violet-400/15"
-          style={{ transform: 'translateZ(-9px) translateY(5px) scale(0.97)' }}
-          aria-hidden
-        />
-
-        <div
-          className="relative rounded-2xl p-[2px] bg-gradient-to-b from-white/35 via-violet-200/25 to-violet-600/20 shadow-[0_18px_50px_-12px_rgba(15,23,42,0.35),0_0_0_1px_rgba(139,92,246,0.22)]"
-          style={{
-            transform: 'translateZ(0) rotateX(1.25deg)',
-            transformStyle: 'preserve-3d',
-          }}
-        >
-          <div
-            className={`relative mx-auto w-full overflow-hidden rounded-[14px] bg-slate-950 ring-1 ring-violet-500/25 ${
-              isWide
-                ? 'max-h-[min(9rem,18vh)] max-w-[min(100%,21rem)]'
-                : 'max-h-[min(36vh,13.5rem)] max-w-[min(100%,11.25rem)] sm:max-w-[12rem]'
-            }`}
-            style={{ aspectRatio: cropAspect }}
-          >
-            {clip ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={outfitImageUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-contain object-top select-none pointer-events-none"
-                draggable={false}
-                style={{
-                  clipPath: clip,
-                  transform: 'scale(1.04)',
-                  transformOrigin: `${perc!.left + perc!.width / 2}% ${perc!.top + perc!.height / 2}%`,
-                }}
-              />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={outfitImageUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-contain object-top select-none pointer-events-none opacity-95"
-                draggable={false}
-              />
-            )}
-            <div
-              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.12] via-transparent to-black/25"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/35"
-              aria-hidden
-            />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
-/** Detection regions on hero — light glass, tighter highlight (not a huge “frame”). */
-const OVERLAY = {
-  border: 'border-white/70 shadow-[0_0_0_1px_rgba(139,92,246,0.35)]',
-  fill: 'bg-violet-600/10',
-  fillHi: 'bg-violet-600/18',
-  ring: 'ring-1 ring-violet-300/80 ring-offset-1 ring-offset-black/25',
-} as const
-
 const SHOP_THE_LOOK_INITIAL = 6
 const SHOP_THE_LOOK_STEP = 6
 
@@ -378,26 +255,26 @@ export function ShopTheLookResults({
 }) {
   const [visibleByKey, setVisibleByKey] = useState<Record<string, number>>({})
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null)
-  const [activeIdx, setActiveIdx] = useState<number | null>(null)
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
-  const [hero3DActive, setHero3DActive] = useState(false)
-  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 })
-  /** One expanded product at a time — shows other picks from the same detection below the row. */
-  const [expandedProduct, setExpandedProduct] = useState<{ sectionKey: string; productId: number } | null>(null)
+  const [highlightedIdx, setHighlightedIdx] = useState<number | null>(null)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
-  const spotlightRef = useRef<HTMLDivElement | null>(null)
 
   const rows = groups.filter((g) => g.products && g.products.length > 0)
   if (rows.length === 0) return null
 
   useEffect(() => {
     setSelectedIdx(null)
-    setActiveIdx(null)
-    setExpandedProduct(null)
-    setHero3DActive(false)
-    setHeroTilt({ x: 0, y: 0 })
+    setHoveredIdx(null)
+    setHighlightedIdx(null)
     sectionRefs.current = []
   }, [outfitImageUrl])
+
+  useEffect(() => {
+    if (highlightedIdx === null) return
+    const id = window.setTimeout(() => setHighlightedIdx((cur) => (cur === highlightedIdx ? null : cur)), 950)
+    return () => window.clearTimeout(id)
+  }, [highlightedIdx])
 
   const refW = imgNatural?.w ?? imageMeta?.width ?? 0
   const refH = imgNatural?.h ?? imageMeta?.height ?? 0
@@ -408,36 +285,26 @@ export function ShopTheLookResults({
       ? [selectedIdx]
       : rows.map((_, i) => i)
 
-  const focusDetection = useCallback((i: number) => {
-    setExpandedProduct(null)
+  const focusDetection = useCallback((idx: number) => {
     setSelectedIdx((cur) => {
-      const next = cur === i ? null : i
+      const next = cur === idx ? null : idx
       if (next !== null) {
+        setHighlightedIdx(next)
         requestAnimationFrame(() => {
-          spotlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          sectionRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
+      } else {
+        setHighlightedIdx(null)
       }
       return next
     })
   }, [])
 
-  const boxHighlight = (i: number) => selectedIdx === i || (selectedIdx === null && activeIdx === i)
-  const boxDimmed = (i: number) => selectedIdx !== null && selectedIdx !== i
-
-  const handleHeroMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!hero3DActive) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - rect.left) / rect.width
-    const py = (e.clientY - rect.top) / rect.height
-    const ry = (px - 0.5) * 8
-    const rx = (0.5 - py) * 7
-    setHeroTilt({
-      x: Math.max(-4, Math.min(4, rx)),
-      y: Math.max(-4.5, Math.min(4.5, ry)),
-    })
-  }
-
-  const resetHeroTilt = () => setHeroTilt({ x: 0, y: 0 })
+  const selectedGroup =
+    selectedIdx !== null && selectedIdx >= 0 && selectedIdx < rows.length ? rows[selectedIdx] : null
+  const selectedMeta = selectedGroup ? firstBoxMeta(selectedGroup) : null
+  const selectedCrop =
+    selectedMeta?.box && canDrawBoxes ? boxStylePercents(selectedMeta.box, refW, refH) : null
 
   const productHref = useCallback(
     (id: number) =>
@@ -448,277 +315,212 @@ export function ShopTheLookResults({
   )
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
-      {/* Region picker — compact, centered */}
-      <div className="max-w-3xl mx-auto mb-8 rounded-2xl border border-slate-200/90 bg-white px-4 py-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-7"
+    >
+      <div className="max-w-7xl mx-auto rounded-[26px] border border-slate-200/85 bg-white p-5 sm:p-6 shadow-[0_18px_60px_-42px_rgba(15,23,42,0.55)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-display text-sm font-semibold text-slate-900">Pieces in your photo</p>
-            <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
-              Tap a chip or a highlighted region — a compact preview of that piece opens here, with matches directly below.
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-800/85">Style matching</p>
+            <h2 className="mt-1 font-display text-xl font-semibold text-slate-950">Shop this look by region</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Select a highlighted area on the outfit to focus one piece and open cleaner matching results.
             </p>
           </div>
-          {selectedIdx !== null ? (
-            <button
-              type="button"
-              onClick={() => {
-                setExpandedProduct(null)
-                setSelectedIdx(null)
-              }}
-              className="shrink-0 text-xs font-semibold text-violet-700 hover:text-violet-900 px-3 py-1.5 rounded-lg border border-violet-200 bg-white hover:bg-violet-50 transition-colors"
-            >
-              Show all pieces
-            </button>
-          ) : null}
-        </div>
-        <div
-          className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-          role="tablist"
-          aria-label="Detected fashion items"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedIdx === null}
-            onClick={() => {
-              setExpandedProduct(null)
-              setSelectedIdx(null)
-            }}
-            className={`shrink-0 rounded-xl px-3.5 py-2.5 text-left transition-all border min-w-[108px] ${
-              selectedIdx === null
-                ? 'border-violet-300 bg-violet-50/90 text-slate-900 shadow-sm'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            <span className="text-xs font-semibold">All</span>
-            <span className="block text-[11px] text-slate-500 mt-0.5">{rows.length} pieces</span>
-          </button>
-          {rows.map((group, i) => {
-            const yoloLabel = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
-            const catalog =
-              group.category && String(group.category) !== String(group.detection?.label)
-                ? formatDetectionLabel(String(group.category))
-                : null
-            const n = toProducts(group.products as unknown[]).filter(
-              (p, idx, arr) => arr.findIndex((x) => x.id === p.id) === idx,
-            ).length
-            const pressed = selectedIdx === i
-            return (
-              <button
-                key={`det-chip-${i}-${group.detectionIndex ?? ''}`}
-                type="button"
-                role="tab"
-                aria-selected={pressed}
-                onClick={() => focusDetection(i)}
-                className={`shrink-0 min-w-[132px] max-w-[220px] rounded-xl px-3.5 py-2.5 text-left transition-all border ${
-                  pressed
-                    ? 'border-violet-400 bg-white text-slate-900 shadow-md ring-2 ring-violet-200/80 ring-offset-1 ring-offset-white'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:shadow-sm'
-                }`}
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tabular-nums ${
-                      pressed ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}
-                    aria-hidden
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="truncate text-xs font-semibold">{yoloLabel}</span>
-                  <span
-                    className={`ml-auto shrink-0 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${
-                      pressed ? 'bg-violet-100 text-violet-800' : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {n}
-                  </span>
-                </span>
-                {catalog ? (
-                  <span className="mt-1.5 block text-[10px] text-slate-500 truncate pl-8">{catalog}</span>
-                ) : (
-                  <span className="mt-1.5 block text-[10px] text-slate-400 truncate pl-8">Similar picks</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        {selectedIdx !== null && rows[selectedIdx] ? (
-          <p className="mt-3 text-xs text-slate-600 border-t border-slate-100 pt-3">
-            Showing matches for{' '}
-            <span className="font-semibold text-slate-900">
-              {formatDetectionLabel(String(rows[selectedIdx].detection?.label || rows[selectedIdx].category || 'item'))}
+          <div className="flex items-center gap-2 text-xs sm:justify-end">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 font-semibold text-white shadow-sm">
+              <ScanSearch className="w-3.5 h-3.5" />
+              {rows.length} piece{rows.length !== 1 ? 's' : ''}
             </span>
-            {rows[selectedIdx].category ? (
-              <>
-                <span className="text-slate-400"> · </span>
-                <span className="text-slate-700">{formatDetectionLabel(String(rows[selectedIdx].category))}</span>
-              </>
+            {shopTheLookStats?.totalDetections ? (
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+                {shopTheLookStats.coveredDetections}/{shopTheLookStats.totalDetections} detected
+              </span>
             ) : null}
-          </p>
-        ) : null}
+          </div>
+        </div>
       </div>
 
-      {/* Centered hero photo */}
-      <div
-        className="max-w-[min(92vw,760px)] mx-auto mb-10 flex flex-col items-center"
-        onMouseLeave={() => setActiveIdx(null)}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full"
-        >
-          <motion.div
-            role="button"
-            tabIndex={0}
-            aria-pressed={hero3DActive}
-            onClick={() => setHero3DActive((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setHero3DActive((v) => !v)
-              }
-            }}
-            onMouseMove={handleHeroMouseMove}
-            onMouseLeave={() => {
-              setActiveIdx(null)
-              resetHeroTilt()
-            }}
-            transition={{ duration: 0.38, ease: 'easeInOut' }}
-            animate={{
-              rotateX: hero3DActive ? heroTilt.x : 0,
-              rotateY: hero3DActive ? heroTilt.y : 0,
-              scale: hero3DActive ? 1.035 : 1,
-            }}
-            style={{ transformPerspective: 1200, transformStyle: 'preserve-3d' }}
-            className={`relative rounded-3xl overflow-hidden border bg-slate-950 cursor-pointer transition-shadow duration-300 ${
-              hero3DActive
-                ? 'border-violet-300/90 shadow-2xl shadow-violet-900/35 ring-2 ring-violet-200/70'
-                : 'border-slate-200/90 shadow-xl shadow-slate-900/15'
-            }`}
-          >
-            <div className="relative inline-block w-full" style={{ transform: hero3DActive ? 'translateZ(18px)' : 'translateZ(0px)' }}>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-6 lg:grid-cols-[minmax(340px,430px)_minmax(0,1fr)]">
+        <aside className="space-y-4 lg:sticky lg:top-24 self-start">
+          <div className="rounded-3xl overflow-hidden border border-slate-200 bg-slate-950 shadow-[0_16px_38px_-24px_rgba(15,23,42,0.56)]">
+            <div className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={outfitImageUrl}
-                alt="Your outfit — tap highlighted regions for similar products"
-                className="w-full h-auto max-h-[min(82vh,860px)] object-contain object-top bg-slate-900 block mx-auto"
+                alt="Outfit with detected pieces"
+                className={`w-full h-auto max-h-[76vh] object-contain object-top transition duration-500 ${
+                  selectedIdx !== null ? 'brightness-[0.92] saturate-[0.94] blur-[0.3px]' : ''
+                }`}
                 onLoad={(e) => {
                   const el = e.currentTarget
                   setImgNatural({ w: el.naturalWidth, h: el.naturalHeight })
                 }}
               />
-                {canDrawBoxes &&
-                  rows.flatMap((group, i) => {
-                    const hi = boxHighlight(i)
-                    const dim = boxDimmed(i)
-                    return detectionMetasWithBoxes(group)
-                      .map((meta, bi) => {
-                        const box = meta.box
-                        if (
-                          !box ||
-                          ![box.x1, box.y1, box.x2, box.y2].every((n) => typeof n === 'number' && Number.isFinite(n))
-                        ) {
-                          return null
-                        }
-                        const { left, top, width, height } = boxStylePercents(box, refW, refH)
-                        if (width <= 0 || height <= 0) return null
-                        const label = meta.label || group.category || 'Item'
-                        return (
-                          <button
-                            key={`box-${i}-${bi}`}
-                            type="button"
-                            aria-label={`Select region: ${formatDetectionLabel(String(label))}`}
-                            aria-pressed={selectedIdx === i}
-                            className={`absolute rounded-md transition-all duration-200 ${OVERLAY.border} ${
-                              hi ? `${OVERLAY.fillHi} ${OVERLAY.ring} z-10` : `${OVERLAY.fill} hover:bg-violet-600/20`
-                            } ${dim ? 'opacity-40' : 'opacity-100'}`}
-                            style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              focusDetection(i)
-                              setHero3DActive(true)
-                            }}
-                            onMouseEnter={() => setActiveIdx(i)}
-                            onFocus={() => setActiveIdx(i)}
-                            onBlur={() => setActiveIdx((cur) => (cur === i ? null : cur))}
-                          />
-                        )
-                      })
-                      .filter(Boolean)
-                  })}
-              {hero3DActive ? (
-                <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-300/18 via-transparent to-fuchsia-300/14 mix-blend-screen"
-                  style={{ transform: 'translateZ(26px)' }}
+
+              <motion.div
+                aria-hidden
+                initial={false}
+                animate={{ opacity: selectedIdx !== null ? 1 : 0 }}
+                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                className="pointer-events-none absolute inset-0 bg-slate-950/8"
+              />
+
+              {selectedIdx !== null && selectedCrop ? (
+                <motion.div
+                  key={`focus-region-${selectedIdx}`}
                   aria-hidden
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  className="pointer-events-none absolute z-20 rounded-xl border border-blue-100/95 bg-orange-500/10 ring-1 ring-white/75 shadow-[0_10px_24px_-16px_rgba(124,58,237,0.48)]"
+                  style={{
+                    left: `${selectedCrop.left}%`,
+                    top: `${selectedCrop.top}%`,
+                    width: `${selectedCrop.width}%`,
+                    height: `${selectedCrop.height}%`,
+                  }}
                 />
               ) : null}
-              <div className="pointer-events-none absolute bottom-3 right-3">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold backdrop-blur-sm ${
-                    hero3DActive
-                      ? 'bg-violet-500/85 text-white shadow-md shadow-violet-900/40'
-                      : 'bg-black/45 text-white/90'
-                  }`}
-                >
-                  {hero3DActive ? '3D ON' : 'Tap for 3D'}
-                </span>
-              </div>
+
+              {canDrawBoxes &&
+                rows.map((group, i) => {
+                  const meta = firstBoxMeta(group)
+                  const box = meta?.box
+                  if (!box) return null
+                  const p = boxStylePercents(box, refW, refH)
+                  const isActive = selectedIdx === i || (selectedIdx === null && hoveredIdx === i)
+                  const isDimmed = selectedIdx !== null && selectedIdx !== i
+                  const text = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
+                  return (
+                    <button
+                      key={`hotspot-${i}-${group.detectionIndex ?? ''}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        focusDetection(i)
+                      }}
+                      onMouseEnter={() => setHoveredIdx(i)}
+                      onMouseLeave={() => setHoveredIdx((cur) => (cur === i ? null : cur))}
+                      aria-label={`Select ${text}`}
+                      className={`absolute z-10 overflow-hidden rounded-xl border text-left transition-all duration-200 ${
+                        isDimmed ? 'opacity-30' : 'opacity-100'
+                      } ${
+                        isActive
+                          ? 'border-blue-100/95 shadow-[0_0_0_1px_rgba(196,181,253,0.85),0_14px_24px_-16px_rgba(124,58,237,0.9)]'
+                          : 'border-white/80 hover:border-blue-100/90'
+                      }`}
+                      style={{
+                        left: `${p.left}%`,
+                        top: `${p.top}%`,
+                        width: `${Math.max(p.width, 7)}%`,
+                        height: `${Math.max(p.height, 7)}%`,
+                      }}
+                    >
+                      <span
+                        className={`absolute left-1.5 top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
+                          isActive ? 'bg-blue-800 text-white shadow-sm' : 'bg-white/92 text-slate-800'
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                      <span
+                        className={`pointer-events-none absolute inset-0 ${
+                          isActive
+                            ? 'bg-blue-600/18 ring-2 ring-blue-100/95'
+                            : 'bg-slate-100/5 ring-1 ring-white/80 hover:bg-orange-500/12'
+                        }`}
+                      />
+                    </button>
+                  )
+                })}
             </div>
-          </motion.div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="mt-5 w-full flex flex-col items-center text-center"
-        >
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-semibold tracking-tight">
-              <ScanSearch className="w-3.5 h-3.5 shrink-0 opacity-90" />
-              {rows.length} piece{rows.length !== 1 ? 's' : ''} matched
-            </span>
-            {shopTheLookStats && shopTheLookStats.totalDetections > 0 ? (
-              <span className="text-[11px] text-slate-500">
-                {shopTheLookStats.coveredDetections}/{shopTheLookStats.totalDetections} detected
-                {shopTheLookStats.coverageRatio != null && Number.isFinite(shopTheLookStats.coverageRatio)
-                  ? ` · ${Math.round(shopTheLookStats.coverageRatio * 100)}%`
-                  : ''}
-              </span>
-            ) : null}
           </div>
-        </motion.div>
-      </div>
 
-      {selectedIdx !== null && rows[selectedIdx] ? (
-        <div ref={spotlightRef}>
-          <ShopTheLookSpotlight3D
-            outfitImageUrl={outfitImageUrl}
-            group={rows[selectedIdx]}
-            refW={refW}
-            refH={refH}
-            formattedTitle={formatDetectionLabel(
-              String(rows[selectedIdx].detection?.label || rows[selectedIdx].category || 'Item'),
-            )}
-          />
-        </div>
-      ) : null}
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_12px_30px_-26px_rgba(15,23,42,0.6)]">
+            <div className="flex gap-2 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIdx(null)
+                  setHighlightedIdx(null)
+                }}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
+                  selectedIdx === null
+                    ? 'border-sky-200 bg-sky-50 text-blue-950'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                All
+              </button>
+              {rows.map((group, i) => {
+                const text = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
+                const active = selectedIdx === i
+                return (
+                  <button
+                    key={`tag-${i}-${group.detectionIndex ?? ''}`}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      focusDetection(i)
+                    }}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
+                      active
+                        ? 'border-orange-500 bg-white text-slate-900 ring-2 ring-sky-100'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {text}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-      {/* Matches — single column, calm */}
-      <div className="max-w-3xl mx-auto space-y-8 pb-4">
+          {selectedGroup ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.75)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Focused region</p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+                {formatDetectionLabel(String(selectedGroup.detection?.label || selectedGroup.category || 'Item'))}
+              </p>
+            </div>
+          ) : null}
+        </aside>
+
+        <section className="space-y-4">
+          <div className="rounded-[22px] border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_18px_38px_-30px_rgba(15,23,42,0.65)]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Product matches</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 truncate">
+                  {selectedGroup
+                    ? formatDetectionLabel(String(selectedGroup.detection?.label || selectedGroup.category || 'Item'))
+                    : 'All detected pieces'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIdx(null)
+                  setHighlightedIdx(null)
+                }}
+                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
           {displayIndices.map((i) => {
             const group = rows[i]
-            const formatted = formatDetectionLabel(
-              String(group.detection?.label || group.category || 'Item'),
-            )
+            const label = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
             const catKeyRaw = String(group.category || 'default').toLowerCase()
             const style = CATEGORY_STYLES[catKeyRaw] || CATEGORY_STYLES.default
             const Icon = style.icon
-            const parsed = toProducts(group.products as unknown as unknown[])
+            const parsed = toProducts(group.products as unknown[])
             const seen = new Set<number>()
             const unique = parsed.filter((p) => {
               if (seen.has(p.id)) return false
@@ -730,8 +532,10 @@ export function ShopTheLookResults({
             const sectionKey = `stl-${group.detectionIndex ?? i}-${i}`
             const visibleCap = visibleByKey[sectionKey] ?? SHOP_THE_LOOK_INITIAL
             const visibleProducts = unique.slice(0, visibleCap)
-            const hasMoreInSection = unique.length > visibleProducts.length
-            const sectionActive = selectedIdx === i || (selectedIdx === null && activeIdx === i)
+            const hasMore = unique.length > visibleProducts.length
+            const selected = selectedIdx === i
+            const highlighted = highlightedIdx === i
+
             return (
               <motion.section
                 key={sectionKey}
@@ -739,180 +543,82 @@ export function ShopTheLookResults({
                   sectionRefs.current[i] = el
                 }}
                 initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.06 + i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className={`rounded-2xl border bg-white p-5 sm:p-6 transition-all duration-200 ${
-                  sectionActive
-                    ? 'border-violet-200 shadow-md shadow-violet-500/5 ring-1 ring-violet-100'
-                    : 'border-slate-200/90 shadow-sm hover:border-slate-300'
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: highlighted ? [1, 1.016, 1] : 1,
+                }}
+                transition={{
+                  duration: highlighted ? 0.46 : 0.26,
+                  delay: i * 0.04,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className={`rounded-[22px] border bg-white p-4 sm:p-5 ${
+                  highlighted
+                    ? 'border-sky-200 ring-1 ring-blue-100 shadow-[0_0_0_1px_rgba(196,181,253,0.56),0_28px_54px_-34px_rgba(124,58,237,0.42)]'
+                    : selected
+                    ? 'border-sky-200 ring-1 ring-sky-100 shadow-[0_24px_44px_-34px_rgba(124,58,237,0.5)]'
+                    : 'border-slate-200 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.65)]'
                 }`}
-                onMouseEnter={() => setActiveIdx(i)}
               >
-                <div className="flex items-start gap-3 mb-5 pb-4 border-b border-slate-100">
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 ring-1 ${style.ring}`}
-                  >
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                <div className="mb-4 flex items-start gap-3">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-700 ring-1 ${style.ring}`}>
+                    <Icon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-display text-base sm:text-lg font-semibold text-slate-900 tracking-tight">
-                      {formatted}
-                    </h3>
-                    {group.category ? (
-                      <p className="text-xs text-slate-500 mt-0.5">{formatDetectionLabel(String(group.category))}</p>
-                    ) : null}
-                    <p className="text-[11px] text-slate-400 mt-2">
-                      {unique.length} similar item{unique.length !== 1 ? 's' : ''}
-                      {visibleProducts.length < unique.length ? ` · showing ${visibleProducts.length}` : ''}
+                    <p className="font-display text-base font-semibold text-slate-900 truncate">{label}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {unique.length} curated match{unique.length !== 1 ? 'es' : ''}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[11px] font-medium tabular-nums text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
-                    {i + 1}/{rows.length}
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                      selected
+                        ? 'border-blue-100 bg-sky-50 text-blue-900'
+                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    From hotspot {i + 1}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  {visibleProducts.map((product, j) => {
-                    const imgUrl = product.image_cdn || product.image_url || ''
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+                  {visibleProducts.map((product) => {
+                    const img = product.image_cdn || product.image_url || ''
                     const price = formatProductPrice(product)
-                    const isExpanded =
-                      expandedProduct?.sectionKey === sectionKey && expandedProduct?.productId === product.id
-                    const related = unique.filter((p) => p.id !== product.id).slice(0, 12)
-                    const canShowRelated = related.length > 0
-
                     return (
-                      <motion.div
+                      <Link
                         key={product.id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.04 + j * 0.03, duration: 0.25 }}
-                        className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-sm"
+                        href={productHref(product.id)}
+                        className="group overflow-hidden rounded-2xl border border-slate-200/95 bg-white transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.45)]"
                       >
-                        <button
-                          type="button"
-                          className={`flex w-full gap-4 p-4 text-left items-stretch transition-colors ${
-                            canShowRelated ? 'hover:bg-slate-50/80 cursor-pointer' : 'cursor-default opacity-95'
-                          }`}
-                          onClick={() => {
-                            if (!canShowRelated) return
-                            setExpandedProduct((cur) =>
-                              cur?.sectionKey === sectionKey && cur?.productId === product.id
-                                ? null
-                                : { sectionKey, productId: product.id },
-                            )
-                          }}
-                          aria-expanded={canShowRelated ? isExpanded : undefined}
-                          disabled={!canShowRelated}
-                        >
-                          <div className="relative w-[4.75rem] sm:w-[5.5rem] shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200/60">
-                            {imgUrl ? (
-                              <NextImage
-                                src={imgUrl}
-                                alt={product.title}
-                                fill
-                                className="object-cover"
-                                sizes="88px"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    'https://placehold.co/320x426/f5f5f5/737373?text=No+Image'
-                                }}
-                              />
-                            ) : null}
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
-                            {product.brand ? (
-                              <p className="text-[10px] font-semibold text-violet-700 uppercase tracking-wider truncate">
-                                {product.brand}
-                              </p>
-                            ) : null}
-                            <p className="text-sm font-medium text-slate-900 line-clamp-2 leading-snug mt-0.5">
-                              {product.title}
+                        <div className="relative aspect-[3/4] bg-slate-100/90">
+                          {img ? (
+                            <NextImage
+                              src={img}
+                              alt={product.title}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-[1.035]"
+                              sizes="(max-width: 1024px) 45vw, 220px"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="p-3">
+                          {product.brand ? (
+                            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-900">
+                              {product.brand}
                             </p>
-                            {price ? (
-                              <p className="text-sm font-semibold text-slate-800 mt-1 tabular-nums">{price}</p>
-                            ) : null}
-                            {canShowRelated ? (
-                              <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-violet-700">
-                                Related in this look
-                                <ChevronDown
-                                  className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
-                                    isExpanded ? 'rotate-180' : ''
-                                  }`}
-                                  aria-hidden
-                                />
-                              </span>
-                            ) : (
-                              <span className="mt-3 text-xs text-slate-400">Only result for this region</span>
-                            )}
-                          </div>
-                        </button>
-
-                        {isExpanded && canShowRelated ? (
-                          <div className="border-t border-slate-100 bg-slate-50/90">
-                            <div className="flex flex-col items-center py-1">
-                              <div className="h-3 w-px bg-violet-200" aria-hidden />
-                              <ArrowDown className="w-5 h-5 text-violet-500 -mt-0.5" strokeWidth={2} aria-hidden />
-                            </div>
-                            <div className="px-4 pb-4">
-                              <p className="text-[11px] font-medium text-slate-500 mb-3 text-center sm:text-left">
-                                More you may like from this same piece
-                              </p>
-                              <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 snap-x snap-mandatory">
-                                {related.map((rp) => {
-                                  const rImg = rp.image_cdn || rp.image_url || ''
-                                  const rPrice = formatProductPrice(rp)
-                                  return (
-                                    <Link
-                                      key={rp.id}
-                                      href={productHref(rp.id)}
-                                      className="snap-start shrink-0 w-[6.5rem] rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-sm hover:border-violet-200 hover:shadow-md transition-all"
-                                    >
-                                      <div className="relative aspect-[3/4] bg-slate-100">
-                                        {rImg ? (
-                                          <NextImage
-                                            src={rImg}
-                                            alt={rp.title}
-                                            fill
-                                            className="object-cover"
-                                            sizes="104px"
-                                            onError={(e) => {
-                                              e.currentTarget.src =
-                                                'https://placehold.co/320x426/f5f5f5/737373?text=+'
-                                            }}
-                                          />
-                                        ) : null}
-                                      </div>
-                                      <div className="p-2">
-                                        <p className="text-[10px] font-medium text-slate-800 line-clamp-2 leading-tight min-h-[2rem]">
-                                          {rp.title}
-                                        </p>
-                                        {rPrice ? (
-                                          <p className="text-[10px] font-semibold text-slate-700 mt-1 tabular-nums">
-                                            {rPrice}
-                                          </p>
-                                        ) : null}
-                                      </div>
-                                    </Link>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        <Link
-                          href={productHref(product.id)}
-                          className="block text-center py-3 text-sm font-medium text-violet-800 bg-white border-t border-slate-100 hover:bg-violet-50/50 transition-colors"
-                        >
-                          Open product page
-                        </Link>
-                      </motion.div>
+                          ) : null}
+                          <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-800">{product.title}</p>
+                          {price ? <p className="mt-1.5 text-xs font-semibold text-slate-900">{price}</p> : null}
+                        </div>
+                      </Link>
                     )
                   })}
                 </div>
 
-                {hasMoreInSection && (
-                  <div className="mt-5 flex justify-center">
+                {hasMore ? (
+                  <div className="mt-4 flex justify-center">
                     <button
                       type="button"
                       onClick={() =>
@@ -921,17 +627,18 @@ export function ShopTheLookResults({
                           [sectionKey]: (prev[sectionKey] ?? SHOP_THE_LOOK_INITIAL) + SHOP_THE_LOOK_STEP,
                         }))
                       }
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-white hover:border-slate-300 transition-colors"
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
                     >
                       <ChevronDown className="w-4 h-4" />
-                      Load more
+                      Show more
                     </button>
                   </div>
-                )}
+                ) : null}
               </motion.section>
             )
           })}
-        </div>
+        </section>
+      </div>
     </motion.div>
   )
 }

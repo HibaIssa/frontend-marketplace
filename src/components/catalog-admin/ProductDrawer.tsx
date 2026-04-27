@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { X, ExternalLink } from 'lucide-react'
@@ -82,7 +82,7 @@ export function ProductDrawer({ product: p, onClose }: Props) {
       const base =
         process.env.NEXT_PUBLIC_API_URL ||
         process.env.NEXT_PUBLIC_MARKETPLACE_API_URL ||
-        'https://marketplace-550687605665.europe-west1.run.app'
+        'https://marketplace-550687605665.asia-southeast1.run.app'
       fetch(`${base}/products/${p.id}/complete-style?maxPerCategory=5&maxTotal=12`)
         .then((r) => r.json())
         .then((d) => {
@@ -187,12 +187,12 @@ export function ProductDrawer({ product: p, onClose }: Props) {
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Price</p>
                   <p className="text-lg font-semibold text-gray-900">{formatCents(p.price_cents, p.currency ?? undefined)}</p>
                 </div>
-                <div className={`rounded-xl p-3 ${p.sales_price_cents ? 'bg-indigo-50' : 'bg-gray-50'}`}>
+                <div className={`rounded-xl p-3 ${p.sales_price_cents ? 'bg-sky-50' : 'bg-gray-50'}`}>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Sale price</p>
                   {p.sales_price_cents ? (
                     <>
-                      <p className="text-lg font-semibold text-indigo-700">{formatCents(p.sales_price_cents, p.currency ?? undefined)}</p>
-                      {disc && <p className="text-[11px] text-indigo-600">-{disc}% off</p>}
+                      <p className="text-lg font-semibold text-blue-800">{formatCents(p.sales_price_cents, p.currency ?? undefined)}</p>
+                      {disc && <p className="text-[11px] text-blue-700">-{disc}% off</p>}
                     </>
                   ) : (
                     <p className="text-gray-300 text-sm">-</p>
@@ -310,7 +310,7 @@ export function ProductDrawer({ product: p, onClose }: Props) {
                         <span className="text-gray-400">{h.recorded_at.slice(0, 10)}</span>
                         <span className="font-medium">{formatCents(h.price_cents, h.currency)}</span>
                         {h.sales_price_cents && (
-                          <span className="text-indigo-600">{formatCents(h.sales_price_cents, h.currency)} (sale)</span>
+                          <span className="text-blue-700">{formatCents(h.sales_price_cents, h.currency)} (sale)</span>
                         )}
                       </div>
                     ))}

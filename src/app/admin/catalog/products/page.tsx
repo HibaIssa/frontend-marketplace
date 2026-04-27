@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useEffect, useTransition } from 'react'
 import { Search, SlidersHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
@@ -134,7 +134,7 @@ export default function ProductsPage() {
         title="Products"
         sub={`${total.toLocaleString()} rows`}
         actions={
-          <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full font-medium">
+          <span className="text-xs bg-sky-50 text-blue-800 border border-blue-100 px-2.5 py-1 rounded-full font-medium">
             {total.toLocaleString()} total
           </span>
         }
@@ -267,9 +267,9 @@ export default function ProductsPage() {
                   <td className="px-3 py-2 text-xs font-medium tabular-nums">{formatCents(p.price_cents, p.currency ?? undefined)}</td>
                   <td className="px-3 py-2">
                     {p.sales_price_cents ? (
-                      <span className="text-indigo-600 text-xs font-medium tabular-nums">
+                      <span className="text-blue-700 text-xs font-medium tabular-nums">
                         {formatCents(p.sales_price_cents, p.currency ?? undefined)}
-                        {disc && <span className="ml-1 text-[10px] text-indigo-500">−{disc}%</span>}
+                        {disc && <span className="ml-1 text-[10px] text-blue-600">−{disc}%</span>}
                       </span>
                     ) : <span className="text-gray-300">—</span>}
                   </td>
