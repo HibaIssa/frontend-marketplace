@@ -1,5 +1,5 @@
 /**
- * API client for Fashion Marketplace backend (Render)
+ * API client for Fashion Marketplace backend (Cloud Run)
  * Backend uses snake_case: access_token, refresh_token
  */
 

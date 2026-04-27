@@ -122,16 +122,15 @@
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           text-white shadow-md
-           bg-[#0a0a0a]
+           text-white shadow-md bg-neutral-950
            hover:bg-black hover:shadow-lg
            active:scale-[0.98] transition-all duration-300;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-[#0a0a0a] border-2 border-[#0a0a0a]
-           hover:bg-[#e5eeff] active:scale-[0.98]
+           bg-white text-neutral-950 border-2 border-neutral-950
+           hover:bg-sky-100 active:scale-[0.98]
            transition-all duration-200;
   }
 
@@ -143,7 +142,7 @@
 
   .btn-on-dark {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-[#0a0a0a] shadow-lg shadow-black/10 hover:bg-[#e5eeff]
+           bg-white text-neutral-950 shadow-lg shadow-black/10 hover:bg-sky-100
            active:scale-[0.98] transition-all duration-200;
   }
 
@@ -161,7 +160,7 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border border-[#0a0a0a]/10 bg-white/95 backdrop-blur-sm;
+    @apply rounded-2xl border border-black/10 bg-white/95 backdrop-blur-sm;
     box-shadow: var(--shadow-card);
   }
   .surface-card:hover {
@@ -183,7 +182,7 @@
   }
 
   .tz-icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0a] shadow-md transition-all hover:scale-105 hover:bg-[#e5eeff];
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-950 shadow-md transition-all hover:scale-105 hover:bg-sky-100;
   }
 
   .text-gradient-accent {
@@ -234,9 +233,9 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-[#0a0a0a]/12 bg-white
+    @apply w-full px-4 py-3 rounded-xl border border-black/10 bg-white
            text-neutral-800 placeholder-neutral-400
-           focus:outline-none focus:ring-2 focus:ring-[#0a0a0a]/15 focus:border-[#0a0a0a]
+           focus:outline-none focus:ring-2 focus:ring-black/15 focus:border-neutral-950
            transition-all duration-200;
   }
 

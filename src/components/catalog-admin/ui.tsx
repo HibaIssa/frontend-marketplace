@@ -92,11 +92,12 @@ export function PageHeader({ title, sub, actions }: PageHeaderProps) {
 interface SectionProps {
   title?: string
   actions?: React.ReactNode
-  children: React.ReactNode
+  children?: React.ReactNode
   noPad?: boolean
 }
 
 export function Section({ title, actions, children, noPad }: SectionProps) {
+  const showBody = children != null
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_24px_-4px_rgba(79,70,229,0.06)]">
       {(title || actions) && (
@@ -107,7 +108,7 @@ export function Section({ title, actions, children, noPad }: SectionProps) {
           {actions && <div className="flex gap-2">{actions}</div>}
         </div>
       )}
-      <div className={noPad ? '' : 'p-4'}>{children}</div>
+      {showBody ? <div className={noPad ? '' : 'p-4'}>{children}</div> : null}
     </div>
   )
 }
