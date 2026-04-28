@@ -60,7 +60,7 @@ pnpm install
 pnpm dev
 ```
 
-Or use the deployed API: `https://marketplace-550687605665.asia-southeast1.run.app`
+Or use the deployed API: `https://marketplace-359201620993.asia-southeast1.run.app`
 
 ---
 
@@ -68,7 +68,7 @@ Or use the deployed API: `https://marketplace-550687605665.asia-southeast1.run.a
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g. `https://marketplace-550687605665.asia-southeast1.run.app`) |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g. `https://marketplace-359201620993.asia-southeast1.run.app`) |
 
 ---
 
@@ -81,7 +81,7 @@ Or use the deployed API: `https://marketplace-550687605665.asia-southeast1.run.a
    - **Build Command:** `cd ../.. && pnpm install && pnpm --filter marketplace build`
    - **Output Directory:** `.next`
    - **Install Command:** `cd ../.. && pnpm install`
-3. **Environment variables:** Add `NEXT_PUBLIC_API_URL` = your backend URL (e.g. `https://marketplace-550687605665.asia-southeast1.run.app`)
+3. **Environment variables:** Add `NEXT_PUBLIC_API_URL` = your backend URL (e.g. `https://marketplace-359201620993.asia-southeast1.run.app`)
 4. Click **Deploy**
 
 ---

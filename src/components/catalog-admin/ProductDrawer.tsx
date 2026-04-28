@@ -82,7 +82,7 @@ export function ProductDrawer({ product: p, onClose }: Props) {
       const base =
         process.env.NEXT_PUBLIC_API_URL ||
         process.env.NEXT_PUBLIC_MARKETPLACE_API_URL ||
-        'https://marketplace-550687605665.asia-southeast1.run.app'
+        'https://marketplace-359201620993.asia-southeast1.run.app'
       fetch(`${base}/products/${p.id}/complete-style?maxPerCategory=5&maxTotal=12`)
         .then((r) => r.json())
         .then((d) => {
