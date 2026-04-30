@@ -22,7 +22,7 @@ const navLinks: NavLink[] = [
   { href: '/sales', label: 'Sale' },
 ]
 
-const ACTIVE_PILL = 'bg-[#111827] text-white shadow-sm'
+const ACTIVE_PILL = 'bg-[#5a1814] text-white shadow-sm'
 const IDLE_PILL = 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
 
 export function Navbar() {
@@ -65,15 +65,15 @@ export function Navbar() {
           className={clsx(
             'flex items-center justify-between gap-3 h-14 px-4 sm:px-5 rounded-2xl transition-all duration-300',
             scrolled
-              ? 'bg-white/95 backdrop-blur-md shadow-[0_12px_34px_-20px_rgba(15,23,42,0.25)] ring-1 ring-slate-200'
-              : 'bg-white/90 backdrop-blur-sm ring-1 ring-slate-200/80'
+              ? 'bg-[#f1ece9]/95 backdrop-blur-md shadow-[0_12px_34px_-20px_rgba(90,24,20,0.24)] ring-1 ring-[#d8cbc4]'
+              : 'bg-[#f1ece9]/90 backdrop-blur-sm ring-1 ring-[#d8cbc4]/80'
           )}
         >
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#2563eb] text-white text-[0.72rem] font-extrabold tracking-tight">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#5a1814] text-white text-[0.72rem] font-extrabold tracking-tight">
               TZ
             </span>
-            <span className="font-display text-[15px] font-bold text-slate-900 tracking-tight">TrendZone</span>
+            <span className="font-display text-[15px] font-bold text-[#100809] tracking-tight">TrendZone</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1.5 flex-1 justify-center min-w-0 mx-3 overflow-x-auto scrollbar-none">
@@ -107,7 +107,7 @@ export function Navbar() {
             <Link href="/favorites" className="hidden sm:inline-flex p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Saved"><Heart className="w-[18px] h-[18px]" /></Link>
             <Link href="/compare" className={clsx('relative hidden sm:inline-flex p-2 rounded-full transition-colors', pathname.startsWith('/compare') ? 'bg-slate-100 text-slate-900 ring-1 ring-slate-200' : 'text-slate-800 hover:bg-slate-100')} aria-label="Compare">
               <GitCompare className="w-[18px] h-[18px]" />
-              {mounted && compareCount > 0 && <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#2563eb] text-white text-[10px] font-bold px-1 ring-2 ring-white">{compareCount}</span>}
+              {mounted && compareCount > 0 && <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#5a1814] text-white text-[10px] font-bold px-1 ring-2 ring-white">{compareCount}</span>}
             </Link>
             <Link href="/products" className="p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Bag"><ShoppingBag className="w-[18px] h-[18px]" /></Link>
 
@@ -127,7 +127,7 @@ export function Navbar() {
             ) : (
               <div className="hidden sm:flex items-center gap-2">
                 <Link href="/login" className="text-[13px] py-2 px-4 rounded-full border border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold">Login</Link>
-                <Link href="/signup" className="text-[13px] py-2 px-4 rounded-full bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-colors font-semibold">Sign up</Link>
+                <Link href="/signup" className="text-[13px] py-2 px-4 rounded-full bg-[#5a1814] text-white hover:bg-[#43110e] transition-colors font-semibold">Sign up</Link>
               </div>
             )}
 
@@ -150,7 +150,7 @@ export function Navbar() {
               {!isAuthenticated() && (
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                   <Link href="/login" className="text-center px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-semibold">Login</Link>
-                  <Link href="/signup" className="text-center px-3 py-2 rounded-xl bg-[#2563eb] text-white font-semibold">Sign up</Link>
+                  <Link href="/signup" className="text-center px-3 py-2 rounded-xl bg-[#5a1814] text-white font-semibold">Sign up</Link>
                 </div>
               )}
             </motion.nav>

@@ -141,8 +141,8 @@ function Hero() {
   return (
     <section className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-5">
       <div className="tz-sheet relative isolate p-5 sm:p-8 lg:p-10">
-        <motion.div aria-hidden className="pointer-events-none absolute -top-16 -left-16 h-44 w-44 rounded-full bg-fuchsia-300/35 blur-3xl" animate={{ x: [0, 18, 0], y: [0, -10, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.div aria-hidden className="pointer-events-none absolute -bottom-20 -right-10 h-52 w-52 rounded-full bg-cyan-300/35 blur-3xl" animate={{ x: [0, -16, 0], y: [0, 12, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.div aria-hidden className="pointer-events-none absolute -top-16 -left-16 h-44 w-44 rounded-full bg-[#99624E]/30 blur-3xl" animate={{ x: [0, 18, 0], y: [0, -10, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.div aria-hidden className="pointer-events-none absolute -bottom-20 -right-10 h-52 w-52 rounded-full bg-[#b99e90]/30 blur-3xl" animate={{ x: [0, -16, 0], y: [0, 12, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} />
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 lg:mb-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -173,7 +173,7 @@ function Hero() {
           >
             <Link
               href="/products?category=new-arrivals"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#7c3aed] via-[#2563eb] to-[#06b6d4] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#5a1814] via-[#7d4b3a] to-[#aa8a76] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
             >
               <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
                 New arrivals
@@ -195,7 +195,7 @@ function Hero() {
           >
             <Link
               href="/products?category=best-sellers"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#f43f5e] via-[#fb7185] to-[#f59e0b] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#43110e] via-[#5a1814] to-[#99624E] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
             >
               <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
                 Best sellers
