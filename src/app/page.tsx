@@ -194,15 +194,15 @@ function Hero() {
             transition={{ duration: 0.65, ease: easeOut, delay: 0.12 }}
           >
             <Link
-              href="/products?category=best-sellers"
+              href="/products"
               className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#43110e] via-[#5a1814] to-[#99624E] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
             >
               <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
-                Best sellers
+                Shop all
               </span>
               <Image
                 src="/brand/tz-hero-for-her.png"
-                alt="Best sellers fashion editorial"
+                alt="Shop all fashion editorial"
                 fill
                 className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.08] group-hover:rotate-1"
                 sizes="(max-width: 768px) 100vw, 50vw"

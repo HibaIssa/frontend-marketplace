@@ -17,7 +17,6 @@ const navLinks: NavLink[] = [
   { href: '/search', label: 'Discover' },
   { href: '/compare', label: 'Compare' },
   { href: '/wardrobe', label: 'Wardrobe' },
-  { href: '/products', label: 'Complete the look' },
   { href: '/try-on', label: 'Try on' },
   { href: '/sales', label: 'Sale' },
 ]
