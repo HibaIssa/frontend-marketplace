@@ -35,9 +35,9 @@ const featureLinks: Feature[] = [
 ]
 
 const ACTIVE_PILL =
-  'bg-[#0a0a0a] text-white ring-1 ring-black/20'
+  'bg-gradient-to-r from-violet-600 to-cyan-500 text-white ring-1 ring-violet-300/40 shadow-sm'
 const IDLE_PILL =
-  'text-[#0a0a0a]/75 hover:text-[#0a0a0a] hover:bg-[#e5eeff]'
+  'text-slate-700 hover:text-slate-900 hover:bg-white/80'
 
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
@@ -96,15 +96,15 @@ export function Navbar() {
           className={clsx(
             'flex items-center justify-between gap-3 h-14 px-4 sm:px-5 rounded-full transition-all duration-300',
             scrolled
-              ? 'bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-22px_rgba(10,10,10,0.12)] ring-1 ring-black/10'
-              : 'bg-white/90 backdrop-blur-sm ring-1 ring-black/8'
+              ? 'bg-white/75 backdrop-blur-xl shadow-[0_18px_48px_-24px_rgba(59,130,246,0.35)] ring-1 ring-white/70'
+              : 'bg-white/65 backdrop-blur-xl ring-1 ring-white/65'
           )}
         >
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[0.7rem] font-extrabold tracking-tight">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow text-[0.7rem] font-extrabold tracking-tight">
               TZ
             </span>
-            <span className="font-display text-[15px] font-bold tz-burgundy tracking-tight">
+            <span className="font-display text-[15px] font-bold bg-gradient-to-r from-violet-700 to-cyan-600 bg-clip-text text-transparent tracking-tight">
               TrendZone
             </span>
           </Link>
@@ -233,7 +233,7 @@ export function Navbar() {
             >
               <GitCompare className="w-[18px] h-[18px]" />
               {mounted && compareCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[10px] font-bold px-1 ring-2 ring-white">
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow text-[10px] font-bold px-1 ring-2 ring-white">
                   {compareCount}
                 </span>
               )}
@@ -270,7 +270,7 @@ export function Navbar() {
                   <Link href="/compare" className="flex items-center justify-between px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">
                     <span>Compare</span>
                     {mounted && compareCount > 0 && (
-                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[10px] font-bold px-1.5">
+                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow text-[10px] font-bold px-1.5">
                         {compareCount}
                       </span>
                     )}
@@ -288,7 +288,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="hidden sm:inline-flex text-[13px] py-2 px-5 ml-1 items-center justify-center rounded-full bg-[#0a0a0a] text-white font-semibold hover:bg-black transition-colors"
+                className="hidden sm:inline-flex text-[13px] py-2 px-5 ml-1 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow font-semibold hover:bg-black transition-colors"
               >
                 Sign in
               </Link>

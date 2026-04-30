@@ -8,12 +8,12 @@
     --font-sans: 'Inter', system-ui, sans-serif;
 
     /* Cool pastel wash (sky / violet / blush) — avoids beige-yellow “cream” */
-    --tz-page-lime: #f4f7fd;
+    --tz-page-lime: #eef4ff;
     --tz-pink-50: #ffffff;
-    --tz-pink-100: #e5eeff;
-    --tz-pink-200: #b8deff;
-    --tz-pink-300: #ffd6e8;
-    --tz-pink-400: #e8dffd;
+    --tz-pink-100: #dbeafe;
+    --tz-pink-200: #93c5fd;
+    --tz-pink-300: #f9a8d4;
+    --tz-pink-400: #c4b5fd;
     --tz-cream: #ffffff;
     --tz-cream-2: #fffef6;
     --tz-burgundy: #0a0a0a;
@@ -169,7 +169,7 @@
   }
 
   .tz-sheet {
-    background: var(--tz-cream);
+    background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(248,250,255,0.92));
     border-radius: 28px;
     box-shadow: 0 24px 60px -40px rgba(10, 10, 10, 0.18);
     overflow: hidden;
@@ -217,6 +217,7 @@
   }
 
   .mesh-bg {
+    animation: meshFloat 14s ease-in-out infinite alternate;
     background-image:
       radial-gradient(at 40% 20%, rgba(184, 222, 255, 0.45) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgba(255, 214, 232, 0.4) 0px, transparent 45%),
@@ -308,4 +309,10 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+
+@keyframes meshFloat {
+  0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+  100% { background-position: 8% 6%, 92% 3%, 3% 96%, 97% 92%; }
 }
