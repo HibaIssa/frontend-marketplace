@@ -57,9 +57,10 @@ function parseProductPayload(res: { success?: boolean; data?: unknown; error?: {
 function safeDiscoverReturn(raw: string | null): string | null {
   if (!raw) return null
   try {
-    if (!/^\/search(\?|$)/.test(raw)) return null
-    if (raw.includes('..')) return null
-    return raw
+    const decoded = decodeURIComponent(raw)
+    if (!/^\/search(\?|$)/.test(decoded)) return null
+    if (decoded.includes('..')) return null
+    return decoded
   } catch {
     return null
   }
@@ -162,8 +163,6 @@ function ProductDetailContent() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         href={backHref}
-        scroll={false}
-        prefetch={false}
         className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-800 mb-8 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
