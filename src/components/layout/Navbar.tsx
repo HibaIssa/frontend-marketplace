@@ -38,6 +38,7 @@ export function Navbar() {
 
   const { isAuthenticated, logout, user } = useAuthStore()
   const canSeeAdmin = mounted && isAuthenticated() && !!user?.is_admin
+  const canSeeBusinessDashboard = mounted && isAuthenticated() && (user?.user_type === 'business' || user?.is_admin)
   const compareCount = useCompareStore((s) => s.productIds.length)
 
   useEffect(() => setMounted(true), [])
