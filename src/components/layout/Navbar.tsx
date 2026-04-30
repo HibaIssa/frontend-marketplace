@@ -17,18 +17,18 @@ type Feature = { href: string; label: string; desc: string; icon: React.Componen
 
 const navLinks: NavLink[] = [
   { href: '/', label: 'Home' },
-  { href: '/products?gender=men', label: 'Men' },
-  { href: '/products?gender=women', label: 'Women' },
+  { href: '/products?category=new-arrivals', label: 'New In' },
+  { href: '/products?category=streetwear', label: 'Streetwear' },
   { href: '/products', label: 'Shop' },
   { href: '/sales', label: 'Sale' },
   { href: '/search', label: 'Discover' },
 ]
 
 const featureLinks: Feature[] = [
-  { href: '/search?mode=shop', label: 'Shop the look', desc: 'Upload a photo, find every piece.', icon: Sparkles },
-  { href: '/search', label: 'Text search', desc: 'Describe a vibe, get matching items.', icon: Search },
-  { href: '/wardrobe', label: 'My wardrobe', desc: 'Save and remix what you own.', icon: Shirt },
-  { href: '/try-on', label: 'Virtual try-on', desc: 'Preview garments on yourself.', icon: Layers },
+  { href: '/search?mode=shop', label: 'Shop the look', desc: 'Upload any outfit photo and auto-match every detected piece in seconds.', icon: Sparkles },
+  { href: '/search', label: 'Smart text search', desc: 'Search by mood, color, fit, and occasion with AI-ranked relevance.', icon: Search },
+  { href: '/wardrobe', label: 'My wardrobe', desc: 'Build a reusable digital closet and create outfits from saved favorites.', icon: Shirt },
+  { href: '/try-on', label: 'Virtual try-on', desc: 'See how garments look on you before you buy with realistic previews.', icon: Layers },
   { href: '/compare', label: 'Compare items', desc: 'Side-by-side AI breakdown of any 2–5 picks.', icon: GitCompare },
   { href: '/products', label: 'Complete the look', desc: 'Open a product to finish the outfit.', icon: Sparkles },
   { href: '/sales', label: 'Shop sale', desc: 'Today\u2019s reductions across catalog.', icon: Tag },
