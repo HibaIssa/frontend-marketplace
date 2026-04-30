@@ -89,7 +89,7 @@ export function ProductCard({
         className="block"
         prefetch={fromReturnPath ? false : undefined}
       >
-        <div className="relative aspect-square overflow-hidden rounded-[22px] bg-white ring-1 ring-black/10 shadow-sm transition-all duration-300 group-hover:ring-black/20 group-hover:shadow-lg">
+        <div className="relative aspect-square overflow-hidden rounded-[22px] bg-gradient-to-b from-white to-slate-50 ring-1 ring-violet-100 shadow-[0_12px_30px_-20px_rgba(124,58,237,0.35)] transition-all duration-300 group-hover:ring-violet-300 group-hover:shadow-[0_22px_45px_-20px_rgba(124,58,237,0.45)]">
           <Image
             src={imgUrl}
             alt={product.title}
@@ -102,7 +102,7 @@ export function ProductCard({
             }}
           />
           {hasSale && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#0a0a0a] text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
+            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
               Sale
             </span>
           )}
@@ -114,7 +114,7 @@ export function ProductCard({
                 e.preventDefault()
                 onFavorite(product.id)
               }}
-              className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#161616] shadow-md transition-all hover:scale-105 hover:bg-[#fafaf2]"
+              className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition-all hover:scale-105 hover:bg-violet-50"
               aria-label="Add to favorites"
             >
               <Heart
@@ -144,10 +144,10 @@ export function ProductCard({
                   disabled={wardrobeStatus === 'loading' || wardrobeStatus === 'added'}
                   className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors border-r border-white/30
                     ${wardrobeStatus === 'added'
-                      ? 'bg-[#0a0a0a] text-white'
+                      ? 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
                       : wardrobeStatus === 'loading'
-                        ? 'bg-[#161616]/85 text-white'
-                        : 'bg-white/90 text-[#0a0a0a] hover:bg-white'
+                        ? 'bg-slate-900/85 text-white'
+                        : 'bg-white/90 text-slate-800 hover:bg-violet-50'
                     }
                     disabled:opacity-90`}
                 >
@@ -175,8 +175,8 @@ export function ProductCard({
                   }}
                   className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors
                     ${inCompare
-                      ? 'bg-[#0a0a0a] text-white'
-                      : 'bg-white/90 text-[#0a0a0a] hover:bg-white'
+                      ? 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                      : 'bg-white/90 text-slate-800 hover:bg-violet-50'
                     }`}
                 >
                   {inCompare ? (
@@ -204,17 +204,17 @@ export function ProductCard({
         </div>
         <div className="mt-3 px-0.5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] tz-burgundy line-clamp-1">
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-slate-900 line-clamp-1">
               {product.title}
             </p>
             <div className="shrink-0 text-right">
               {showMinMax ? (
-                <span className="font-extrabold text-sm tz-burgundy">
+                <span className="font-extrabold text-sm text-slate-900">
                   {formatPrice(variantPrice!.minPriceCents, product.currency)}
                 </span>
               ) : hasSale ? (
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-sm tz-burgundy">
+                  <span className="font-extrabold text-sm text-slate-900">
                     {formatPrice(saleCents, product.currency)}
                   </span>
                   <span className="text-xs text-[#161616]/40 line-through">
@@ -222,7 +222,7 @@ export function ProductCard({
                   </span>
                 </div>
               ) : priceCents > 0 ? (
-                <span className="font-extrabold text-sm tz-burgundy">
+                <span className="font-extrabold text-sm text-slate-900">
                   {formatPrice(priceCents, product.currency)}
                 </span>
               ) : (
