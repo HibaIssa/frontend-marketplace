@@ -8,12 +8,12 @@
     --font-sans: 'Inter', system-ui, sans-serif;
 
     /* Cool pastel wash (sky / violet / blush) — avoids beige-yellow “cream” */
-    --tz-page-lime: #f4f7fd;
+    --tz-page-lime: #eef4ff;
     --tz-pink-50: #ffffff;
-    --tz-pink-100: #e5eeff;
-    --tz-pink-200: #b8deff;
-    --tz-pink-300: #ffd6e8;
-    --tz-pink-400: #e8dffd;
+    --tz-pink-100: #dbeafe;
+    --tz-pink-200: #93c5fd;
+    --tz-pink-300: #f9a8d4;
+    --tz-pink-400: #c4b5fd;
     --tz-cream: #ffffff;
     --tz-cream-2: #fffef6;
     --tz-burgundy: #0a0a0a;
@@ -46,12 +46,12 @@
 @layer components {
   /* Full-page wash — class name kept for back-compat */
   .tz-pink-bg {
-    background-color: #f4f7fd;
+    background-color: #f8fafc;
     background-image:
-      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(147, 197, 253, 0.38) 0%, transparent 55%),
-      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(196, 181, 253, 0.3) 0%, transparent 52%),
-      radial-gradient(ellipse 95% 70% at 50% 105%, rgba(251, 207, 232, 0.34) 0%, transparent 50%),
-      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(186, 230, 253, 0.22) 0%, transparent 46%);
+      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(59, 130, 246, 0.16) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(99, 102, 241, 0.12) 0%, transparent 52%),
+      radial-gradient(ellipse 95% 70% at 50% 105%, rgba(148, 163, 184, 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(14, 165, 233, 0.08) 0%, transparent 46%);
     background-attachment: fixed;
   }
 
@@ -169,7 +169,7 @@
   }
 
   .tz-sheet {
-    background: var(--tz-cream);
+    background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(248,250,255,0.92));
     border-radius: 28px;
     box-shadow: 0 24px 60px -40px rgba(10, 10, 10, 0.18);
     overflow: hidden;
@@ -217,6 +217,7 @@
   }
 
   .mesh-bg {
+    animation: meshFloat 14s ease-in-out infinite alternate;
     background-image:
       radial-gradient(at 40% 20%, rgba(184, 222, 255, 0.45) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgba(255, 214, 232, 0.4) 0px, transparent 45%),
@@ -308,4 +309,10 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+
+@keyframes meshFloat {
+  0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+  100% { background-position: 8% 6%, 92% 3%, 3% 96%, 97% 92%; }
 }
