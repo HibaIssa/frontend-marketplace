@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, ShoppingBag, User, Store, Shield, Heart, Shirt, Layers, Tag, Menu, X, GitCompare } from 'lucide-react'
+import { Search, ShoppingBag, User, Shield, Heart, Shirt, Layers, Tag, Menu, X, GitCompare } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '@/store/auth'
 import { useCompareStore } from '@/store/compare'
@@ -94,11 +94,6 @@ export function Navbar() {
                 <Shield className="w-3.5 h-3.5" /> Admin
               </Link>
             )}
-            {canSeeBusinessDashboard && (
-              <Link href="/dashboard" className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors', pathname.startsWith('/dashboard') ? ACTIVE_PILL : IDLE_PILL)}>
-                <Store className="w-3.5 h-3.5" /> Dashboard
-              </Link>
-            )}
           </nav>
 
           <div className="flex items-center gap-1 shrink-0">
@@ -118,7 +113,6 @@ export function Navbar() {
                   <Link href="/wardrobe" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">My Wardrobe</Link>
                   <Link href="/try-on" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Virtual Try-On</Link>
                   {canSeeAdmin && <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-800 hover:bg-slate-100"><Shield className="w-3.5 h-3.5" /> Admin</Link>}
-                  {canSeeBusinessDashboard && <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-800 hover:bg-slate-100"><Store className="w-3.5 h-3.5" /> Dashboard</Link>}
                   <div className="border-t border-slate-200 my-1" />
                   <button type="button" onClick={logout} className="w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Sign out</button>
                 </div>
