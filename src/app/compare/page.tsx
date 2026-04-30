@@ -10,7 +10,8 @@ import {
   ArrowRight,
   Sparkles,
   SlidersHorizontal,
-  Info,
+  MousePointerClick,
+  Layers,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -80,6 +81,7 @@ const defaultForm = (): CompareDecisionFormState => ({
 export default function ComparePage() {
   const { productIds, remove, clear } = useCompareStore()
   const [form, setForm] = useState<CompareDecisionFormState>(defaultForm)
+  const [fineTuneOpen, setFineTuneOpen] = useState(true)
   /** Subset of `productIds` to send to the compare API (2–5). */
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
@@ -166,6 +168,11 @@ export default function ComparePage() {
     compareMutation.reset()
   }, [selectedKey, productIdsKey])
 
+  useEffect(() => {
+    if (compareResult) setFineTuneOpen(false)
+    else setFineTuneOpen(true)
+  }, [compareResult])
+
   const openComparePrepModal = () => {
     if (!canCompare) return
     setPrepFirstGlance('unset')
@@ -226,10 +233,10 @@ export default function ComparePage() {
                   <GitCompare className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-800/80 mb-1">Style decision lab</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-800/80 mb-1">Compare</p>
                   <h1 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">Compare</h1>
                   <p className="text-sm text-neutral-600 mt-2 max-w-xl leading-relaxed">
-                    Pick 2–5 items and run comparison.
+                    Side-by-side picks — results first, details when you want them.
                   </p>
                 </div>
               </div>
@@ -326,50 +333,39 @@ export default function ComparePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-blue-100/70 bg-gradient-to-br from-sky-50/90 via-white to-sky-50/40 px-4 py-4 sm:px-5 sm:py-4 mb-6 shadow-sm">
-              <div className="flex gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-blue-800 shadow-sm ring-1 ring-sky-100">
-                  <Info className="w-4 h-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900">How to use this page</p>
-                  <ol className="mt-2 space-y-2 text-sm text-neutral-600 leading-relaxed list-none">
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-800 text-[11px] font-bold text-white">
-                        1
-                      </span>
-                      <span>
-                        <strong className="text-neutral-800">Include</strong> each piece you want in this run (2–5).
-                        Uncheck anything you only want to keep on the side.
-                      </span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-blue-950">
-                        2
-                      </span>
-                      <span>
-                        Optionally tune <strong className="text-neutral-800">goal, occasion,</strong> and sliders below.
-                      </span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-blue-950">
-                        3
-                      </span>
-                      <span>
-                        Press <strong className="text-neutral-800">Run comparison</strong> — a short form lists your picks
-                        and asks <strong className="text-neutral-800">which one caught your eye first</strong> before results
-                        load.
-                      </span>
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row flex-wrap gap-3 mb-6"
+            >
+              {[
+                { Icon: Layers, title: 'Pick 2–5', hint: 'Toggle include on each card' },
+                { Icon: SlidersHorizontal, title: 'Tune (optional)', hint: 'Goal, occasion, vibe sliders' },
+                { Icon: MousePointerClick, title: 'Run', hint: 'One tap glance → your verdict' },
+              ].map(({ Icon, title, hint }, i) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.06 + i * 0.05 }}
+                  whileHover={{ y: -2 }}
+                  className="flex flex-1 min-w-[200px] items-center gap-3 rounded-2xl border border-sky-100/90 bg-white px-4 py-3 shadow-sm hover:border-blue-200 hover:shadow-md transition-colors"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-sky-50 text-blue-900 ring-1 ring-sky-100/80">
+                    <Icon className="w-5 h-5" strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-neutral-900">{title}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{hint}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
 
-            <div className="flex gap-5 overflow-x-auto pb-4 -mx-1 px-1 snap-x snap-mandatory scrollbar-thin mb-6">
+            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 overflow-x-auto md:overflow-visible pb-2 md:pb-0 snap-x snap-mandatory md:snap-none scrollbar-thin -mx-1 px-1 md:mx-0 md:px-0">
               {loadingProducts
                 ? [...Array(productIds.length)].map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-[200px] space-y-2 snap-start">
+                    <div key={i} className="flex-shrink-0 w-[min(46vw,200px)] md:w-auto md:min-w-0 md:flex-shrink space-y-2 snap-start">
                       <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
                       <div className="h-3 w-2/3 rounded-md skeleton-shimmer" />
                     </div>
@@ -384,7 +380,7 @@ export default function ComparePage() {
                         initial={{ opacity: 0, scale: 0.96, y: 16 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                        className={`relative flex-shrink-0 w-[200px] snap-start rounded-2xl p-2 transition-shadow duration-300 ${
+                        className={`relative flex-shrink-0 w-[min(46vw,200px)] md:w-auto md:flex-1 min-w-0 snap-start rounded-2xl p-2 transition-shadow duration-300 ${
                           isSelectedForRun
                             ? 'bg-white ring-2 ring-blue-600/90 shadow-lg shadow-blue-600/10'
                             : 'bg-neutral-50/80 ring-1 ring-neutral-200/80 hover:ring-neutral-300'
@@ -439,17 +435,80 @@ export default function ComparePage() {
                   })}
             </div>
 
-            <div className="relative rounded-3xl mb-8 p-[1px] bg-gradient-to-br from-blue-100 via-blue-100/80 to-blue-100/60 shadow-xl shadow-blue-600/10">
+            {compareMutation.isError && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 border border-blue-100/60 text-blue-900 mb-6"
+              >
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p className="text-sm">{(compareMutation.error as Error)?.message ?? 'Comparison failed'}</p>
+              </motion.div>
+            )}
+
+            <AnimatePresence mode="wait">
+              {compareResult && loadingProducts && !compareTrayProducts?.length ? (
+                <motion.div
+                  key="compare-loading"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-3 p-5 rounded-2xl bg-sky-50/80 border border-blue-100/60 text-blue-950 text-sm mb-6"
+                >
+                  <div className="h-9 w-9 rounded-xl border-2 border-sky-200 border-t-blue-800 animate-spin shrink-0" aria-hidden />
+                  <p>Loading product cards…</p>
+                </motion.div>
+              ) : null}
+              {compareResult && (!loadingProducts || (compareTrayProducts?.length ?? 0) > 0) ? (
+                <motion.div
+                  key="compare-results"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="mb-8"
+                >
+                  <CompareDecisionResults
+                    result={compareResult}
+                    products={
+                      compareTrayProducts?.filter((p) => {
+                        const id = normalizeCompareProductId(p.id)
+                        return id != null && selectedForCompare.includes(id)
+                      }) ?? []
+                    }
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {compareResult && !fineTuneOpen ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6 flex justify-center sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => setFineTuneOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-sky-200 bg-white text-sm font-semibold text-blue-900 shadow-sm hover:bg-sky-50 hover:border-blue-200 transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Adjust goals & run again
+                </button>
+              </motion.div>
+            ) : null}
+
+            {fineTuneOpen ? (
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-3xl mb-8 p-[1px] bg-gradient-to-br from-blue-100 via-blue-100/80 to-blue-100/60 shadow-xl shadow-blue-600/10"
+            >
               <div className="rounded-[1.4rem] bg-white p-5 sm:p-7">
               <div className="flex items-center gap-3 mb-2">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-blue-900">
                   <SlidersHorizontal className="w-5 h-5" />
                 </span>
                 <div>
-                  <h2 className="font-display font-bold text-lg text-neutral-900">Tune the decision</h2>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Optional — goal, occasion, alter ego, and three vibe axes shape the API read.
-                  </p>
+                  <h2 className="font-display font-bold text-lg text-neutral-900">Fine-tune your comparison</h2>
+                  <p className="text-xs text-neutral-500 mt-0.5">Optional — shapes value, risk, and style fit.</p>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -574,42 +633,8 @@ export default function ComparePage() {
                 </div>
               </div>
               </div>
-            </div>
-
-            {compareMutation.isError && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 border border-blue-100/60 text-blue-900 mb-8"
-              >
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p className="text-sm">{(compareMutation.error as Error)?.message ?? 'Comparison failed'}</p>
-              </motion.div>
-            )}
-
-            <AnimatePresence>
-              {compareResult && loadingProducts && !compareTrayProducts?.length ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-5 rounded-2xl bg-sky-50/80 border border-blue-100/60 text-blue-950 text-sm mb-6"
-                >
-                  <div className="h-9 w-9 rounded-xl border-2 border-sky-200 border-t-blue-800 animate-spin shrink-0" aria-hidden />
-                  <p>Loading product names and images for your comparison…</p>
-                </motion.div>
-              ) : null}
-              {compareResult && (!loadingProducts || (compareTrayProducts?.length ?? 0) > 0) && (
-                <CompareDecisionResults
-                  result={compareResult}
-                  products={
-                    compareTrayProducts?.filter((p) => {
-                      const id = normalizeCompareProductId(p.id)
-                      return id != null && selectedForCompare.includes(id)
-                    }) ?? []
-                  }
-                />
-              )}
-            </AnimatePresence>
+            </motion.div>
+            ) : null}
           </>
         )}
       </div>
@@ -643,7 +668,7 @@ export default function ComparePage() {
                     Confirm your lineup
                   </h2>
                   <p className="text-xs text-neutral-600 mt-1.5 leading-relaxed">
-                    You&apos;re about to compare these pieces. Which one gave you the strongest first glance?
+                    Tap the piece that grabbed you first — or skip. Then we show your comparison.
                   </p>
                 </div>
                 <button
@@ -665,7 +690,7 @@ export default function ComparePage() {
                     {loadingProducts ? (
                       <div className="text-sm text-neutral-500 py-6 text-center">Loading products…</div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-row gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin -mx-1 px-1">
                         {selectedForCompare.map((id) => {
                           const p = compareTrayProducts?.find((x) => normalizeCompareProductId(x.id) === id)
                           const label = p?.title ?? `Product #${id}`
@@ -674,7 +699,7 @@ export default function ComparePage() {
                           return (
                             <label
                               key={id}
-                              className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all ${
+                              className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all shrink-0 w-[min(72vw,200px)] snap-start ${
                                 prepFirstGlance === id
                                   ? 'border-orange-500 shadow-md ring-2 ring-blue-100/70'
                                   : 'border-neutral-200/80 hover:border-blue-100'

@@ -424,6 +424,20 @@ function SearchContent() {
     { label: 'Colorful accessories', icon: Palette, gradient: 'from-sky-500 to-cyan-400' },
   ]
 
+  const POPULAR_SEARCH_TAGS = [
+    'Floral maxi dress',
+    'White sneakers',
+    'Leather jacket',
+    'Silk blouse',
+    'Denim jeans',
+    'Boho chic',
+    'Minimalist bags',
+  ] as const
+
+  /** Show starter shortcuts under the bar + mode tabs (text with no query, or shop before an upload). */
+  const showPopularSearchShortcuts =
+    (mode === 'text' && !q.trim()) || (mode === 'shop' && !imageFile)
+
   const { data: trendingProducts } = useQuery({
     queryKey: ['search-trending'],
     queryFn: async () => {
@@ -437,8 +451,112 @@ function SearchContent() {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     retry: false,
-    enabled: !q && mode === 'text',
+    enabled: showPopularSearchShortcuts,
   })
+
+  const discoverBelowFold =
+    showPopularSearchShortcuts ? (
+      <div className="max-w-5xl mx-auto space-y-12 pt-2">
+        {trendingProducts && trendingProducts.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.45 }}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <Zap className="w-4 h-4 text-amber-500" />
+              <h3 className="font-display text-base font-bold text-neutral-800">Trending now</h3>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {(trendingProducts as Array<{
+                id: number
+                title: string
+                brand?: string | null
+                price_cents: number
+                image_cdn?: string | null
+                image_url?: string | null
+              }>).map((p, i) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12 + i * 0.05 }}
+                >
+                  <Link
+                    href={`/products/${p.id}`}
+                    prefetch={false}
+                    className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-blue-600/10 hover:-translate-y-1 transition-all duration-300"
+                  >
+                    <div className="relative aspect-[3/4] bg-neutral-100">
+                      <NextImage
+                        src={p.image_cdn || p.image_url || ''}
+                        alt={p.title}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 640px) 33vw, 120px"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
+                    <div className="p-2.5">
+                      {p.brand ? (
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-800 truncate">{p.brand}</p>
+                      ) : null}
+                      <p className="text-xs font-medium text-neutral-700 truncate mt-0.5">{p.title}</p>
+                      <p className="text-xs font-bold text-neutral-900 mt-1">
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="p-6 rounded-2xl bg-gradient-to-r from-sky-50 via-sky-50 to-sky-50 border border-sky-100/60"
+        >
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-800 mb-4 text-center">How it works</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {[
+              {
+                step: '01',
+                title: 'Text or outfit',
+                desc: 'Search by keywords or open Shop the look for an outfit photo.',
+                Icon: Search,
+              },
+              {
+                step: '02',
+                title: 'Refine',
+                desc: 'Try synonyms, brands, or a clearer full-body photo.',
+                Icon: Sparkles,
+              },
+              {
+                step: '03',
+                title: 'Browse results',
+                desc: 'Open products and add favorites to compare.',
+                Icon: Zap,
+              },
+            ].map((s) => (
+              <div key={s.step} className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-sky-100/60">
+                  <s.Icon className="w-4 h-4 text-blue-800" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-orange-500 mb-0.5">{s.step}</p>
+                  <p className="text-sm font-semibold text-neutral-800">{s.title}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ) : null
 
   return (
     <>
@@ -500,6 +618,58 @@ function SearchContent() {
                 </motion.a>
               ))}
             </div>
+
+            {showPopularSearchShortcuts ? (
+              <div className="mt-8 pt-6 border-t border-neutral-200/60">
+                <p className="text-center text-sm text-neutral-500 mb-5">
+                  Type a description or try one of these popular searches.
+                </p>
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ visible: { transition: { staggerChildren: 0.06 } }, hidden: {} }}
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
+                >
+                  {suggestedSearches.map((s) => (
+                    <motion.a
+                      key={s.label}
+                      href={`/search?q=${encodeURIComponent(s.label)}`}
+                      variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      className="group relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-neutral-200/80 bg-white overflow-hidden hover:shadow-xl hover:shadow-blue-600/10 transition-shadow duration-300"
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-300`} />
+                      <div
+                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg`}
+                      >
+                        <s.icon className="w-5 h-5" />
+                      </div>
+                      <span className="text-sm font-semibold text-neutral-700 group-hover:text-neutral-900 transition-colors text-center">
+                        {s.label}
+                      </span>
+                      <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                    </motion.a>
+                  ))}
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex flex-wrap justify-center gap-2 text-xs"
+                >
+                  {POPULAR_SEARCH_TAGS.map((term) => (
+                    <a
+                      key={term}
+                      href={`/search?q=${encodeURIComponent(term)}`}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-neutral-200/80 text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 transition-all duration-200 shadow-sm"
+                    >
+                      <TrendingUp className="w-3 h-3 shrink-0" />
+                      {term}
+                    </a>
+                  ))}
+                </motion.div>
+              </div>
+            ) : null}
           </motion.div>
         </div>
       </div>
@@ -811,7 +981,9 @@ function SearchContent() {
               transition={{ delay: 0.15, duration: 0.5 }}
               className="py-12"
             >
-              {mode === 'shop' && !imageFile ? null : mode === 'shop' &&
+              {mode === 'shop' && !imageFile ? (
+                discoverBelowFold
+              ) : mode === 'shop' &&
                 imageFile &&
                 !shopImageSearch.isPending &&
                 !shopImageSearch.data &&
@@ -844,163 +1016,7 @@ function SearchContent() {
                   <p className="text-neutral-500">Try different keywords or browse by category.</p>
                 </div>
               ) : mode === 'text' && !q ? (
-                /* ── Rich empty state ── */
-                <div className="max-w-5xl mx-auto">
-                  {/* Hero prompt */}
-                  <div className="text-center mb-10">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="relative w-20 h-20 mx-auto mb-6"
-                    >
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-20 blur-xl animate-pulse" />
-                      <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
-                        <Search className="w-9 h-9 text-blue-800" />
-                      </div>
-                    </motion.div>
-                    <motion.h2
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="font-display text-xl sm:text-2xl font-bold text-neutral-900 mb-2"
-                    >
-                      What are you looking for?
-                    </motion.h2>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.18 }}
-                      className="text-neutral-500 max-w-md mx-auto"
-                    >
-                      Type a description or try one of these popular searches.
-                    </motion.p>
-                  </div>
-
-                  {/* Quick search categories */}
-                  <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={{ visible: { transition: { staggerChildren: 0.06 } }, hidden: {} }}
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10"
-                  >
-                    {suggestedSearches.map((s) => (
-                      <motion.a
-                        key={s.label}
-                        href={`/search?q=${encodeURIComponent(s.label)}`}
-                        variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
-                        whileHover={{ y: -4, scale: 1.02 }}
-                        className="group relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-neutral-200/80 bg-white overflow-hidden hover:shadow-xl hover:shadow-blue-600/10 transition-shadow duration-300"
-                      >
-                        <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-300`} />
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg`}>
-                          <s.icon className="w-5.5 h-5.5" />
-                        </div>
-                        <span className="text-sm font-semibold text-neutral-700 group-hover:text-neutral-900 transition-colors">{s.label}</span>
-                        <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                      </motion.a>
-                    ))}
-                  </motion.div>
-
-                  {/* Trending products */}
-                  {trendingProducts && trendingProducts.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.35, duration: 0.5 }}
-                    >
-                      <div className="flex items-center gap-2 mb-5">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        <h3 className="font-display text-base font-bold text-neutral-800">Trending now</h3>
-                      </div>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                        {(trendingProducts as Array<{
-                          id: number; title: string; brand?: string | null
-                          price_cents: number; image_cdn?: string | null; image_url?: string | null
-                        }>).map((p, i) => (
-                          <motion.div
-                            key={p.id}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 + i * 0.06 }}
-                          >
-                            <Link
-                              href={`/products/${p.id}`}
-                              prefetch={false}
-                              className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-blue-600/10 hover:-translate-y-1 transition-all duration-300"
-                            >
-                              <div className="relative aspect-[3/4] bg-neutral-100">
-                                <NextImage
-                                  src={p.image_cdn || p.image_url || ''}
-                                  alt={p.title}
-                                  fill
-                                  unoptimized
-                                  sizes="(max-width: 640px) 33vw, 120px"
-                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                              </div>
-                              <div className="p-2.5">
-                                {p.brand && <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-800 truncate">{p.brand}</p>}
-                                <p className="text-xs font-medium text-neutral-700 truncate mt-0.5">{p.title}</p>
-                                <p className="text-xs font-bold text-neutral-900 mt-1">
-                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
-                                </p>
-                              </div>
-                            </Link>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Trending tags */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                    className="flex flex-wrap justify-center gap-2 text-xs mt-10"
-                  >
-                    {['Floral maxi dress', 'White sneakers', 'Leather jacket', 'Silk blouse', 'Denim jeans', 'Boho chic', 'Minimalist bags'].map((term) => (
-                      <a
-                        key={term}
-                        href={`/search?q=${encodeURIComponent(term)}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-neutral-200/80 text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 transition-all duration-200 shadow-sm"
-                      >
-                        <TrendingUp className="w-3 h-3" />
-                        {term}
-                      </a>
-                    ))}
-                  </motion.div>
-
-                  {/* How it works strip */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 }}
-                    className="mt-14 p-6 rounded-2xl bg-gradient-to-r from-sky-50 via-sky-50 to-sky-50 border border-sky-100/60"
-                  >
-                    <p className="text-xs font-bold uppercase tracking-wider text-blue-800 mb-4 text-center">How it works</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                      {[
-                        { step: '01', title: 'Text or outfit', desc: 'Search by keywords or open Shop the look for an outfit photo.', Icon: Search },
-                        { step: '02', title: 'Refine', desc: 'Try synonyms, brands, or a clearer full-body photo.', Icon: Sparkles },
-                        { step: '03', title: 'Browse results', desc: 'Open products and add favorites to compare.', Icon: Zap },
-                      ].map((s) => (
-                        <div key={s.step} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-sky-100/60">
-                            <s.Icon className="w-4 h-4 text-blue-800" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-orange-500 mb-0.5">{s.step}</p>
-                            <p className="text-sm font-semibold text-neutral-800">{s.title}</p>
-                            <p className="text-xs text-neutral-500 mt-0.5">{s.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                </div>
+                discoverBelowFold
               ) : null}
             </motion.div>
           )}

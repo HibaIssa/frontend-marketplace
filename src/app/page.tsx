@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, useScroll, useTransform } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowUpRight, Heart, ShoppingBag, Search, Shirt, Layers, Sparkles,
-  Brain, Eye, Wand2, GitCompare,
+  ArrowUpRight, Heart, ShoppingBag, Sparkles,
+  Brain, Eye, Wand2,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
@@ -46,6 +46,8 @@ type FacetsResponse = {
   genders?: FacetBucket[]
   patterns?: FacetBucket[]
   fits?: FacetBucket[]
+  /** From GET /products/facets — OpenSearch hit count for the catalog (preferred over summing buckets). */
+  catalogDocumentCount?: number
 }
 
 /** Backend caps facet aggregations at these sizes — used to display a "+" suffix when truncated. */
@@ -74,7 +76,11 @@ function useCatalogStats() {
       // truncates — that makes the category sum the most reliable total.
       const totalFromCategories = sumBuckets(facets?.categories)
       const totalFromBrands = sumBuckets(facets?.brands)
-      const totalProducts = Math.max(totalFromCategories, totalFromBrands)
+      const totalFromIndex =
+        typeof facets?.catalogDocumentCount === 'number' && facets.catalogDocumentCount > 0
+          ? facets.catalogDocumentCount
+          : 0
+      const totalProducts = Math.max(totalFromIndex, totalFromCategories, totalFromBrands)
 
       const brandsLen = Array.isArray(facets?.brands) ? facets!.brands!.length : 0
       const categoriesLen = Array.isArray(facets?.categories) ? facets!.categories!.length : 0
@@ -132,105 +138,75 @@ function CountUp({ to, suffix = '', durationMs = 1400 }: { to: number; suffix?: 
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Hero — pastel split cards (sky / blush) + tool chips
+   Hero — single editorial image (family / linen campaign)
    ────────────────────────────────────────────────────────────────────────── */
 
 function Hero() {
   const easeOut = [0.22, 1, 0.36, 1] as const
+  const containerRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end start'],
+  })
+  const shrink = useTransform(scrollYProgress, [0, 1], [1, 0.9])
+  const textFade = useTransform(scrollYProgress, [0, 0.45], [1, 0.75])
 
   return (
-    <section className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-5">
-      <div className="tz-sheet relative isolate p-5 sm:p-8 lg:p-10">
-        <motion.div aria-hidden className="pointer-events-none absolute -top-16 -left-16 h-44 w-44 rounded-full bg-[#cfc8c2]/40 blur-3xl" animate={{ x: [0, 18, 0], y: [0, -10, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.div aria-hidden className="pointer-events-none absolute -bottom-20 -right-10 h-52 w-52 rounded-full bg-[#ddd8d3]/45 blur-3xl" animate={{ x: [0, -16, 0], y: [0, 12, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} />
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 lg:mb-8">
+    <section ref={containerRef} className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-6 lg:pb-12">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: easeOut }}
+        style={{ scale: shrink }}
+        className="relative w-full origin-top min-h-[min(92vh,920px)] lg:min-h-[min(94vh,1040px)] rounded-[32px] overflow-hidden ring-1 ring-black/[0.08] shadow-[0_36px_100px_-52px_rgba(10,10,10,0.55)] isolate bg-[#d4c4a8] will-change-transform"
+      >
+        <Image
+          src="/brand/tz-hero-family-linen.png"
+          alt="TrendZone — refined neutrals and linen for the whole family"
+          fill
+          priority
+          className="object-cover object-[center_18%] sm:object-[center_20%] scale-[1.06]"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/15 to-black/10 pointer-events-none" aria-hidden />
+
+        <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10 lg:p-14">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: easeOut }}
+            transition={{ duration: 0.6, ease: easeOut, delay: 0.12 }}
+            style={{ opacity: textFade }}
+            className="max-w-3xl"
           >
-            <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#0a0a0a]">TrendZone</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#0a0a0a] leading-tight">
-              MARCELLE
-            </h1>
-            <p className="mt-2 max-w-lg text-sm text-[#0a0a0a]/65 leading-relaxed">
-              Editorial fashion discovery with modern tailoring, timeless cuts, and AI-powered styling tools.
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-white/85 mb-3">
+              Family linen · SS campaign
             </p>
-          </motion.div>
-          <Link
-            href="/products"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0a0a0a] shrink-0 hover:opacity-80 transition-opacity"
-          >
-            View all <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-4 lg:gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: easeOut, delay: 0.05 }}
-          >
-            <Link
-              href="/products?category=new-arrivals"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#cfc9c4] via-[#c3bbb4] to-[#b8aea5] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
-            >
-              <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
-                Lookbook
-              </span>
-              <Image
-                src="/brand/tz-hero-for-him.png"
-                alt="Lookbook fashion editorial"
-                fill
-                priority
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.08] group-hover:rotate-1"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </Link>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: easeOut, delay: 0.12 }}
-          >
-            <Link
-              href="/products"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#d8d2cd] via-[#c9c1ba] to-[#b8aea5] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
-            >
-              <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
-                Season edit
-              </span>
-              <Image
-                src="/brand/tz-hero-for-her.png"
-                alt="Season edit fashion editorial"
-                fill
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.08] group-hover:rotate-1"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </Link>
+            <h1 className="font-display text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.35)]">
+              Soft neutrals for{' '}
+              <span className="italic font-semibold text-white/95">everyday together.</span>
+            </h1>
+            <p className="mt-5 text-base sm:text-lg text-white/88 leading-relaxed max-w-xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.25)]">
+              Breathable linen layers in calm tones — easy silhouettes you can live in, mix, and pass down.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-black/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Shop the collection
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/search?mode=shop"
+                className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/10 backdrop-blur-md px-6 py-3 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+              >
+                <Sparkles className="h-4 w-4" />
+                Shop the look
+              </Link>
+            </div>
           </motion.div>
         </div>
-
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {[
-            { href: '/search?mode=shop', label: 'Shop the look', icon: Sparkles },
-            { href: '/search', label: 'Text search', icon: Search },
-            { href: '/wardrobe', label: 'Wardrobe', icon: Shirt },
-            { href: '/try-on', label: 'Try-on', icon: Layers },
-            { href: '/compare', label: 'Compare', icon: GitCompare },
-            { href: '/sales', label: 'Sale', icon: Heart },
-          ].map((chip) => (
-            <Link
-              key={chip.label}
-              href={chip.href}
-              className="flex items-center justify-center gap-2 rounded-full bg-white/80 hover:bg-white border border-white/70 shadow-sm backdrop-blur px-3 py-2.5 text-[11px] sm:text-xs font-bold text-[#0a0a0a] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <chip.icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{chip.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
+      </motion.div>
     </section>
   )
 }
@@ -347,49 +323,6 @@ function ProductsRow({ title, eyebrow, products, href = '/products', count = 4 }
             : list.map((p, i) => <ProductCardEditorial key={p.id} product={p} index={i} />)}
         </div>
       </div>
-    </section>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Editorial banner — “We don't follow trends — we create them”
-   ────────────────────────────────────────────────────────────────────────── */
-
-function EditorialBanner() {
-  return (
-    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-100px' }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="tz-sheet relative grid lg:grid-cols-12 items-center overflow-hidden min-h-[320px] lg:min-h-[380px]"
-      >
-        <div className="lg:col-span-6 relative h-[260px] lg:h-full">
-          <Image
-            src="/brand/tz-hero-portrait.png"
-            alt="Editorial"
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white" />
-        </div>
-        <div className="lg:col-span-6 px-6 sm:px-10 py-8 lg:py-12">
-          <h2 className="tz-headline tz-headline-xl leading-[0.95]">
-            We Don&apos;t <em>Follow</em> Trends
-            <br />
-            <span className="opacity-90">— We <em>Create</em> Them.</span>
-          </h2>
-          <p className="mt-5 max-w-md text-[#0a0a0a]/65 text-sm leading-relaxed">
-            Our journey in fashion is built on innovation, quality, and a passion for contemporary design.
-            Step into a marketplace where every find is intentional.
-          </p>
-          <div className="mt-6">
-            <Link href="/products" className="btn-primary">Shop now</Link>
-          </div>
-        </div>
-      </motion.div>
     </section>
   )
 }
@@ -562,7 +495,7 @@ function AboutUs() {
 
 function FeatureLinks() {
   const items = [
-    { href: '/search?mode=shop', title: 'Shop the look', desc: 'Photo → pieces', img: '/brand/tz-feature-shop.png', bg: '#e8dffd' },
+    { href: '/search?mode=shop', title: 'Shop the look', desc: 'Photo → pieces', img: '/brand/tz-feature-shop.png', bg: '#ebe4dc' },
     { href: '/search', title: 'Text search', desc: 'Describe the vibe', img: '/brand/tz-feature-search.png', bg: '#cff4f9' },
     { href: '/wardrobe', title: 'My wardrobe', desc: 'Save & remix', img: '/brand/tz-feature-wardrobe.png', bg: '#ede5d8' },
     { href: '/try-on', title: 'Virtual try-on', desc: 'Preview on you', img: '/brand/tz-feature-tryon.png', bg: '#ffd6e8' },
@@ -701,8 +634,6 @@ export default function HomePage() {
         href="/products"
         count={4}
       />
-
-      <EditorialBanner />
 
       <ProductsRow
         eyebrow="Most loved"
