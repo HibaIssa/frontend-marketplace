@@ -141,6 +141,8 @@ function Hero() {
   return (
     <section className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-5">
       <div className="tz-sheet relative isolate p-5 sm:p-8 lg:p-10">
+        <motion.div aria-hidden className="pointer-events-none absolute -top-16 -left-16 h-44 w-44 rounded-full bg-[#99624E]/30 blur-3xl" animate={{ x: [0, 18, 0], y: [0, -10, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.div aria-hidden className="pointer-events-none absolute -bottom-20 -right-10 h-52 w-52 rounded-full bg-[#b99e90]/30 blur-3xl" animate={{ x: [0, -16, 0], y: [0, 12, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} />
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 lg:mb-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -149,10 +151,10 @@ function Hero() {
           >
             <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#0a0a0a]">TrendZone</p>
             <h1 className="mt-1 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#0a0a0a] leading-tight">
-              New in — shop your way
+              Discover your next signature look
             </h1>
             <p className="mt-2 max-w-lg text-sm text-[#0a0a0a]/65 leading-relaxed">
-              Bright looks for everyone. Tap a lane, or jump into our AI tools below.
+              Explore curated drops, bold color stories, and AI-powered styling tools built to help you shop faster and smarter.
             </p>
           </motion.div>
           <Link
@@ -170,18 +172,18 @@ function Hero() {
             transition={{ duration: 0.65, ease: easeOut, delay: 0.05 }}
           >
             <Link
-              href="/products?gender=men"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-[#b8deff] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+              href="/products?category=new-arrivals"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#5a1814] via-[#7d4b3a] to-[#aa8a76] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
             >
               <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
-                For him
+                New arrivals
               </span>
               <Image
                 src="/brand/tz-hero-for-him.png"
-                alt="Men's fashion — editorial"
+                alt="New arrivals fashion editorial"
                 fill
                 priority
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
+                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.08] group-hover:rotate-1"
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
             </Link>
@@ -192,17 +194,17 @@ function Hero() {
             transition={{ duration: 0.65, ease: easeOut, delay: 0.12 }}
           >
             <Link
-              href="/products?gender=women"
-              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-[#ffd6e8] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
+              href="/products"
+              className="group relative block w-full min-h-[300px] sm:min-h-[360px] lg:min-h-[420px] rounded-[26px] overflow-hidden bg-gradient-to-br from-[#43110e] via-[#5a1814] to-[#99624E] ring-1 ring-black/[0.06] shadow-[0_20px_50px_-28px_rgba(10,10,10,0.35)]"
             >
               <span className="absolute top-4 left-4 z-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0a0a0a] shadow-sm">
-                For her
+                Shop all
               </span>
               <Image
                 src="/brand/tz-hero-for-her.png"
-                alt="Women's fashion — editorial"
+                alt="Shop all fashion editorial"
                 fill
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
+                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.08] group-hover:rotate-1"
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
             </Link>
@@ -221,7 +223,7 @@ function Hero() {
             <Link
               key={chip.label}
               href={chip.href}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#e5eeff] hover:bg-[#c7d7fe] border-2 border-[#0a0a0a]/10 px-3 py-2.5 text-[11px] sm:text-xs font-bold text-[#0a0a0a] transition-colors"
+              className="flex items-center justify-center gap-2 rounded-full bg-white/80 hover:bg-white border border-white/70 shadow-sm backdrop-blur px-3 py-2.5 text-[11px] sm:text-xs font-bold text-[#0a0a0a] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
             >
               <chip.icon className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{chip.label}</span>
