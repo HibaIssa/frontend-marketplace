@@ -115,13 +115,13 @@ function TryOnBackgroundBanner() {
 
   if (jobPollError) {
     return (
-      <div className="fixed bottom-4 right-4 z-[60] max-w-sm rounded-2xl border border-blue-100 bg-white p-4 shadow-xl shadow-blue-600/10">
-        <p className="text-sm font-medium text-blue-950">Try-on status unavailable</p>
+      <div className="fixed bottom-4 right-4 z-[60] max-w-sm rounded-2xl border border-[#d8c6bb] bg-white p-4 shadow-xl shadow-[#2a2623]/10">
+        <p className="text-sm font-medium text-[#2a2623]">Try-on status unavailable</p>
         <p className="mt-1 text-xs text-neutral-600">Open Try On to retry or dismiss.</p>
         <div className="mt-3 flex gap-2">
           <Link
             href="/try-on"
-            className="rounded-full bg-blue-800 px-3 py-1.5 text-xs font-semibold text-white"
+            className="rounded-full bg-[#2a2623] px-3 py-1.5 text-xs font-semibold text-white"
           >
             Open
           </Link>
@@ -144,7 +144,7 @@ function TryOnBackgroundBanner() {
         <p className="text-sm font-medium text-emerald-800">Try-on ready</p>
         <Link
           href="/try-on"
-          className="mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 px-4 py-2 text-xs font-semibold text-white"
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] px-4 py-2 text-xs font-semibold text-white"
         >
           View result
         </Link>
@@ -163,7 +163,7 @@ function TryOnBackgroundBanner() {
     return (
       <div className="fixed bottom-4 right-4 z-[60] max-w-sm rounded-2xl border border-amber-200 bg-white p-4 shadow-xl">
         <p className="text-sm font-medium text-neutral-800">Try-on finished with an error</p>
-        <Link href="/try-on" className="mt-2 text-xs font-semibold text-blue-800">
+        <Link href="/try-on" className="mt-2 text-xs font-semibold text-[#2a2623]">
           See details →
         </Link>
       </div>
@@ -177,10 +177,10 @@ function TryOnBackgroundBanner() {
   return (
     <Link
       href="/try-on"
-      className="fixed bottom-4 right-4 z-[60] flex max-w-[min(100vw-2rem,20rem)] items-center gap-3 rounded-2xl border border-blue-100 bg-white/95 px-4 py-3 shadow-xl shadow-blue-600/15 backdrop-blur-sm transition hover:border-sky-200"
+      className="fixed bottom-4 right-4 z-[60] flex max-w-[min(100vw-2rem,20rem)] items-center gap-3 rounded-2xl border border-[#d8c6bb] bg-white/95 px-4 py-3 shadow-xl shadow-[#2a2623]/15 backdrop-blur-sm transition hover:border-[#c9ae9f]"
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100">
-        <Loader2 className="h-5 w-5 animate-spin text-blue-800" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f4ece6]">
+        <Loader2 className="h-5 w-5 animate-spin text-[#2a2623]" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-neutral-900">Try-on in progress</p>

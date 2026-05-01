@@ -86,7 +86,7 @@ function BulletList({
 }) {
   if (!items.length) return null
   const iconCls =
-    tone === 'violet' ? 'text-blue-600' : tone === 'amber' ? 'text-amber-500' : 'text-neutral-400'
+    tone === 'violet' ? 'text-[#7d4b3a]' : tone === 'amber' ? 'text-[#99624E]' : 'text-neutral-400'
   const lines = formatLine ? items.map(formatLine) : items
   return (
     <ul className="space-y-2">
@@ -138,7 +138,7 @@ function SectionHeader({
   return (
     <div className="mb-5">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600/12 to-blue-600/12 text-blue-800 ring-1 ring-inset ring-blue-100/50 shadow-sm">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2a2623]/12 to-[#99624E]/12 text-[#2a2623] ring-1 ring-inset ring-[#d8c6bb]/70 shadow-sm">
           <Icon className="h-[22px] w-[22px]" strokeWidth={2} />
         </span>
         <div className="min-w-0 pt-0.5">
@@ -172,7 +172,7 @@ function MetricBar({
       </div>
       <div className="h-2 rounded-full bg-neutral-100 overflow-hidden ring-1 ring-inset ring-neutral-200/40">
         <motion.div
-          className={`h-full rounded-full ${fill}`}
+          className="h-full rounded-full bg-gradient-to-r from-[#2a2623] via-[#7d4b3a] to-[#c9ae9f]"
           initial={{ width: 0 }}
           animate={{ width: `${v}%` }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
@@ -267,11 +267,11 @@ function TensionAxisRow({
   products: Product[] | undefined
 }) {
   const colors = [
-    'bg-blue-600 shadow-blue-600/40',
-    'bg-blue-600 shadow-blue-600/40',
-    'bg-blue-600 shadow-blue-600/40',
+    'bg-[#2a2623] shadow-[#2a2623]/40',
+    'bg-[#7d4b3a] shadow-[#7d4b3a]/40',
+    'bg-[#99624E] shadow-[#99624E]/40',
     'bg-amber-500 shadow-amber-500/40',
-    'bg-sky-500 shadow-sky-500/40',
+    'bg-[#c9ae9f] shadow-[#c9ae9f]/40',
   ]
 
   /** One marker per compared product, in tray order (A, B, …), even if the API omitted an id. */
@@ -299,14 +299,14 @@ function TensionAxisRow({
 
   return (
     <div className="rounded-2xl border border-neutral-200/70 bg-gradient-to-b from-white to-neutral-50/80 p-5 shadow-md shadow-neutral-200/40 ring-1 ring-inset ring-white/60">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-800/90 mb-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#2a2623]/90 mb-4">
         {axis.axis.replace(/_/g, ' ')}
       </p>
       <div className="flex justify-between text-xs font-medium text-neutral-600 mb-3 gap-4">
-        <span className="text-left leading-snug text-blue-950/90">{axis.leftLabel}</span>
-        <span className="text-right leading-snug text-blue-950/90">{axis.rightLabel}</span>
+        <span className="text-left leading-snug text-[#2a2623]/90">{axis.leftLabel}</span>
+        <span className="text-right leading-snug text-[#2a2623]/90">{axis.rightLabel}</span>
       </div>
-      <div className="relative h-11 rounded-full bg-gradient-to-r from-sky-100 via-neutral-100 to-sky-100 border border-neutral-200/60 overflow-visible shadow-inner">
+      <div className="relative h-11 rounded-full bg-gradient-to-r from-[#f7f0eb] via-neutral-100 to-[#f3ece6] border border-neutral-200/60 overflow-visible shadow-inner">
         <div className="absolute inset-y-2 left-3 right-3 rounded-full bg-white/60" aria-hidden />
         {merged.map((p, i) => {
           const pidN = normalizeCompareProductId(p.productId)
@@ -778,7 +778,34 @@ export function CompareDecisionResults({
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6"
     >
-      <CompareResultsLeadingSections ids={ids} products={products} result={result} fmt={fmt} />
+      {/* Context + summary strip */}
+      <div className="relative overflow-hidden rounded-3xl border border-neutral-200/50 bg-gradient-to-br from-white via-[#f7f0eb]/40 to-[#f3ece6]/40 p-6 sm:p-7 shadow-lg shadow-[#2a2623]/5 ring-1 ring-inset ring-white/80">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#d8c6bb]/25 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-[#eadfd7]/25 blur-3xl" aria-hidden />
+        <div className="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-neutral-900 text-white text-xs font-bold uppercase tracking-wide shadow-md">
+              <GitCompare className="w-4 h-4 opacity-90" />
+              {MODE_COPY[result.comparisonMode]}
+            </span>
+            {result.requestedGoal && (
+              <span className="inline-flex items-center rounded-xl border border-[#d8c6bb] bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm">
+                Goal ·{' '}
+                <span className="ml-1 font-semibold text-[#2a2623]">{result.requestedGoal.replace(/_/g, ' ')}</span>
+              </span>
+            )}
+            {result.requestedOccasion && (
+              <span className="inline-flex items-center rounded-xl border border-[#d8c6bb] bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm">
+                Occasion ·{' '}
+                <span className="ml-1 font-semibold text-[#2a2623]">{result.requestedOccasion}</span>
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-neutral-600 leading-relaxed max-w-2xl lg:text-right lg:max-w-md">
+            {fmt(result.comparisonContext.modeReason)}
+          </p>
+        </div>
+      </div>
 
       {/* Data quality */}
       {result.comparisonContext.dataQuality && (
@@ -800,20 +827,31 @@ export function CompareDecisionResults({
         </div>
       )}
 
-      {/* Winners by context */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.12 }}
-        className="rounded-2xl border border-sky-100/90 bg-white p-4 sm:p-5 shadow-md shadow-blue-600/5 ring-1 ring-sky-50"
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-blue-900">
-            <GitCompare className="w-4 h-4" />
-          </span>
-          <div>
-            <h3 className="font-display font-bold text-base text-neutral-900 leading-tight">Who wins where</h3>
-            <p className="text-xs text-neutral-500">Swipe sideways · tap a card to open the product</p>
+      {/* Decision confidence */}
+      <div className="relative overflow-hidden rounded-3xl border border-neutral-200/50 bg-white shadow-xl shadow-[#2a2623]/10 ring-1 ring-inset ring-[#eadfd7]/60">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#2a2623] via-[#7d4b3a] to-[#c9ae9f]" />
+        <div className="p-6 sm:p-8 lg:p-10">
+          <div className="flex flex-col md:flex-row md:items-center gap-8 md:gap-10">
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#f4ece6] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4">
+                <BarChart3 className="w-3.5 h-3.5" />
+                Decision read
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">
+                {CONFIDENCE_COPY[result.decisionConfidence.level]}
+              </h2>
+              <p className="text-neutral-500 mt-2 text-sm sm:text-base max-w-prose">
+                How strongly the model separates these options for your goal and signals.
+              </p>
+            </div>
+            <div className="flex justify-center md:justify-end shrink-0">
+              <ScoreRing
+                score={normalizeScoreDisplay(result.decisionConfidence.score)}
+                color={scoreToLevelColor(normalizeScoreDisplay(result.decisionConfidence.score))}
+                size={112}
+                label="Confidence"
+              />
+            </div>
           </div>
         </div>
         <div className="flex flex-row gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-thin -mx-1 px-1">
@@ -835,20 +873,24 @@ export function CompareDecisionResults({
             return (
               <motion.div
                 key={key}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.08 + wi * 0.04 }}
-                className="snap-start shrink-0 w-[min(72vw,260px)] group rounded-2xl border border-neutral-200/80 bg-gradient-to-br from-white to-sky-50/30 p-3 shadow-sm transition-all hover:border-blue-200 hover:shadow-lg hover:shadow-blue-600/10"
+                className="group flex gap-3 rounded-2xl border border-neutral-200/70 bg-gradient-to-br from-white to-neutral-50/80 p-4 shadow-sm transition-all hover:border-[#d8c6bb] hover:shadow-md hover:shadow-[#2a2623]/10"
               >
-                <Link href={`/products/${pid}`} className="flex gap-3">
-                  <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl bg-neutral-100 ring-1 ring-neutral-200/60">
-                    <Image
-                      src={imgSrc}
-                      alt={title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="56px"
-                    />
+                <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-xl bg-neutral-100 ring-1 ring-neutral-200/60">
+                  <Image
+                    src={imgSrc}
+                    alt={title}
+                    fill
+                    className="object-cover transition-transform group-hover:scale-105"
+                    sizes="48px"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#2a2623]">{label}</p>
+                  <div className="mt-1 flex items-start gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#2a2623] to-[#99624E] text-xs font-bold text-white shadow-sm">
+                      {letter}
+                    </span>
+                    <p className="text-sm font-semibold text-neutral-900 line-clamp-2 leading-snug min-w-0">{title}</p>
                   </div>
                   <div className="min-w-0 flex-1 py-0.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800">{label}</p>
@@ -909,7 +951,7 @@ export function CompareDecisionResults({
           {attraction.firstAttractionProductId != null && (
             <p className="text-sm text-neutral-700 mb-3">
               <span className="font-medium text-neutral-800">Your first pick:</span>{' '}
-              <span className="font-mono font-bold text-blue-900">
+              <span className="font-mono font-bold text-[#2a2623]">
                 {productLetter(ids, attraction.firstAttractionProductId)}
               </span>
               <span className="text-neutral-600">
@@ -929,7 +971,7 @@ export function CompareDecisionResults({
                 const letter = productLetter(ids, s.productId)
                 return (
                   <span key={s.productId} className="text-sm text-neutral-700 max-w-[min(100%,22rem)]">
-                    <span className="font-mono font-bold text-blue-900">{letter}</span>
+                    <span className="font-mono font-bold text-[#2a2623]">{letter}</span>
                     <span className="text-neutral-500"> — </span>
                     <span className="text-neutral-800">
                       {displayNameForCompareProduct(products, s.productId, letter)}
@@ -974,7 +1016,7 @@ export function CompareDecisionResults({
 
       {/* Why not both */}
       {result.whyNotBoth?.enabled && (
-        <div className="rounded-3xl border border-blue-100/70 bg-gradient-to-br from-sky-50/90 via-white to-sky-50/50 p-6 sm:p-8 shadow-lg shadow-blue-600/10">
+        <div className="rounded-3xl border border-[#d8c6bb]/80 bg-gradient-to-br from-[#f7f0eb]/90 via-white to-[#f3ece6]/70 p-6 sm:p-8 shadow-lg shadow-[#2a2623]/10">
           <SectionHeader icon={Split} title="Why not both?" subtitle="Sometimes the best move is a split role — not a single winner." />
           {result.whyNotBoth.explanation?.length > 0 && (
             <BulletList
@@ -988,7 +1030,7 @@ export function CompareDecisionResults({
             <ul className="mt-4 space-y-2">
               {result.whyNotBoth.productRoles.map((pr) => (
                 <li key={pr.productId} className="text-sm text-neutral-800">
-                  <span className="font-mono font-bold text-blue-900">{productLetter(ids, pr.productId)}</span>
+                  <span className="font-mono font-bold text-[#2a2623]">{productLetter(ids, pr.productId)}</span>
                   <span className="text-neutral-500"> — </span>
                   <span className="text-neutral-700">
                     {displayNameForCompareProduct(products, pr.productId, productLetter(ids, pr.productId))}
@@ -1020,7 +1062,7 @@ export function CompareDecisionResults({
               <ul className="text-sm space-y-1">
                 {result.outfitImpact.versatilityScores?.map((v) => (
                   <li key={v.productId}>
-                    <span className="font-mono font-semibold text-blue-900">{productLetter(ids, v.productId)}</span>
+                    <span className="font-mono font-semibold text-[#2a2623]">{productLetter(ids, v.productId)}</span>
                     <span className="text-neutral-500">: </span>
                     {displayNameForCompareProduct(products, v.productId, productLetter(ids, v.productId))} —{' '}
                     {normalizeScoreDisplay(v.score)}
@@ -1033,7 +1075,7 @@ export function CompareDecisionResults({
               <ul className="text-sm space-y-1">
                 {result.outfitImpact.wardrobeGapFillScores?.map((v) => (
                   <li key={v.productId}>
-                    <span className="font-mono font-semibold text-blue-900">{productLetter(ids, v.productId)}</span>
+                    <span className="font-mono font-semibold text-[#2a2623]">{productLetter(ids, v.productId)}</span>
                     <span className="text-neutral-500">: </span>
                     {displayNameForCompareProduct(products, v.productId, productLetter(ids, v.productId))} —{' '}
                     {normalizeScoreDisplay(v.score)}
@@ -1052,7 +1094,7 @@ export function CompareDecisionResults({
           <ul className="space-y-2">
             {result.socialMirror.explanation.map((row) => (
               <li key={row.productId} className="text-sm text-neutral-700">
-                <span className="font-mono font-bold text-blue-900">{productLetter(ids, row.productId)}</span>
+                <span className="font-mono font-bold text-[#2a2623]">{productLetter(ids, row.productId)}</span>
                 <span className="text-neutral-500"> — </span>
                 <span className="font-medium text-neutral-800">
                   {displayNameForCompareProduct(products, row.productId, productLetter(ids, row.productId))}
@@ -1086,7 +1128,193 @@ export function CompareDecisionResults({
         </div>
       )}
 
-      </InsightDetails>
+      {/* Per-product insights */}
+      <div>
+        <SectionHeader
+          icon={BarChart3}
+          title="Per-product breakdown"
+          subtitle="Scores for each item. Winners show a ribbon."
+        />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {ids.map((productId, idx) => {
+          const insight = getProductInsightById(result, productId)
+          const product = products?.find((p) => p.id === productId)
+          const consequence = getConsequenceByProductId(result, productId)
+          const regret = getRegretFlashByProductId(result, productId)
+          const identity = getIdentityAlignmentByProductId(result, productId)
+          const contexts = getContextsWonByProduct(result, productId)
+          const letter = productLetter(ids, productId)
+          const overall = insight ? normalizeScoreDisplay(insight.scores?.overall) : 0
+          const ringColor = scoreToLevelColor(overall)
+
+          return (
+            <motion.div
+              key={productId}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + idx * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className={`relative rounded-3xl border bg-white overflow-hidden transition-all duration-300 hover:-translate-y-0.5 ${
+                contexts.includes('overall')
+                  ? 'border-[#d8c6bb] shadow-xl shadow-[#2a2623]/15 ring-2 ring-[#eadfd7]'
+                  : 'border-neutral-200/70 shadow-md shadow-neutral-200/40 hover:shadow-lg hover:border-[#d8c6bb]'
+              }`}
+            >
+              {contexts.length > 0 && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#2a2623] via-[#7d4b3a] to-[#c9ae9f]" />
+              )}
+              {contexts.includes('overall') && (
+                <div className="absolute top-3 right-3 z-10 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-md">
+                  Top overall
+                </div>
+              )}
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start gap-4">
+                  {product && (
+                    <Link href={`/products/${product.id}`} className="block flex-shrink-0 group/img">
+                      <div className="relative w-[4.5rem] h-28 sm:w-24 sm:h-32 rounded-2xl overflow-hidden bg-neutral-100 ring-2 ring-white shadow-md ring-offset-2 ring-offset-neutral-50 group-hover/img:ring-[#d8c6bb] transition-all">
+                        <Image
+                          src={product.image_cdn || product.image_url || 'https://placehold.co/96x128'}
+                          alt={product.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover/img:scale-105"
+                        />
+                      </div>
+                    </Link>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-sm font-bold text-white shadow-sm">
+                        {letter}
+                      </span>
+                      {contexts.slice(0, 3).map((c) => (
+                        <span
+                          key={c}
+                          className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 ring-1 ring-amber-200/60"
+                        >
+                          {WINNER_CONTEXT_LABELS[c]}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="font-display font-bold text-neutral-900 text-sm sm:text-base line-clamp-2 leading-snug">
+                      {product?.title?.trim() ||
+                        displayNameForCompareProduct(products, productId, `Product #${productId}`)}
+                    </p>
+                    <p className="text-xs font-medium text-[#2a2623]/90 mt-1">{product?.brand ?? ''}</p>
+                  </div>
+                  {insight && <ScoreRing score={overall} color={ringColor} size={88} label="Overall" />}
+                </div>
+
+                {insight && (
+                  <>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <MetricBar label="Value" value={normalizeScoreDisplay(insight.scores.value)} />
+                      <MetricBar label="Quality" value={normalizeScoreDisplay(insight.scores.quality)} />
+                      <MetricBar label="Style" value={normalizeScoreDisplay(insight.scores.style)} />
+                      <MetricBar label="Risk" value={normalizeScoreDisplay(insight.scores.risk)} />
+                      <MetricBar label="Practical" value={normalizeScoreDisplay(insight.scores.practical)} />
+                      <MetricBar label="Expressive" value={normalizeScoreDisplay(insight.scores.expressive)} />
+                    </div>
+
+                    <div className="mt-5 space-y-3 text-sm border-t border-neutral-100 pt-5">
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Friction</p>
+                      <p className="text-neutral-800">
+                        Index {insight.frictionIndex}{' '}
+                        {insight.frictionExplanation?.length > 0 && (
+                          <span className="text-neutral-600">— {fmt(insight.frictionExplanation[0])}</span>
+                        )}
+                      </p>
+
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Compliments</p>
+                      <p className="text-neutral-800">
+                        {COMPLIMENT_COPY[insight.complimentPrediction.type]} ({normalizeScoreDisplay(insight.complimentPrediction.score)})
+                      </p>
+                      {insight.complimentPrediction.explanation?.length > 0 && (
+                        <BulletList
+                          items={insight.complimentPrediction.explanation.slice(0, 3)}
+                          icon={Sparkles}
+                          tone="violet"
+                          formatLine={fmt}
+                        />
+                      )}
+
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Wear rate</p>
+                      <p className="text-neutral-800">
+                        ~{insight.wearFrequency.estimatedMonthlyWear}/mo (conf.{' '}
+                        {normalizeScoreDisplay(insight.wearFrequency.confidence)})
+                      </p>
+
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Photo vs real</p>
+                      <p className="text-neutral-800">{PHOTO_LABEL_COPY[insight.photoRealityGap.label]}</p>
+                      {insight.photoRealityGap.explanation?.length > 0 && (
+                        <BulletList
+                          items={insight.photoRealityGap.explanation.slice(0, 2)}
+                          icon={CheckCircle}
+                          tone="neutral"
+                          formatLine={fmt}
+                        />
+                      )}
+
+                      {insight.hiddenFlaw && (
+                        <>
+                          <p className="text-xs font-semibold text-amber-700 uppercase">Hidden flaw</p>
+                          <p className="text-neutral-800">{fmt(insight.hiddenFlaw)}</p>
+                        </>
+                      )}
+                      {insight.microStory && (
+                        <>
+                          <p className="text-xs font-semibold text-[#2a2623] uppercase">Micro-story</p>
+                          <p className="text-neutral-700 italic">{fmt(insight.microStory)}</p>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {consequence != null && (consequence.ifYouChooseThis?.length ?? 0) > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase mb-2">If you choose this</p>
+                    <BulletList
+                      items={consequence.ifYouChooseThis ?? []}
+                      icon={CheckCircle}
+                      tone="violet"
+                      formatLine={fmt}
+                    />
+                  </div>
+                )}
+
+                {regret && (
+                  <div className="mt-4 rounded-xl bg-neutral-50 border border-neutral-200/80 p-3 text-sm">
+                    <p className="text-xs font-semibold text-[#2a2623] uppercase mb-1">Regret flash</p>
+                    <p className="text-neutral-800 font-medium">{fmt(regret.shortTermFeeling)}</p>
+                    <p className="text-neutral-600 mt-1">{fmt(regret.longTermReality)}</p>
+                  </div>
+                )}
+
+                {identity && (
+                  <div className="mt-4 text-sm">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase mb-2">Identity alignment</p>
+                    <p className="text-neutral-700">
+                      Current self {normalizeScoreDisplay(identity.currentSelfScore)} · Aspirational{' '}
+                      {normalizeScoreDisplay(identity.aspirationalSelfScore)}
+                    </p>
+                    {identity.explanation?.length > 0 && (
+                      <div className="mt-2">
+                        <BulletList
+                          items={identity.explanation}
+                          icon={CheckCircle}
+                          tone="neutral"
+                          formatLine={fmt}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )
+        })}
+        </div>
+      </div>
     </motion.div>
   )
 }

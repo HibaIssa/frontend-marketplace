@@ -153,7 +153,7 @@ export function AdminOverviewSection() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="rounded-3xl border border-[#0a0a0a]/10 bg-white/90 p-6 shadow-sm">
         <h1 className="font-display text-3xl font-bold tz-burgundy">{title}</h1>
         <p className="text-[#161616]/65 mt-1 text-sm">{hint}</p>
       </div>
@@ -176,7 +176,7 @@ export function AdminOverviewSection() {
             ['Without canonical', s.productsWithoutCanonical],
             ['Price records today', s.priceRecordsToday],
           ].map(([label, val]) => (
-            <div key={String(label)} className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm">
+            <div key={String(label)} className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm ring-1 ring-black/5">
               <p className="text-xs uppercase tracking-wide text-[#0a0a0a]/70">{label}</p>
               <p className="text-2xl font-semibold tz-burgundy mt-1 tabular-nums">
                 {typeof val === 'number' && Number.isFinite(val) ? val.toLocaleString() : '—'}
@@ -187,7 +187,7 @@ export function AdminOverviewSection() {
       )}
 
       {s && (
-        <section className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm">
+        <section className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm ring-1 ring-black/5">
           <h2 className="font-semibold tz-burgundy mb-3">Histogram · Quick overview</h2>
           <div className="space-y-2.5">
             {quickHistogram.map((item) => {
@@ -198,9 +198,9 @@ export function AdminOverviewSection() {
                   className="grid grid-cols-[minmax(100px,170px)_1fr_auto] items-center gap-2.5"
                 >
                   <span className="text-xs text-[#161616]/70">{item.name}</span>
-                  <div className="h-2.5 rounded-full bg-[#f0ede5] overflow-hidden">
+                  <div className="h-2.5 rounded-full bg-[#f2e9e2] overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#ff6b9d] to-[#0a0a0a]"
+                      className="h-full rounded-full bg-gradient-to-r from-[#99624E] to-[#2a2623]"
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
@@ -214,7 +214,7 @@ export function AdminOverviewSection() {
 
       {s && (
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm ring-1 ring-black/5">
             <h2 className="font-semibold tz-burgundy mb-3">Histogram · Overview counts</h2>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={histogramData}>
@@ -222,12 +222,12 @@ export function AdminOverviewSection() {
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#0a0a0a" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="value" fill="#2a2623" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#0a0a0a]/12 bg-[#ffffff] p-5 shadow-sm ring-1 ring-black/5">
             <h2 className="font-semibold tz-burgundy mb-3">Moderation mix</h2>
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -239,9 +239,9 @@ export function AdminOverviewSection() {
                   outerRadius={92}
                   paddingAngle={2}
                 >
-                  <Cell fill="#ff6b9d" />
-                  <Cell fill="#0a0a0a" />
-                  <Cell fill="#dde2f3" />
+                  <Cell fill="#99624E" />
+                  <Cell fill="#2a2623" />
+                  <Cell fill="#e8dbd2" />
                 </Pie>
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />

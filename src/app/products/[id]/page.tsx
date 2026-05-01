@@ -184,7 +184,7 @@ function ProductDetailContent() {
             priority
           />
           {hasSale && (
-            <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-blue-800 text-white text-sm font-medium">
+            <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-[#2a2623] text-white text-sm font-medium">
               Sale
             </span>
           )}
@@ -207,7 +207,7 @@ function ProductDetailContent() {
               </span>
             ) : hasSale ? (
               <>
-                <span className="text-2xl font-bold text-blue-800">
+                <span className="text-2xl font-bold text-[#2a2623]">
                   {formatPrice(product.sales_price_cents!, product.currency)}
                 </span>
                 <span className="text-lg text-neutral-400 line-through">
@@ -242,7 +242,7 @@ function ProductDetailContent() {
                 onClick={() => toggleFavorite.mutate()}
               >
                 <Heart
-                  className={`w-5 h-5 ${favorited ? 'fill-blue-800 text-blue-800' : ''}`}
+                  className={`w-5 h-5 ${favorited ? 'fill-[#2a2623] text-[#2a2623]' : ''}`}
                 />
                 {favorited ? 'Saved' : 'Save'}
               </button>

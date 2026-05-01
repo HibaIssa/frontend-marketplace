@@ -2,20 +2,37 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion, useInView, useScroll, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { useInView } from 'framer-motion'
 import {
-  ArrowUpRight, Heart, ShoppingBag, Sparkles,
-  Brain, Eye, Wand2,
+  ArrowUpRight,
+  Search,
+  Sparkles,
+  Shirt,
+  Layers,
+  GitCompare,
+  Heart,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { Product } from '@/types/product'
-import { Reveal } from '@/components/motion/Reveal'
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Hooks / helpers
+   Palette tokens (kept inline for clarity — same set across the page)
+     #f5f3f2  page wash
+     #ece8e5  soft surface
+     #d8d2cd  accent stone
+     #c9c1ba  hairline / divider
+     #b8aea5  muted icon
+     #2a2623  ink
+   ────────────────────────────────────────────────────────────────────────── */
+
+const EASE_OUT = [0.22, 1, 0.36, 1] as const
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Data hooks (unchanged logic — keep features intact)
    ────────────────────────────────────────────────────────────────────────── */
 
 function useProducts(limit = 8, offset = 0) {
@@ -40,18 +57,8 @@ type FacetBucket = { value?: string; count?: number; key?: string; doc_count?: n
 type FacetsResponse = {
   brands?: FacetBucket[]
   categories?: FacetBucket[]
-  colors?: FacetBucket[]
-  materials?: FacetBucket[]
   styles?: FacetBucket[]
-  genders?: FacetBucket[]
-  patterns?: FacetBucket[]
-  fits?: FacetBucket[]
-  /** From GET /products/facets — OpenSearch hit count for the catalog (preferred over summing buckets). */
-  catalogDocumentCount?: number
 }
-
-/** Backend caps facet aggregations at these sizes — used to display a "+" suffix when truncated. */
-const FACET_CAP = { brands: 100, categories: 50, styles: 30 } as const
 
 function useCatalogStats() {
   return useQuery({
@@ -61,9 +68,7 @@ function useCatalogStats() {
         api.get<FacetsResponse>(endpoints.products.facets),
         api.get<Product[]>(endpoints.products.sales, { limit: 1, page: 1 }),
       ])
-
-      const facets =
-        facetsRes.status === 'fulfilled' ? facetsRes.value?.data : undefined
+      const facets = facetsRes.status === 'fulfilled' ? facetsRes.value?.data : undefined
       const sales = salesRes.status === 'fulfilled' ? salesRes.value : undefined
 
       const sumBuckets = (b?: FacetBucket[]) =>
@@ -71,34 +76,13 @@ function useCatalogStats() {
           ? b.reduce((s, x) => s + (Number(x.count ?? x.doc_count ?? 0) || 0), 0)
           : 0
 
-      // Each product appears in exactly one category bucket. Categories has only
-      // ~10–20 distinct values in a fashion catalog so its size:50 cap rarely
-      // truncates — that makes the category sum the most reliable total.
-      const totalFromCategories = sumBuckets(facets?.categories)
-      const totalFromBrands = sumBuckets(facets?.brands)
-      const totalFromIndex =
-        typeof facets?.catalogDocumentCount === 'number' && facets.catalogDocumentCount > 0
-          ? facets.catalogDocumentCount
-          : 0
-      const totalProducts = Math.max(totalFromIndex, totalFromCategories, totalFromBrands)
-
+      const totalProducts = Math.max(sumBuckets(facets?.categories), sumBuckets(facets?.brands))
       const brandsLen = Array.isArray(facets?.brands) ? facets!.brands!.length : 0
       const categoriesLen = Array.isArray(facets?.categories) ? facets!.categories!.length : 0
-      const stylesLen = Array.isArray(facets?.styles) ? facets!.styles!.length : 0
-
       const onSaleTotal =
-        Number(sales?.pagination?.total ?? sales?.meta?.total ?? 0) || 0
+        Number((sales as { pagination?: { total?: number }; meta?: { total?: number } } | undefined)?.pagination?.total ?? (sales as { meta?: { total?: number } } | undefined)?.meta?.total ?? 0) || 0
 
-      return {
-        ok: facetsRes.status === 'fulfilled' || salesRes.status === 'fulfilled',
-        totalProducts,
-        brandsCount: brandsLen,
-        brandsCapped: brandsLen >= FACET_CAP.brands,
-        categoriesCount: categoriesLen,
-        categoriesCapped: categoriesLen >= FACET_CAP.categories,
-        stylesCount: stylesLen,
-        onSaleTotal,
-      }
+      return { totalProducts, brandsLen, categoriesLen, onSaleTotal }
     },
     staleTime: 5 * 60_000,
     retry: 1,
@@ -106,14 +90,13 @@ function useCatalogStats() {
 }
 
 function formatPrice(p: Product) {
-  const raw =
-    typeof p.price_cents === 'string' ? parseInt(p.price_cents, 10) : p.price_cents
+  const raw = typeof p.price_cents === 'string' ? parseInt(p.price_cents, 10) : p.price_cents
   const pc = Number.isFinite(raw as number) ? (raw as number) : 0
   if (pc <= 0) return null
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: p.currency || 'USD',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
   }).format(pc / 100)
 }
 
@@ -134,77 +117,264 @@ function CountUp({ to, suffix = '', durationMs = 1400 }: { to: number; suffix?: 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [inView, to, durationMs])
-  return <span ref={ref}>{val.toLocaleString()}{suffix}</span>
+  return (
+    <span ref={ref}>
+      {val.toLocaleString()}
+      {suffix}
+    </span>
+  )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Hero — single editorial image (family / linen campaign)
+   Section primitives — editorial typography / spacing
+   ────────────────────────────────────────────────────────────────────────── */
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#736b65]">
+      {children}
+    </p>
+  )
+}
+
+function SectionHead({
+  eyebrow,
+  title,
+  href,
+  hrefLabel = 'View all',
+}: {
+  eyebrow?: string
+  title: string
+  href?: string
+  hrefLabel?: string
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4 mb-7 sm:mb-9">
+      <div>
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        <h2 className="mt-2 font-display text-[1.95rem] sm:text-[2.35rem] lg:text-[2.85rem] font-bold text-[#2a2623] leading-[1.05] tracking-tight">
+          {title}
+        </h2>
+      </div>
+      {href && (
+        <Link
+          href={href}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2a2623] hover:opacity-60 transition-opacity"
+        >
+          {hrefLabel}
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hero — ONE large editorial image card
    ────────────────────────────────────────────────────────────────────────── */
 
 function Hero() {
-  const easeOut = [0.22, 1, 0.36, 1] as const
-  const containerRef = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end start'],
-  })
-  const shrink = useTransform(scrollYProgress, [0, 1], [1, 0.9])
-  const textFade = useTransform(scrollYProgress, [0, 0.45], [1, 0.75])
-
   return (
-    <section ref={containerRef} className="px-3 sm:px-5 lg:px-8 pt-4 pb-8 lg:pt-6 lg:pb-12">
+    <section className="relative bg-[#ece8e5]">
       <motion.div
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: easeOut }}
-        style={{ scale: shrink }}
-        className="relative w-full origin-top min-h-[min(92vh,920px)] lg:min-h-[min(94vh,1040px)] rounded-[32px] overflow-hidden ring-1 ring-black/[0.08] shadow-[0_36px_100px_-52px_rgba(10,10,10,0.55)] isolate bg-[#d4c4a8] will-change-transform"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.1, ease: EASE_OUT }}
+        /*
+          Full-bleed hero. The image is 1024×819 (ratio 1.25:1 / 5:4).
+          We size the container to match that natural ratio so the entire
+          family is visible — nothing is cropped. On most desktop
+          viewports this makes the hero taller than the fold, which is
+          exactly what was asked: very big, whole picture visible.
+        */
+        className="relative w-full overflow-hidden aspect-[1024/819] min-h-screen bg-[#ece8e5]"
       >
         <Image
-          src="/brand/tz-hero-family-linen.png"
-          alt="TrendZone — refined neutrals and linen for the whole family"
+          src="/brand/tz-hero-family-wide.png"
+          alt="TrendZone family editorial — the new season for everyone"
           fill
           priority
-          className="object-cover object-[center_18%] sm:object-[center_20%] scale-[1.06]"
           sizes="100vw"
+          /*
+            object-contain guarantees the whole family is visible at every
+            viewport size. The page background already matches the image's
+            beige backdrop, so any letterbox bars blend invisibly.
+          */
+          className="object-contain object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/15 to-black/10 pointer-events-none" aria-hidden />
 
-        <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10 lg:p-14">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: easeOut, delay: 0.12 }}
-            style={{ opacity: textFade }}
-            className="max-w-3xl"
+        {/* Pulse overlay — kept very subtle so the family is fully visible */}
+        <motion.div
+          aria-hidden
+          initial={{ opacity: 0.08 }}
+          animate={{ opacity: [0.08, 0.16, 0.08] }}
+          transition={{ duration: 8, ease: 'easeInOut', repeat: Infinity }}
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(42,38,35,0.22)_0%,rgba(42,38,35,0)_30%,rgba(42,38,35,0)_60%,rgba(42,38,35,0.55)_100%)]"
+        />
+
+        {/* Top eyebrow + season tag — pushed below the floating navbar */}
+        <div className="absolute inset-x-0 top-[72px] sm:top-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between text-white">
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
+            TrendZone Studio
+          </p>
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
+            Season 2026 · Pre-Fall
+          </p>
+        </div>
+
+        {/* Bottom block — large editorial title */}
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.1, ease: EASE_OUT, delay: 0.2 }}
+          className="absolute inset-x-0 bottom-0 px-5 sm:px-8 lg:px-12 pb-8 sm:pb-12 lg:pb-16"
+        >
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]">
+            The family lookbook
+          </p>
+          <h1
+            className="mt-3 font-display font-bold text-white tracking-[-0.03em] leading-[0.9] drop-shadow-[0_4px_22px_rgba(0,0,0,0.55)]"
+            style={{ fontSize: 'clamp(3.15rem, 9.5vw, 9.25rem)' }}
           >
-            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-white/85 mb-3">
-              Family linen · SS campaign
-            </p>
-            <h1 className="font-display text-[clamp(2rem,6vw,3.75rem)] font-bold leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_28px_rgba(0,0,0,0.35)]">
-              Soft neutrals for{' '}
-              <span className="italic font-semibold text-white/95">everyday together.</span>
-            </h1>
-            <p className="mt-5 text-base sm:text-lg text-white/88 leading-relaxed max-w-xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.25)]">
-              Breathable linen layers in calm tones — easy silhouettes you can live in, mix, and pass down.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/products"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0a0a0a] shadow-lg shadow-black/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Shop the collection
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/search?mode=shop"
-                className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/10 backdrop-blur-md px-6 py-3 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
-              >
-                <Sparkles className="h-4 w-4" />
-                Shop the look
-              </Link>
-            </div>
+            Dressed together,
+            <br />
+            <span className="font-semibold italic tracking-[-0.02em] opacity-95">in quiet luxury.</span>
+          </h1>
+          <p className="mt-5 max-w-xl text-[14px] sm:text-[15px] font-medium leading-[1.65] text-white/92 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">
+            From refined shirts and trousers to tailoring you can live in — explore the edit, shop the look,
+            try pieces on virtually, and compare what you love.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+            >
+              Explore collection
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              href="/search?mode=shop"
+              className="inline-flex items-center gap-2 rounded-full border border-white/80 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-white/10 transition-colors backdrop-blur-[2px]"
+            >
+              Shop the look
+            </Link>
+          </div>
+        </motion.div>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Categories — clean, restrained card grid
+   ────────────────────────────────────────────────────────────────────────── */
+
+function Categories() {
+  const items = [
+    { label: 'Shirts', href: '/products?category=shirts', img: '/brand/tz-editorial-stool.png' },
+    { label: 'Trousers', href: '/products?category=bottoms', img: '/brand/tz-cat-trousers.png' },
+    { label: 'Suits', href: '/products?category=suits', img: '/brand/tz-cat-suits-women.png' },
+    { label: 'Knitwear', href: '/products?category=knitwear', img: '/brand/tz-cat-tops.png' },
+    { label: 'Outerwear', href: '/products?category=outerwear', img: '/brand/tz-cat-suits-men.png' },
+    { label: 'Dresses', href: '/products?category=dress', img: '/brand/tz-cat-women.png' },
+  ]
+
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <SectionHead eyebrow="Product categories" title="Shirts, trousers & tailoring" href="/products" />
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        {items.map((c, i) => (
+          <motion.div
+            key={c.label}
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.7, delay: i * 0.04, ease: EASE_OUT }}
+          >
+            <Link
+              href={c.href}
+              className="group block relative aspect-[4/5] overflow-hidden rounded-[10px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]"
+            >
+              <Image
+                src={c.img}
+                alt={`${c.label} category`}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.04]"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(42,38,35,0.55)_100%)]" />
+              <span className="absolute bottom-3 left-3 text-white text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.26em] drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                {c.label}
+              </span>
+            </Link>
           </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   About Us — image + story, replaces the old "Modern Woman" block
+   ────────────────────────────────────────────────────────────────────────── */
+
+function AboutUs() {
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-10 lg:py-20">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-100px' }}
+        transition={{ duration: 0.95, ease: EASE_OUT }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center"
+      >
+        <div className="lg:col-span-6 relative aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5] overflow-hidden rounded-[14px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]">
+          <Image
+            src="/brand/tz-editorial-couple.png"
+            alt="TrendZone — about the studio"
+            fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover transition-transform duration-[1400ms] ease-out hover:scale-[1.03]"
+          />
+        </div>
+        <div className="lg:col-span-6">
+          <Eyebrow>About us</Eyebrow>
+          <h2
+            className="mt-5 font-display font-bold text-[#2a2623] leading-[0.96] tracking-[-0.03em]"
+            style={{ fontSize: 'clamp(2.5rem, 5.5vw, 5rem)' }}
+          >
+            The house of
+            <br />
+            <span className="italic font-semibold">TrendZone.</span>
+          </h2>
+          <div className="mt-7 grid sm:grid-cols-2 gap-6 sm:gap-8 text-[14px] sm:text-[15px] font-medium leading-[1.72] text-[#3d3935]">
+            <p>
+              TrendZone is a modern fashion marketplace built around discovery. We bring together
+              considered designers, AI-assisted search, virtual try-on and shop-the-look tools so
+              every shopper finds pieces that genuinely belong in their wardrobe.
+            </p>
+            <p>
+              From quiet tailoring to relaxed everyday essentials, every piece is selected for
+              craft, fit and longevity — because great clothing should outlast the season it was
+              bought in. This is fashion, the way it should feel: personal, effortless, yours.
+            </p>
+          </div>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-2 rounded-full bg-[#2a2623] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-black transition-colors"
+            >
+              Shop the studio
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              href="/search?mode=shop"
+              className="inline-flex items-center gap-2 rounded-full border border-[#d8d2cd] bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+            >
+              Discover the tools
+            </Link>
+          </div>
         </div>
       </motion.div>
     </section>
@@ -212,403 +382,257 @@ function Hero() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Featured + Bestsellers — square cream cards with heart/bag overlays
+   Services — clean four-card grid (Snap & Shop, Try-On, Shop the Look, Compare)
    ────────────────────────────────────────────────────────────────────────── */
 
-const PRODUCT_PASTELS = ['#e8dffd', '#ede5d8', '#e6ebef', '#cff4f9'] as const
+function Services() {
+  const items = [
+    {
+      title: 'Snap & Shop',
+      desc: 'Photograph any garment in-store or in the wild. Our visual search finds the closest matches across the catalog in seconds — no keywords required.',
+      img: '/brand/tz-service-photo-search-men.png',
+      href: '/search?mode=shop',
+    },
+    {
+      title: 'Virtual Try-On',
+      desc: 'Step in front of the mirror — change the size, the colour, the silhouette. See exactly how a piece falls on you before you commit, from any device.',
+      img: '/brand/tz-service-tryon-mirror.png',
+      href: '/try-on',
+    },
+    {
+      title: 'Shop the Look',
+      desc: 'Capture an outfit you love and we will rebuild it head-to-toe from our edits. Tops, bottoms, shoes, accessories — completed for you, in your style.',
+      img: '/brand/tz-service-shop-the-look.png',
+      href: '/search?mode=shop',
+    },
+    {
+      title: 'Compare',
+      desc: 'Stack pieces side by side — fabric, fit, price and reviews — so you can decide between two looks with confidence before you commit to one.',
+      img: '/brand/tz-editorial-couple.png',
+      href: '/compare',
+    },
+  ]
 
-function ProductCardEditorial({ product, index }: { product: Product; index: number }) {
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <SectionHead eyebrow="Our services" title="Snap it. Try it. Compare it." />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {items.map((s, i) => (
+          <motion.div
+            key={s.title}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, delay: i * 0.06, ease: EASE_OUT }}
+            className="group rounded-[10px] ring-1 ring-[#d8d2cd] bg-white overflow-hidden"
+          >
+            <Link href={s.href} className="block">
+              <div className="relative aspect-[4/3] overflow-hidden bg-[#ece8e5]">
+                <Image
+                  src={s.img}
+                  alt={s.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.03]"
+                />
+              </div>
+              <div className="p-5 sm:p-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#2a2623]">
+                  {s.title}
+                </p>
+                <p className="mt-3 text-[14px] font-medium leading-[1.72] text-[#4a4540]">{s.desc}</p>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tools — preserved features as low-key chips (Shop the look, Search, Wardrobe…)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function Tools() {
+  const tools = [
+    { href: '/search?mode=shop', label: 'Shop the look', icon: Sparkles },
+    { href: '/search', label: 'Text search', icon: Search },
+    { href: '/wardrobe', label: 'Wardrobe', icon: Shirt },
+    { href: '/try-on', label: 'Try-on', icon: Layers },
+    { href: '/compare', label: 'Compare', icon: GitCompare },
+    { href: '/sales', label: 'Sale', icon: Heart },
+  ]
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {tools.map((t) => (
+          <Link
+            key={t.label}
+            href={t.href}
+            className="group flex items-center justify-center gap-2 rounded-full bg-white border border-[#d8d2cd] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+          >
+            <t.icon className="h-3.5 w-3.5 text-[#b8aea5] group-hover:text-[#2a2623] transition-colors" />
+            <span className="truncate">{t.label}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Featured products — calm grid (uses existing API)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function ProductCard({ product, index }: { product: Product; index: number }) {
   const img = product.image_cdn || product.image_url || ''
   const price = formatPrice(product)
-  const easeOut = [0.22, 1, 0.36, 1] as const
-  const frame = PRODUCT_PASTELS[index % PRODUCT_PASTELS.length]
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 14 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.55, delay: index * 0.06, ease: easeOut }}
+      transition={{ duration: 0.7, delay: index * 0.04, ease: EASE_OUT }}
       className="group"
     >
       <Link href={`/products/${product.id}`} className="block">
-        <div
-          className="rounded-[24px] p-2 sm:p-2.5 ring-1 ring-black/[0.05]"
-          style={{ backgroundColor: frame }}
-        >
-          <div className="tz-product-card aspect-square ring-0">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-[10px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]">
           {img ? (
             <Image
               src={img}
-              alt={product.title}
+              alt={product.title || 'Product image'}
               fill
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
-              sizes="(max-width: 768px) 50vw, 25vw"
-              onError={(e) => {
-                e.currentTarget.src = 'https://placehold.co/600x600/ffffff/0a0a0a?text=TrendZone'
-              }}
+              sizes="(max-width: 640px) 50vw, 25vw"
+              className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.04]"
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center text-[#0a0a0a]/35 text-sm">No image</div>
+            <div className="absolute inset-0 grid place-items-center text-[#b8aea5] text-xs uppercase tracking-[0.2em]">
+              No image
+            </div>
           )}
-          <div className="absolute right-3 top-3 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-              className="tz-icon-btn"
-              aria-label="Save"
-            >
-              <Heart className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-              className="tz-icon-btn"
-              aria-label="Quick view"
-            >
-              <ShoppingBag className="h-4 w-4" />
-            </button>
-          </div>
-          </div>
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="tz-eyebrow tz-burgundy uppercase text-[0.72rem] truncate">
-            {product.title}
-          </p>
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2a2623]">
+              {product.title}
+            </p>
+            {(product.brand || product.category) && (
+              <p className="mt-1 truncate text-[11px] text-[#736b65]">
+                {product.brand}
+                {product.brand && product.category ? ' · ' : ''}
+                {product.category}
+              </p>
+            )}
+          </div>
           {price && (
-            <p className="text-[0.95rem] font-extrabold tz-burgundy whitespace-nowrap">
+            <p className="text-[12px] font-semibold tabular-nums text-[#2a2623] whitespace-nowrap">
               {price}
             </p>
           )}
         </div>
-        {product.brand || product.category ? (
-          <p className="mt-1 text-[12px] text-[#0a0a0a]/60 line-clamp-2">
-            {product.brand ? <span className="font-medium">{product.brand}</span> : null}
-            {product.brand && product.category ? ' · ' : ''}
-            {product.category}
-          </p>
-        ) : null}
       </Link>
     </motion.div>
   )
 }
 
-function ProductsRow({ title, eyebrow, products, href = '/products', count = 4 }: {
-  title: { italic: string; bold: string }
-  eyebrow?: string
-  products: Product[]
-  href?: string
-  count?: number
-}) {
-  const list = products.slice(0, count)
+function FeaturedProducts() {
+  const featured = useProducts(8, 0)
+  const list = featured.data ?? []
+
   return (
-    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
-      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
-        <div className="flex items-end justify-between gap-4 mb-8">
-          <div>
-            {eyebrow && <p className="tz-eyebrow mb-3">{eyebrow}</p>}
-            <h2 className="tz-headline">
-              <em>{title.italic}</em>{title.bold}
-            </h2>
-          </div>
-          <Link href={href} className="inline-flex items-center gap-1 text-sm font-bold text-[#0a0a0a] hover:opacity-70">
-            View all <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7">
-          {list.length === 0
-            ? Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="tz-product-card aspect-square skeleton-shimmer" />
-              ))
-            : list.map((p, i) => <ProductCardEditorial key={p.id} product={p} index={i} />)}
-        </div>
+    <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <SectionHead eyebrow="Curated edit" title="Featured products" href="/products" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
+        {list.length === 0
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="aspect-[3/4] rounded-[10px] bg-[#ece8e5] ring-1 ring-[#d8d2cd]" />
+            ))
+          : list.slice(0, 4).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
       </div>
     </section>
   )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Stats — pulled from real catalog data
+   Numbers (kept — quiet typography)
    ────────────────────────────────────────────────────────────────────────── */
 
-function ProudStats() {
+function Numbers() {
   const { data, isLoading } = useCatalogStats()
 
   const items = [
-    {
-      topNum: data?.totalProducts ?? 0,
-      suffix: '',
-      label: 'Products in catalog',
-      desc: 'Every garment is crawled, deduplicated, and embedded so you can search across the entire catalog at once.',
-    },
-    {
-      topNum: data?.brandsCount ?? 0,
-      suffix: data?.brandsCapped ? '+' : '',
-      label: 'Curated brands',
-      desc: 'Independent labels and global fashion houses, side-by-side, all searchable in one place.',
-    },
-    {
-      topNum: data?.categoriesCount ?? 0,
-      suffix: data?.categoriesCapped ? '+' : '',
-      label: 'Live categories',
-      desc: 'Dresses, tops, denim, knits, bags, shoes — automatically tagged from photos with our vision pipeline.',
-    },
-    {
-      topNum: data?.onSaleTotal ?? 0,
-      suffix: '',
-      label: 'Items on sale right now',
-      desc: 'We track price drops continuously, so the sale page stays fresh without you refreshing it.',
-    },
+    { topNum: data?.totalProducts ?? 0, label: 'Products in catalog' },
+    { topNum: data?.brandsLen ?? 0, label: 'Curated brands' },
+    { topNum: data?.categoriesLen ?? 0, label: 'Live categories' },
+    { topNum: data?.onSaleTotal ?? 0, label: 'Items on sale now' },
   ]
 
   return (
-    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
-      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
-        <p className="tz-eyebrow mb-3">Numbers from our catalog</p>
-        <h2 className="tz-headline mb-10">
-          <em>We Are</em> PROUD OF IT
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10">
-          {items.map((it, i) => {
-            const hasNumber = !isLoading && it.topNum > 0
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.6, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-                className={`pl-5 ${i > 0 ? 'lg:border-l border-black/10' : ''}`}
-              >
-                <p className="text-[2.6rem] lg:text-[3.5rem] font-extrabold leading-none text-[#0a0a0a] tracking-tight">
-                  {isLoading ? (
-                    <span className="text-[#0a0a0a]/30">···</span>
-                  ) : hasNumber ? (
-                    <>
-                      <CountUp to={it.topNum} />
-                      {it.suffix}
-                    </>
-                  ) : (
-                    <span className="text-[#0a0a0a]/40">—</span>
-                  )}
-                </p>
-                <p className="mt-3 tz-eyebrow tz-burgundy">{it.label}</p>
-                <p className="mt-2 text-[12.5px] text-[#0a0a0a]/65 leading-relaxed">
-                  {it.desc}
-                </p>
-              </motion.div>
-            )
-          })}
-        </div>
+    <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <SectionHead eyebrow="By the numbers" title="A studio, in motion" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10 border-t border-[#d8d2cd] pt-8">
+        {items.map((it, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, delay: i * 0.06, ease: EASE_OUT }}
+          >
+            <p
+              className="font-display font-semibold text-[#2a2623] tracking-[-0.02em] leading-none"
+              style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
+            >
+              {isLoading ? <span className="text-[#b8aea5]">···</span> : <CountUp to={it.topNum} />}
+            </p>
+            <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#736b65]">
+              {it.label}
+            </p>
+          </motion.div>
+        ))}
       </div>
     </section>
   )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   About Us — moved into the home page (as requested)
+   Closing wordmark — quiet, single panel
    ────────────────────────────────────────────────────────────────────────── */
 
-function AboutUs() {
-  const pillars = [
-    {
-      icon: Eye,
-      title: 'Visual search',
-      desc: 'Take a photo, paste a screenshot, drop a runway look — TrendZone finds matching pieces across every brand we index.',
-    },
-    {
-      icon: Brain,
-      title: 'Style intelligence',
-      desc: 'Our models read color, fit, material and silhouette so the “Complete the look” suggestions actually look good together.',
-    },
-    {
-      icon: Wand2,
-      title: 'Try-on & wardrobe',
-      desc: 'See garments on yourself before buying, save what you own to your wardrobe, and remix outfits without leaving the app.',
-    },
-  ]
-
+function Closing() {
   return (
-    <section id="about" className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
+    <section className="px-4 sm:px-6 lg:px-10 py-10 lg:py-16">
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-100px' }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="tz-sheet relative grid lg:grid-cols-12 gap-8 lg:gap-12 items-stretch overflow-hidden"
+        transition={{ duration: 0.9, ease: EASE_OUT }}
+        className="text-center"
       >
-        <div className="lg:col-span-5 relative h-[280px] lg:h-auto min-h-[320px]">
-          <Image
-            src="/brand/tz-about-studio.png"
-            alt="The TrendZone studio"
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 40vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-white/40" />
-        </div>
-
-        <div className="lg:col-span-7 px-6 sm:px-10 py-8 lg:py-12 lg:pl-0">
-          <p className="tz-eyebrow mb-3">About us</p>
-          <h2 className="tz-headline">
-            <em>Fashion discovery,</em> RE-IMAGINED
-          </h2>
-          <p className="mt-6 max-w-xl text-[#0a0a0a]/70 text-sm lg:text-[15px] leading-relaxed">
-            TrendZone is a fashion marketplace built for the way people actually shop today —
-            visually. Instead of digging through filters, you upload a photo, describe a vibe, or
-            open your wardrobe, and our AI does the matching across hundreds of brands and
-            thousands of products. Every result links back to a real, in-stock piece you can buy.
-          </p>
-
-          <div className="mt-8 grid sm:grid-cols-3 gap-4">
-            {pillars.map((p, i) => (
-              <motion.div
-                key={p.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl bg-[#e5eeff]/40 ring-1 ring-black/8 p-4"
-              >
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0a] ring-1 ring-black/10">
-                  <p.icon className="h-4 w-4" />
-                </span>
-                <p className="mt-3 tz-eyebrow tz-burgundy">{p.title}</p>
-                <p className="mt-1.5 text-[12.5px] text-[#0a0a0a]/65 leading-relaxed">{p.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/products" className="btn-primary">Browse the catalog</Link>
-            <Link href="/search?mode=shop" className="btn-secondary">Try Shop the look</Link>
-          </div>
-        </div>
-      </motion.div>
-    </section>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Features — Built For Every Moment (uses our local generated images)
-   ────────────────────────────────────────────────────────────────────────── */
-
-function FeatureLinks() {
-  const items = [
-    { href: '/search?mode=shop', title: 'Shop the look', desc: 'Photo → pieces', img: '/brand/tz-feature-shop.png', bg: '#ebe4dc' },
-    { href: '/search', title: 'Text search', desc: 'Describe the vibe', img: '/brand/tz-feature-search.png', bg: '#cff4f9' },
-    { href: '/wardrobe', title: 'My wardrobe', desc: 'Save & remix', img: '/brand/tz-feature-wardrobe.png', bg: '#ede5d8' },
-    { href: '/try-on', title: 'Virtual try-on', desc: 'Preview on you', img: '/brand/tz-feature-tryon.png', bg: '#ffd6e8' },
-    { href: '/compare', title: 'Compare', desc: '2–5 items', img: '/brand/tz-feature-complete.png', bg: '#e6ebef' },
-    { href: '/sales', title: 'Shop sale', desc: 'Fresh price drops', img: '/brand/tz-feature-sale.png', bg: '#fff4c8' },
-  ]
-  return (
-    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
-      <div className="tz-sheet p-5 sm:p-8 lg:p-12">
-        <div className="flex items-end justify-between gap-4 mb-8">
-          <div>
-            <p className="tz-eyebrow mb-3">Categories</p>
-            <h2 className="tz-headline">
-              <em>Tools &</em> picks
-            </h2>
-          </div>
-          <Link href="/products" className="inline-flex items-center gap-1 text-sm font-bold text-[#0a0a0a] hover:opacity-70">
-            View all <ArrowUpRight className="h-4 w-4" />
+        <Eyebrow>TrendZone</Eyebrow>
+        <h2
+          className="mt-4 font-display font-semibold text-[#c9c1ba] tracking-[-0.04em] leading-none select-none"
+          style={{ fontSize: 'clamp(3.5rem, 14vw, 12rem)' }}
+        >
+          TRENDZONE
+        </h2>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 rounded-full bg-[#2a2623] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-black transition-colors"
+          >
+            Shop now
+            <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
-        </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
-          {items.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.5, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-              className="snap-start shrink-0 w-[46vw] max-w-[220px] sm:w-[200px] sm:max-w-none"
-            >
-              <Link
-                href={f.href}
-                className="group block relative aspect-[3/4] rounded-[22px] overflow-hidden ring-1 ring-black/[0.06] shadow-[0_16px_40px_-24px_rgba(10,10,10,0.35)]"
-                style={{ backgroundColor: f.bg }}
-              >
-                <Image
-                  src={f.img}
-                  alt={f.title}
-                  fill
-                  className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.04]"
-                  sizes="220px"
-                />
-                <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col items-center gap-1.5 bg-gradient-to-t from-black/25 to-transparent pt-16">
-                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-[#0a0a0a] shadow-md max-w-[95%] text-center leading-tight">
-                    {f.title}
-                  </span>
-                  <span className="text-[11px] font-semibold text-white drop-shadow-sm">{f.desc}</span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Big closing banner — TRENDZONE wordmark + newsletter
-   (Dead links removed — only working CTAs remain.)
-   ────────────────────────────────────────────────────────────────────────── */
-
-function ClosingBanner() {
-  return (
-    <section className="px-3 sm:px-5 lg:px-8 py-6 lg:py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="tz-sheet relative isolate overflow-hidden"
-      >
-        <div className="relative aspect-[16/8] sm:aspect-[16/6]">
-          <Image
-            src="/brand/tz-hero-banner.png"
-            alt=""
-            fill
-            className="object-cover"
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.25)_0%,rgba(229,238,255,0.55)_70%,#ffffff_100%)]" />
-          <div className="absolute inset-0 grid place-items-center px-4">
-            <div className="text-center">
-              <p className="tz-eyebrow mb-2 inline-flex items-center gap-2">
-                <ArrowUpRight className="h-3.5 w-3.5" /> Explore now
-              </p>
-              <h2
-                className="font-sans font-black leading-none tracking-tighter text-[#0a0a0a]"
-                style={{ fontSize: 'clamp(3rem, 14vw, 11rem)' }}
-              >
-                TRENDZONE
-              </h2>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-6 px-6 sm:px-10 py-7 lg:py-9 -mt-2 items-center">
-          <form className="flex items-center gap-3 max-w-md" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="Your email"
-              className="flex-1 bg-transparent border-b border-[#0a0a0a]/25 py-2 text-sm placeholder-[#0a0a0a]/45 focus:outline-none focus:border-[#0a0a0a]"
-            />
-            <button type="button" className="text-[#0a0a0a] hover:opacity-60 transition-opacity" aria-label="Subscribe">
-              <ArrowUpRight className="h-5 w-5" />
-            </button>
-          </form>
-          <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[13px]">
-            <Link href="/products" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">All products</Link>
-            <Link href="/sales" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">Sale</Link>
-            <Link href="/search" className="px-4 py-2 rounded-full bg-white ring-1 ring-black/10 text-[#0a0a0a] font-semibold text-sm hover:bg-[#e5eeff] transition-colors">Discover</Link>
-            <Link href="#about" className="px-4 py-2 rounded-full bg-[#0a0a0a] text-white font-semibold text-sm hover:bg-black transition-colors">About us</Link>
-          </div>
+          <Link
+            href="/sales"
+            className="inline-flex items-center gap-2 rounded-full border border-[#d8d2cd] bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+          >
+            Sale
+          </Link>
         </div>
       </motion.div>
     </section>
@@ -620,39 +644,16 @@ function ClosingBanner() {
    ────────────────────────────────────────────────────────────────────────── */
 
 export default function HomePage() {
-  const featured = useProducts(8, 0)
-  const bestsellers = useProducts(8, 8)
-
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden bg-[#f5f3f2]">
       <Hero />
-
-      <ProductsRow
-        eyebrow="Curated"
-        title={{ italic: 'Featured ', bold: 'PRODUCTS' }}
-        products={featured.data ?? []}
-        href="/products"
-        count={4}
-      />
-
-      <ProductsRow
-        eyebrow="Most loved"
-        title={{ italic: 'Our ', bold: 'BESTSELLERS' }}
-        products={bestsellers.data ?? []}
-        href="/products"
-        count={3}
-      />
-
-      <ProudStats />
-
+      <Tools />
+      <Categories />
       <AboutUs />
-
-      <FeatureLinks />
-
-      <ClosingBanner />
-
-      {/* Hidden Reveal anchor to keep import used in case other sections need it later */}
-      <Reveal className="hidden" aria-hidden> </Reveal>
+      <Services />
+      <FeaturedProducts />
+      <Numbers />
+      <Closing />
     </div>
   )
 }

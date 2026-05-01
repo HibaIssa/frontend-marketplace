@@ -418,10 +418,10 @@ function SearchContent() {
     textSearchActive && products.length > 0 && (pageFromUrl > 1 || textHasNextPage || knownTotalPages > 1)
 
   const suggestedSearches = [
-    { label: 'Summer dresses', icon: Shirt, gradient: 'from-blue-600 to-orange-400' },
-    { label: 'Casual sneakers', icon: TrendingUp, gradient: 'from-blue-600 to-blue-600' },
-    { label: 'Evening outfit', icon: Sparkles, gradient: 'from-blue-600 to-blue-600' },
-    { label: 'Colorful accessories', icon: Palette, gradient: 'from-sky-500 to-cyan-400' },
+    { label: 'Summer dresses', icon: Shirt, gradient: 'from-[#2a2623] to-[#99624E]' },
+    { label: 'Casual sneakers', icon: TrendingUp, gradient: 'from-[#2a2623] to-[#7d4b3a]' },
+    { label: 'Evening outfit', icon: Sparkles, gradient: 'from-[#2a2623] to-[#99624E]' },
+    { label: 'Colorful accessories', icon: Palette, gradient: 'from-[#7d4b3a] to-[#c9ae9f]' },
   ]
 
   const POPULAR_SEARCH_TAGS = [
@@ -561,9 +561,9 @@ function SearchContent() {
   return (
     <>
       {/* ── Header area with mesh background ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-sky-50/40 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-blue-100/40 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-blue-100/30 blur-3xl" aria-hidden />
+      <div className="relative overflow-hidden bg-gradient-to-b from-[#f7f0eb] via-[#f3ece6] to-neutral-100 border-b border-neutral-200/60">
+        <div className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-[#c9ae9f]/35 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-[#d8c6bb]/35 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-48 w-48 rounded-full bg-amber-200/20 blur-3xl" aria-hidden />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
@@ -573,7 +573,7 @@ function SearchContent() {
             transition={{ duration: 0.45 }}
           >
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white shadow-md shadow-blue-600/20">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#7d4b3a] text-white shadow-md shadow-[#2a2623]/20">
                 <Search className="w-5 h-5" />
               </div>
               <div>
@@ -600,8 +600,8 @@ function SearchContent() {
                   transition={{ delay: 0.1 + i * 0.05 }}
                   className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
                     mode === tab.key
-                      ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
-                      : 'bg-white/80 text-neutral-600 border border-neutral-200/80 hover:border-blue-100 hover:text-blue-900 hover:bg-sky-50/50 backdrop-blur-sm'
+                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+                      : 'bg-white/80 text-neutral-600 border border-neutral-200/80 hover:border-[#d8c6bb] hover:text-[#2a2623] hover:bg-[#f7f0eb]/70 backdrop-blur-sm'
                   }`}
                 >
                   <tab.Icon className="w-4 h-4 shrink-0" />
@@ -684,12 +684,12 @@ function SearchContent() {
           {mode === 'shop' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
               {!imageFile ? (
-                <div className="relative p-8 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-b from-white to-slate-50/80 hover:border-blue-100/80 transition-colors">
+                <div className="relative p-8 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-b from-white to-slate-50/80 hover:border-[#d8c6bb] transition-colors">
                   <div className="text-center">
                     <div className="relative w-16 h-16 mx-auto mb-4">
-                      <div className="absolute inset-0 rounded-xl bg-blue-600/10 blur-lg" />
+                      <div className="absolute inset-0 rounded-xl bg-[#2a2623]/12 blur-lg" />
                       <div className="relative w-16 h-16 rounded-xl bg-slate-100 ring-1 ring-slate-200/80 flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-blue-800" strokeWidth={1.75} />
+                        <Sparkles className="w-7 h-7 text-[#2a2623]" strokeWidth={1.75} />
                       </div>
                     </div>
                     <p className="font-display text-base font-semibold text-slate-900 mb-1">Upload an outfit photo</p>
@@ -720,14 +720,14 @@ function SearchContent() {
                     <div className="flex flex-wrap justify-center gap-3">
                       <label
                         htmlFor="shop-image-file-pick"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-blue-900 text-sm font-semibold border border-blue-100 hover:bg-sky-50 hover:border-sky-200 shadow-sm active:scale-[0.97] transition-all"
+                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#2a2623] text-sm font-semibold border border-[#d8c6bb] hover:bg-[#f7f0eb] hover:border-[#c9ae9f] shadow-sm active:scale-[0.97] transition-all"
                       >
                         <Upload className="w-4 h-4" />
                         Choose file
                       </label>
                       <label
                         htmlFor="shop-image-camera-capture"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-md shadow-blue-600/20 active:scale-[0.97] transition-all"
+                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 active:scale-[0.97] transition-all"
                       >
                         <Camera className="w-4 h-4" />
                         Take a photo
@@ -750,7 +750,7 @@ function SearchContent() {
                           type="button"
                           onClick={handleShopSearch}
                           disabled={shopImageSearch.isPending}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-md shadow-blue-600/20 active:scale-[0.97] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 active:scale-[0.97] transition-all disabled:opacity-60 disabled:pointer-events-none"
                         >
                           <Search className="w-4 h-4" />
                           Search
@@ -861,7 +861,7 @@ function SearchContent() {
                         type="button"
                         onClick={() => goSearchPage(pageFromUrl - 1)}
                         disabled={!textHasPrevPage || textSearchPaged.isFetching}
-                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:pointer-events-none transition-colors"
                         aria-label="Previous page"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -893,8 +893,8 @@ function SearchContent() {
                                 disabled={textSearchPaged.isFetching}
                                 className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all shrink-0 ${
                                   pageNum === pageFromUrl
-                                    ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
-                                    : 'text-neutral-600 hover:bg-sky-50 hover:text-blue-900'
+                                    ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+                                    : 'text-neutral-600 hover:bg-[#f7f0eb] hover:text-[#2a2623]'
                                 }`}
                               >
                                 {pageNum}
@@ -914,7 +914,7 @@ function SearchContent() {
                         type="button"
                         onClick={() => goSearchPage(pageFromUrl + 1)}
                         disabled={!textHasNextPage || textSearchPaged.isFetching}
-                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                        className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:pointer-events-none transition-colors"
                         aria-label="Next page"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -941,11 +941,11 @@ function SearchContent() {
                         {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
                         value={pageJumpDraft}
                         onChange={(e) => setPageJumpDraft(e.target.value)}
-                        className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-blue-100 focus:border-sky-200"
+                        className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-[#d8c6bb] focus:border-[#c9ae9f]"
                       />
                       <button
                         type="submit"
-                        className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-100 text-blue-900 hover:bg-blue-100 transition-colors"
+                        className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#f4ece6] text-[#2a2623] hover:bg-[#eadfd7] transition-colors"
                       >
                         Go
                       </button>
@@ -965,7 +965,7 @@ function SearchContent() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-16 max-w-lg mx-auto"
             >
-              <div className="w-16 h-16 rounded-2xl bg-sky-100 text-blue-700 flex items-center justify-center mx-auto mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-[#f4ece6] text-[#2a2623] flex items-center justify-center mx-auto mb-5">
                 <Search className="w-8 h-8" />
               </div>
               <p className="font-bold text-neutral-900 text-lg mb-2">Connection issue</p>
@@ -989,11 +989,11 @@ function SearchContent() {
                 !shopImageSearch.data &&
                 !shopImageSearch.isError ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center max-w-md mx-auto py-6">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center mx-auto mb-4">
-                    <ArrowRight className="w-6 h-6 text-blue-800 -rotate-45" />
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center mx-auto mb-4">
+                    <ArrowRight className="w-6 h-6 text-[#2a2623] -rotate-45" />
                   </div>
                   <p className="text-neutral-600 font-medium">
-                    Hit <span className="text-blue-800 font-bold">Search</span> above to detect items in your photo.
+                    Hit <span className="text-[#2a2623] font-bold">Search</span> above to detect items in your photo.
                   </p>
                 </motion.div>
               ) : mode === 'shop' &&
@@ -1016,7 +1016,163 @@ function SearchContent() {
                   <p className="text-neutral-500">Try different keywords or browse by category.</p>
                 </div>
               ) : mode === 'text' && !q ? (
-                discoverBelowFold
+                /* ── Rich empty state ── */
+                <div className="max-w-5xl mx-auto">
+                  {/* Hero prompt */}
+                  <div className="text-center mb-10">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      className="relative w-20 h-20 mx-auto mb-6"
+                    >
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-20 blur-xl animate-pulse" />
+                      <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
+                        <Search className="w-9 h-9 text-[#2a2623]" />
+                      </div>
+                    </motion.div>
+                    <motion.h2
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="font-display text-xl sm:text-2xl font-bold text-neutral-900 mb-2"
+                    >
+                      What are you looking for?
+                    </motion.h2>
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.18 }}
+                      className="text-neutral-500 max-w-md mx-auto"
+                    >
+                      Type a description or try one of these popular searches.
+                    </motion.p>
+                  </div>
+
+                  {/* Quick search categories */}
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={{ visible: { transition: { staggerChildren: 0.06 } }, hidden: {} }}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10"
+                  >
+                    {suggestedSearches.map((s) => (
+                      <motion.a
+                        key={s.label}
+                        href={`/search?q=${encodeURIComponent(s.label)}`}
+                        variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
+                        whileHover={{ y: -4, scale: 1.02 }}
+                        className="group relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-neutral-200/80 bg-white overflow-hidden hover:shadow-xl hover:shadow-[#2a2623]/10 transition-shadow duration-300"
+                      >
+                        <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-300`} />
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg`}>
+                          <s.icon className="w-5.5 h-5.5" />
+                        </div>
+                        <span className="text-sm font-semibold text-neutral-700 group-hover:text-neutral-900 transition-colors">{s.label}</span>
+                        <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-[#2a2623] group-hover:translate-x-1 transition-all" />
+                      </motion.a>
+                    ))}
+                  </motion.div>
+
+                  {/* Trending products */}
+                  {trendingProducts && trendingProducts.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35, duration: 0.5 }}
+                    >
+                      <div className="flex items-center gap-2 mb-5">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <h3 className="font-display text-base font-bold text-neutral-800">Trending now</h3>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                        {(trendingProducts as Array<{
+                          id: number; title: string; brand?: string | null
+                          price_cents: number; image_cdn?: string | null; image_url?: string | null
+                        }>).map((p, i) => (
+                          <motion.div
+                            key={p.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 + i * 0.06 }}
+                          >
+                            <Link
+                              href={`/products/${p.id}`}
+                              prefetch={false}
+                              className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-[#2a2623]/10 hover:-translate-y-1 transition-all duration-300"
+                            >
+                              <div className="relative aspect-[3/4] bg-neutral-100">
+                                <NextImage
+                                  src={p.image_cdn || p.image_url || ''}
+                                  alt={p.title}
+                                  fill
+                                  unoptimized
+                                  sizes="(max-width: 640px) 33vw, 120px"
+                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                              </div>
+                              <div className="p-2.5">
+                                {p.brand && <p className="text-[10px] font-semibold uppercase tracking-wider text-[#2a2623] truncate">{p.brand}</p>}
+                                <p className="text-xs font-medium text-neutral-700 truncate mt-0.5">{p.title}</p>
+                                <p className="text-xs font-bold text-neutral-900 mt-1">
+                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
+                                </p>
+                              </div>
+                            </Link>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Trending tags */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="flex flex-wrap justify-center gap-2 text-xs mt-10"
+                  >
+                    {['Floral maxi dress', 'White sneakers', 'Leather jacket', 'Silk blouse', 'Denim jeans', 'Boho chic', 'Minimalist bags'].map((term) => (
+                      <a
+                        key={term}
+                        href={`/search?q=${encodeURIComponent(term)}`}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-neutral-200/80 text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] transition-all duration-200 shadow-sm"
+                      >
+                        <TrendingUp className="w-3 h-3" />
+                        {term}
+                      </a>
+                    ))}
+                  </motion.div>
+
+                  {/* How it works strip */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="mt-14 p-6 rounded-2xl bg-gradient-to-r from-[#f7f0eb] via-[#f3ece6] to-[#f7f0eb] border border-[#eadfd7]"
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center">How it works</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                      {[
+                        { step: '01', title: 'Text or outfit', desc: 'Search by keywords or open Shop the look for an outfit photo.', Icon: Search },
+                        { step: '02', title: 'Refine', desc: 'Try synonyms, brands, or a clearer full-body photo.', Icon: Sparkles },
+                        { step: '03', title: 'Browse results', desc: 'Open products and add favorites to compare.', Icon: Zap },
+                      ].map((s) => (
+                        <div key={s.step} className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-[#eadfd7]">
+                            <s.Icon className="w-4 h-4 text-[#2a2623]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-orange-500 mb-0.5">{s.step}</p>
+                            <p className="text-sm font-semibold text-neutral-800">{s.title}</p>
+                            <p className="text-xs text-neutral-500 mt-0.5">{s.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                </div>
               ) : null}
             </motion.div>
           )}

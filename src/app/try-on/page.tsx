@@ -133,9 +133,9 @@ export default function TryOnPage() {
   if (!isAuth) {
     return (
       <div className="relative min-h-[70vh] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100/80 via-white to-sky-100/60" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#f7f0eb]/90 via-white to-[#f3ece6]/80" />
         <div className="relative mx-auto max-w-lg px-4 py-24 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 shadow-lg shadow-blue-600/30">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] shadow-lg shadow-[#2a2623]/30">
             <Shirt className="h-10 w-10 text-white" />
           </div>
           <h2 className="font-display text-3xl font-bold text-neutral-900">Virtual try-on</h2>
@@ -157,7 +157,7 @@ export default function TryOnPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100/80 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-900 shadow-sm backdrop-blur-sm">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#d8c6bb] bg-white/90 px-3 py-1 text-xs font-semibold text-[#2a2623] shadow-sm backdrop-blur-sm">
                 <Sparkles className="h-3.5 w-3.5" />
                 AI virtual fitting room
               </div>
@@ -174,7 +174,7 @@ export default function TryOnPage() {
                 type="button"
                 onClick={() => void handleShopTheLook()}
                 disabled={shopFromResultPending}
-                className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-blue-100 hover:text-blue-900 disabled:opacity-60 disabled:pointer-events-none"
+                className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-60 disabled:pointer-events-none"
               >
                 <Sparkles className="h-4 w-4" />
                 {shopFromResultPending ? 'Analyzing look…' : 'Shop the look'}
@@ -187,7 +187,7 @@ export default function TryOnPage() {
                     setPersonFile(null)
                     setGarmentFile(null)
                   }}
-                  className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-sky-100 hover:border-sky-200"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#d8c6bb] bg-[#f7f0eb] px-4 py-2.5 text-sm font-semibold text-[#2a2623] shadow-sm transition hover:bg-[#eadfd7] hover:border-[#c9ae9f]"
                 >
                   <RefreshCcw className="h-4 w-4" />
                   Try another image
@@ -196,13 +196,13 @@ export default function TryOnPage() {
             </div>
           </div>
           {shopFromResultError ? (
-            <p className="mb-5 text-sm text-blue-700">{shopFromResultError}</p>
+            <p className="mb-5 text-sm text-[#7d4b3a]">{shopFromResultError}</p>
           ) : null}
 
           {jobStatus === 'completed' && resultUrl ? (
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="lg:col-span-7">
-                <div className="overflow-hidden rounded-3xl border border-neutral-200/80 bg-white shadow-xl shadow-blue-600/5 ring-1 ring-neutral-100">
+                <div className="overflow-hidden rounded-3xl border border-neutral-200/80 bg-white shadow-xl shadow-[#2a2623]/5 ring-1 ring-neutral-100">
                   <div className="flex items-center justify-between border-b border-neutral-100 bg-gradient-to-r from-emerald-50/80 to-white px-5 py-3">
                     <div className="flex items-center gap-2 text-emerald-800">
                       <CheckCircle2 className="h-5 w-5 shrink-0" />
@@ -225,7 +225,7 @@ export default function TryOnPage() {
                       download="styleai-try-on.jpg"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-800 to-blue-800 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition hover:opacity-95"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] px-4 py-3 text-sm font-semibold text-white shadow-md shadow-[#2a2623]/25 transition hover:opacity-95"
                     >
                       <Download className="h-4 w-4" />
                       Open / save image
@@ -233,7 +233,7 @@ export default function TryOnPage() {
                     <button
                       type="button"
                       onClick={() => void handleShareResult()}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:border-blue-100 hover:bg-sky-50/50"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:border-[#d8c6bb] hover:bg-[#f7f0eb]/70"
                     >
                       <Share2 className="h-4 w-4" />
                       {copyDone ? 'Link copied' : 'Copy image URL'}
@@ -245,7 +245,7 @@ export default function TryOnPage() {
                         setPersonFile(null)
                         setGarmentFile(null)
                       }}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-sky-50 px-4 py-3 text-sm font-semibold text-blue-900 transition hover:bg-sky-100 hover:border-sky-200"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#d8c6bb] bg-[#f7f0eb] px-4 py-3 text-sm font-semibold text-[#2a2623] transition hover:bg-[#eadfd7] hover:border-[#c9ae9f]"
                     >
                       <RefreshCcw className="h-4 w-4" />
                       Try another image
@@ -257,7 +257,7 @@ export default function TryOnPage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-sky-100 bg-gradient-to-b from-white to-sky-50/30 p-6 shadow-md shadow-blue-600/5">
+                <div className="rounded-2xl border border-[#eadfd7] bg-gradient-to-b from-white to-[#f7f0eb]/40 p-6 shadow-md shadow-[#2a2623]/5">
                   <TryOnCompleteStylePanel
                     garmentFile={garmentForStyle}
                     jobId={jobId}
@@ -269,13 +269,13 @@ export default function TryOnPage() {
                   <p className="text-sm font-medium text-neutral-800">Keep shopping</p>
                   <p className="mt-1 text-xs text-neutral-500">Browse pieces that match your vibe.</p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href="/products" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-blue-900 shadow-sm ring-1 ring-neutral-200 hover:ring-blue-100">
+                    <Link href="/products" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#2a2623] shadow-sm ring-1 ring-neutral-200 hover:ring-[#d8c6bb]">
                       Shop all
                     </Link>
-                    <Link href="/sales" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm ring-1 ring-neutral-200 hover:ring-blue-100">
+                    <Link href="/sales" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#7d4b3a] shadow-sm ring-1 ring-neutral-200 hover:ring-[#d8c6bb]">
                       Sale
                     </Link>
-                    <Link href="/search" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm ring-1 ring-neutral-200 hover:ring-blue-100">
+                    <Link href="/search" className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm ring-1 ring-neutral-200 hover:ring-[#d8c6bb]">
                       Discover
                     </Link>
                   </div>
@@ -283,16 +283,16 @@ export default function TryOnPage() {
               </div>
             </div>
           ) : jobStatus === 'failed' ? (
-            <div className="max-w-xl rounded-2xl border border-blue-100 bg-sky-50/80 p-8 shadow-lg">
-              <p className="font-display text-lg font-bold text-blue-950">Try-on couldn&apos;t finish</p>
+            <div className="max-w-xl rounded-2xl border border-[#d8c6bb] bg-[#f7f0eb]/80 p-8 shadow-lg">
+              <p className="font-display text-lg font-bold text-[#2a2623]">Try-on couldn&apos;t finish</p>
               <p className="mt-2 text-sm text-red-600">{job?.error_message ?? 'Unknown error'}</p>
               <button type="button" onClick={() => clearTryOn()} className="btn-primary mt-6">
                 Start over
               </button>
             </div>
           ) : jobPollError && jobId ? (
-            <div className="max-w-xl rounded-2xl border border-blue-100 bg-white p-8 shadow-lg">
-              <p className="font-medium text-blue-950">Couldn&apos;t load try-on status</p>
+            <div className="max-w-xl rounded-2xl border border-[#d8c6bb] bg-white p-8 shadow-lg">
+              <p className="font-medium text-[#2a2623]">Couldn&apos;t load try-on status</p>
               <p className="mt-2 text-sm text-neutral-600">
                 {(jobPollErr as Error)?.message ?? 'Check your connection and try again.'}
               </p>
@@ -304,9 +304,9 @@ export default function TryOnPage() {
               </button>
             </div>
           ) : jobId && (polling || jobStatus === 'processing' || jobStatus === 'pending') ? (
-            <div className="mx-auto max-w-lg rounded-3xl border border-sky-100 bg-white p-12 text-center shadow-xl shadow-blue-600/10">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-100">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-800" />
+            <div className="mx-auto max-w-lg rounded-3xl border border-[#eadfd7] bg-white p-12 text-center shadow-xl shadow-[#2a2623]/10">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f4ece6]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#2a2623]" />
               </div>
               <p className="font-display text-xl font-bold text-neutral-900">Processing your try-on</p>
               <p className="mt-2 text-sm text-neutral-500">Usually 30–60 seconds. Safe to browse the store meanwhile.</p>
@@ -319,7 +319,7 @@ export default function TryOnPage() {
           ) : (
             <div className="space-y-10">
               <div className="flex flex-wrap gap-2 text-xs font-medium text-neutral-500">
-                <span className="rounded-full bg-sky-100 px-3 py-1 text-blue-950">1 · Your photo</span>
+                <span className="rounded-full bg-[#f4ece6] px-3 py-1 text-[#2a2623]">1 · Your photo</span>
                 <span className="rounded-full bg-neutral-100 px-3 py-1">2 · Garment</span>
                 <span className="rounded-full bg-neutral-100 px-3 py-1">3 · Generate</span>
               </div>
@@ -345,9 +345,9 @@ export default function TryOnPage() {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => personRef.current?.click()}
-                  className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-white p-8 text-left shadow-sm transition hover:border-sky-200 hover:shadow-md hover:shadow-blue-600/10"
+                  className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-white p-8 text-left shadow-sm transition hover:border-[#d8c6bb] hover:shadow-md hover:shadow-[#2a2623]/10"
                 >
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-blue-800 transition group-hover:bg-blue-800 group-hover:text-white">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4ece6] text-[#2a2623] transition group-hover:bg-[#2a2623] group-hover:text-white">
                     <User className="h-6 w-6" />
                   </div>
                   <h3 className="font-display text-lg font-bold text-neutral-900">Your photo</h3>
@@ -357,7 +357,7 @@ export default function TryOnPage() {
                       <Image src={personPreview} alt="" fill className="object-cover" unoptimized />
                     </div>
                   ) : (
-                    <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-800">
+                    <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-[#2a2623]">
                       <Upload className="h-4 w-4" />
                       Choose file
                     </div>
@@ -374,9 +374,9 @@ export default function TryOnPage() {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => garmentRef.current?.click()}
-                  className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-white p-8 text-left shadow-sm transition hover:border-sky-200 hover:shadow-md hover:shadow-blue-600/10"
+                  className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-white p-8 text-left shadow-sm transition hover:border-[#d8c6bb] hover:shadow-md hover:shadow-[#2a2623]/10"
                 >
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-blue-800 transition group-hover:bg-blue-800 group-hover:text-white">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4ece6] text-[#2a2623] transition group-hover:bg-[#2a2623] group-hover:text-white">
                     <Shirt className="h-6 w-6" />
                   </div>
                   <h3 className="font-display text-lg font-bold text-neutral-900">Garment</h3>
@@ -386,7 +386,7 @@ export default function TryOnPage() {
                       <Image src={garmentPreview} alt="" fill className="object-cover" unoptimized />
                     </div>
                   ) : (
-                    <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-800">
+                    <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-[#2a2623]">
                       <Upload className="h-4 w-4" />
                       Choose file
                     </div>
@@ -400,7 +400,7 @@ export default function TryOnPage() {
               </div>
 
               {personFile && garmentFile && !jobId && (
-                <div className="flex flex-col items-start gap-4 rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50/80 to-sky-50/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col items-start gap-4 rounded-2xl border border-[#eadfd7] bg-gradient-to-r from-[#f7f0eb]/80 to-[#f3ece6]/80 p-6 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-neutral-700">
                     Ready when you are — we&apos;ll queue a job and keep it synced while you browse.
                   </p>
@@ -408,7 +408,7 @@ export default function TryOnPage() {
                     type="button"
                     onClick={() => submitTryOn(personFile, garmentFile)}
                     disabled={isSubmitting}
-                    className="inline-flex min-w-[200px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-800 to-blue-800 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition hover:opacity-95 disabled:opacity-60"
+                    className="inline-flex min-w-[200px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#2a2623]/30 transition hover:opacity-95 disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
@@ -425,7 +425,7 @@ export default function TryOnPage() {
                 </div>
               )}
               {submitError && (
-                <p className="text-sm text-blue-700">{submitError.message}</p>
+                <p className="text-sm text-[#7d4b3a]">{submitError.message}</p>
               )}
             </div>
           )}

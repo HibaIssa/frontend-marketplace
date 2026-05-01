@@ -64,7 +64,7 @@ const SECTIONS: { section: string; items: NavItem[] }[] = [
   },
 ]
 
-const ICON_BG_IDLE = 'bg-[#e5eeff] text-[#0a0a0a] ring-1 ring-[#0a0a0a]/12'
+const ICON_BG_IDLE = 'bg-[#f1e8e2] text-[#0a0a0a] ring-1 ring-[#0a0a0a]/12'
 const ICON_BG_ACTIVE = 'bg-[#0a0a0a] text-[#ffffff] ring-1 ring-[#0a0a0a]'
 
 export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) {
@@ -105,8 +105,8 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
                   className={clsx(
                     'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
                     active
-                      ? 'bg-[#e8eeff] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
-                      : 'text-[#0a0a0a]/75 hover:bg-[#e5eeff]/70 hover:text-[#0a0a0a]'
+                      ? 'bg-[#f3e9e2] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
+                      : 'text-[#0a0a0a]/75 hover:bg-[#f1e8e2]/80 hover:text-[#0a0a0a]'
                   )}
                 >
                   <span
@@ -141,8 +141,8 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
                 className={clsx(
                   'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
                   active
-                    ? 'bg-[#e8eeff] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
-                    : 'text-[#0a0a0a]/75 hover:bg-[#e5eeff]/70 hover:text-[#0a0a0a]'
+                    ? 'bg-[#f3e9e2] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
+                    : 'text-[#0a0a0a]/75 hover:bg-[#f1e8e2]/80 hover:text-[#0a0a0a]'
                 )}
               >
                 <span

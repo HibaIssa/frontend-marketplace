@@ -7,18 +7,18 @@
     --font-display: 'Inter', system-ui, sans-serif;
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    /* Cool pastel wash (sky / violet / blush) — avoids beige-yellow “cream” */
-    --tz-page-lime: #f4f7fd;
+    /* Editorial neutral palette (stone / oat / espresso) */
+    --tz-page-lime: #e7e2de;
     --tz-pink-50: #ffffff;
-    --tz-pink-100: #e5eeff;
-    --tz-pink-200: #b8deff;
-    --tz-pink-300: #ffd6e8;
-    --tz-pink-400: #e8dffd;
+    --tz-pink-100: #c6bab4;
+    --tz-pink-200: #aa8a76;
+    --tz-pink-300: #8c5a49;
+    --tz-pink-400: #57504a;
     --tz-cream: #ffffff;
     --tz-cream-2: #fffef6;
     --tz-burgundy: #0a0a0a;
     --tz-burgundy-strong: #000000;
-    --tz-burgundy-soft: #ff6b9d;
+    --tz-burgundy-soft: #9e938b;
     --tz-ink: #0a0a0a;
 
     --shadow-card: 0 1px 2px rgba(22, 22, 22, 0.05), 0 8px 28px -8px rgba(22, 22, 22, 0.1),
@@ -38,7 +38,7 @@
   }
 
   ::selection {
-    background: rgba(255, 107, 157, 0.22);
+    background: rgba(158, 147, 139, 0.24);
     color: var(--tz-burgundy);
   }
 }
@@ -46,12 +46,12 @@
 @layer components {
   /* Full-page wash — class name kept for back-compat */
   .tz-pink-bg {
-    background-color: #f4f7fd;
+    background-color: #ece8e4;
     background-image:
-      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(147, 197, 253, 0.38) 0%, transparent 55%),
-      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(196, 181, 253, 0.3) 0%, transparent 52%),
-      radial-gradient(ellipse 95% 70% at 50% 105%, rgba(251, 207, 232, 0.34) 0%, transparent 50%),
-      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(186, 230, 253, 0.22) 0%, transparent 46%);
+      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(191, 179, 170, 0.2) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(118, 105, 97, 0.12) 0%, transparent 52%),
+      radial-gradient(ellipse 95% 70% at 50% 105%, rgba(189, 177, 168, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(154, 143, 135, 0.12) 0%, transparent 46%);
     background-attachment: fixed;
   }
 
@@ -122,15 +122,15 @@
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           text-white shadow-md bg-neutral-950
-           hover:bg-black hover:shadow-lg
+           text-white shadow-md bg-[#4b4540]
+           hover:bg-[#37322e] hover:shadow-lg
            active:scale-[0.98] transition-all duration-300;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-neutral-950 border-2 border-neutral-950
-           hover:bg-sky-100 active:scale-[0.98]
+           bg-white text-[#2f2b28] border-2 border-[#7a7068]
+           hover:bg-[#ebe5df] active:scale-[0.98]
            transition-all duration-200;
   }
 
@@ -142,7 +142,7 @@
 
   .btn-on-dark {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-neutral-950 shadow-lg shadow-black/10 hover:bg-sky-100
+           bg-white text-neutral-950 shadow-lg shadow-black/10 hover:bg-[#f4ece6]
            active:scale-[0.98] transition-all duration-200;
   }
 
@@ -169,7 +169,7 @@
   }
 
   .tz-sheet {
-    background: var(--tz-cream);
+    background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(244,240,236,0.96));
     border-radius: 28px;
     box-shadow: 0 24px 60px -40px rgba(10, 10, 10, 0.18);
     overflow: hidden;
@@ -182,7 +182,7 @@
   }
 
   .tz-icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-950 shadow-md transition-all hover:scale-105 hover:bg-sky-100;
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-950 shadow-md transition-all hover:scale-105 hover:bg-[#f3e7df];
   }
 
   .text-gradient-accent {
@@ -218,18 +218,18 @@
 
   .mesh-bg {
     background-image:
-      radial-gradient(at 40% 20%, rgba(184, 222, 255, 0.45) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(255, 214, 232, 0.4) 0px, transparent 45%),
-      radial-gradient(at 0% 50%, rgba(232, 223, 253, 0.45) 0px, transparent 45%),
-      radial-gradient(at 80% 100%, rgba(207, 244, 249, 0.35) 0px, transparent 40%);
+      radial-gradient(at 40% 20%, rgba(205, 184, 172, 0.38) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(212, 174, 158, 0.34) 0px, transparent 45%),
+      radial-gradient(at 0% 50%, rgba(186, 167, 156, 0.36) 0px, transparent 45%),
+      radial-gradient(at 80% 100%, rgba(235, 225, 217, 0.5) 0px, transparent 40%);
   }
 
   .admin-mesh-bg {
-    background-color: #f0f4ff;
-    background-image: radial-gradient(at 35% 15%, rgba(255, 255, 255, 0.92) 0px, transparent 52%),
-      radial-gradient(at 85% 10%, rgba(147, 197, 253, 0.28) 0px, transparent 48%),
-      radial-gradient(at 0% 55%, rgba(233, 213, 255, 0.22) 0px, transparent 46%),
-      radial-gradient(at 90% 95%, rgba(251, 207, 232, 0.2) 0px, transparent 42%);
+    background-color: #f4efeb;
+    background-image: radial-gradient(at 35% 15%, rgba(255, 255, 255, 0.9) 0px, transparent 52%),
+      radial-gradient(at 85% 10%, rgba(170, 138, 118, 0.2) 0px, transparent 48%),
+      radial-gradient(at 0% 55%, rgba(201, 174, 159, 0.16) 0px, transparent 46%),
+      radial-gradient(at 90% 95%, rgba(234, 220, 210, 0.28) 0px, transparent 42%);
   }
 
   .input-field {

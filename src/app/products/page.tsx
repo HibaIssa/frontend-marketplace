@@ -14,11 +14,37 @@ import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
 
+function asProductArray(input: unknown): Product[] {
+  if (!Array.isArray(input)) return []
+  return input as Product[]
+}
+
+function extractProductsFromResponse(res: unknown): Product[] {
+  if (Array.isArray(res)) return asProductArray(res)
+  if (!res || typeof res !== 'object') return []
+
+  const rec = res as Record<string, unknown>
+  const data = rec.data
+
+  if (Array.isArray(data)) return asProductArray(data)
+  if (Array.isArray(rec.results)) return asProductArray(rec.results)
+  if (Array.isArray(rec.products)) return asProductArray(rec.products)
+
+  if (data && typeof data === 'object') {
+    const inner = data as Record<string, unknown>
+    if (Array.isArray(inner.results)) return asProductArray(inner.results)
+    if (Array.isArray(inner.products)) return asProductArray(inner.products)
+    if (Array.isArray(inner.data)) return asProductArray(inner.data)
+  }
+
+  return []
+}
+
 function chipClass(active: boolean) {
   return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
     active
-      ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
-      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-blue-100 hover:text-blue-900 hover:bg-sky-50/50'
+      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-[#cdb8ac] hover:text-[#2a2623] hover:bg-[#f4ede8]'
   }`
 }
 
@@ -96,7 +122,7 @@ function ProductsContent() {
     },
   })
 
-  const rawProducts: Product[] = Array.isArray(data?.data) ? data.data : []
+  const rawProducts: Product[] = extractProductsFromResponse(data)
 
   const products = useMemo(() => {
     if (!sort || rawProducts.length === 0) return rawProducts
@@ -155,7 +181,7 @@ function ProductsContent() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-600 text-white shadow-md shadow-blue-600/20">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20">
                 <ShoppingBag className="w-5 h-5" />
               </div>
               <div>
@@ -171,7 +197,7 @@ function ProductsContent() {
             {/* Search */}
             <form
               onSubmit={onSearchSubmit}
-              className="relative flex items-center w-full max-w-2xl rounded-2xl bg-white border border-neutral-200 shadow-sm h-12 focus-within:ring-2 focus-within:ring-blue-600/30 focus-within:border-orange-500 transition-all"
+              className="relative flex items-center w-full max-w-2xl rounded-2xl bg-white border border-neutral-200 shadow-sm h-12 focus-within:ring-2 focus-within:ring-[#2a2623]/20 focus-within:border-[#99624E] transition-all"
             >
               <Search className="absolute left-4 w-5 h-5 text-neutral-400" />
               <input
@@ -183,7 +209,7 @@ function ProductsContent() {
               />
               <button
                 type="submit"
-                className="absolute right-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-sm shadow-blue-600/20 transition-all active:scale-[0.97]"
+                className="absolute right-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-sm shadow-[#2a2623]/20 transition-all active:scale-[0.97]"
               >
                 Search
               </button>
@@ -225,7 +251,7 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={() => router.push(pathname)}
-                  className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-700 bg-sky-50 border border-blue-100/60 hover:bg-sky-100 transition-colors"
+                  className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-[#2a2623] bg-[#f4ede8] border border-[#cdb8ac]/80 hover:bg-[#efe4de] transition-colors"
                 >
                   <X className="w-3 h-3" />
                   Clear{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
@@ -286,7 +312,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f4ece6] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -313,8 +339,8 @@ function ProductsContent() {
                             onClick={() => setPage(pageNum)}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
-                                ? 'bg-gradient-to-r from-blue-800 to-blue-600 text-white shadow-md shadow-blue-600/20'
-                                : 'text-neutral-600 hover:bg-sky-50 hover:text-blue-900'
+                                ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+                                : 'text-neutral-600 hover:bg-[#f4ece6] hover:text-[#2a2623]'
                             }`}
                           >
                             {pageNum}
@@ -332,7 +358,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!canGoNext}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f4ece6] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -357,9 +383,9 @@ function ProductsContent() {
                     {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
-                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-blue-100 focus:border-sky-200"
+                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-[#d8c6bb] focus:border-[#c9ae9f]"
                   />
-                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-100 text-blue-900 hover:bg-blue-100 transition-colors">
+                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#f4ece6] text-[#2a2623] hover:bg-[#eadfd7] transition-colors">
                     Go
                   </button>
                 </form>
@@ -377,9 +403,9 @@ function ProductsContent() {
             className="text-center py-20 max-w-md mx-auto"
           >
             <div className="relative w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 opacity-20 blur-xl" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-100 flex items-center justify-center">
-                <ShoppingBag className="w-9 h-9 text-blue-800" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-20 blur-xl" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
+                <ShoppingBag className="w-9 h-9 text-[#2a2623]" />
               </div>
             </div>
             <p className="font-bold text-neutral-900 text-lg mb-2">No products found</p>
@@ -388,7 +414,7 @@ function ProductsContent() {
               <button
                 type="button"
                 onClick={() => router.push(pathname)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-800 to-blue-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-orange-500 shadow-md shadow-blue-600/20 transition-all active:scale-[0.97]"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 transition-all active:scale-[0.97]"
               >
                 <X className="w-4 h-4" />
                 Clear all filters
@@ -405,7 +431,7 @@ export default function ProductsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-sky-200 border-t-blue-800 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#d8c6bb] border-t-[#2a2623] animate-spin" />
       </div>
     }>
       <ProductsContent />

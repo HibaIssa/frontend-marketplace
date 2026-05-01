@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
@@ -240,7 +240,7 @@ export default function CompleteStylePage() {
             </div>
             <p className="mt-2 font-medium text-neutral-800">{source.title}</p>
             {typeof source.price_cents === 'number' && source.price_cents > 0 && (
-              <p className="mt-1 text-sm font-semibold text-blue-900">
+              <p className="mt-1 text-sm font-semibold text-[#2a2623]">
                 {formatPrice(source.price_cents, source.currency || 'USD')}
               </p>
             )}
@@ -248,7 +248,7 @@ export default function CompleteStylePage() {
 
           <div className="lg:col-span-3 space-y-10">
             {data.outfitSuggestion && (
-              <div className="p-4 rounded-xl bg-sky-50 border border-blue-100">
+              <div className="p-4 rounded-xl bg-[#f7f0eb] border border-[#d8c6bb]">
                 <p className="text-neutral-700">{data.outfitSuggestion}</p>
               </div>
             )}
@@ -256,7 +256,7 @@ export default function CompleteStylePage() {
             {data.recommendations.map((rec, idx) => (
               <section key={idx}>
                 <div className="flex items-center gap-2 mb-4">
-                  <Shirt className="w-5 h-5 text-blue-800" />
+                  <Shirt className="w-5 h-5 text-[#2a2623]" />
                   <h2 className="font-display text-xl font-bold text-neutral-800">{rec.category}</h2>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">{rec.priorityLabel}</span>
                 </div>
@@ -280,7 +280,7 @@ export default function CompleteStylePage() {
                         >
                           <Link
                             href={href}
-                            className="group block rounded-2xl border border-neutral-200/60 bg-white overflow-hidden hover:shadow-lg hover:shadow-blue-600/10 hover:-translate-y-0.5 transition-all duration-300"
+                            className="group block rounded-2xl border border-neutral-200/60 bg-white overflow-hidden hover:shadow-lg hover:shadow-[#2a2623]/10 hover:-translate-y-0.5 transition-all duration-300"
                           >
                             <div className="relative aspect-[3/4] bg-neutral-100 overflow-hidden">
                               {shot && (
@@ -288,10 +288,10 @@ export default function CompleteStylePage() {
                               )}
                             </div>
                             <div className="p-3">
-                              {card.brand && <p className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider truncate">{card.brand}</p>}
+                              {card.brand && <p className="text-[10px] font-semibold text-[#2a2623] uppercase tracking-wider truncate">{card.brand}</p>}
                               <p className="text-sm font-semibold text-neutral-900 line-clamp-2 mt-0.5">{card.title}</p>
                               {card.price_cents > 0 && (
-                                <p className="text-sm font-bold text-blue-900 tabular-nums mt-1.5">{formatPrice(card.price_cents, card.currency)}</p>
+                                <p className="text-sm font-bold text-[#2a2623] tabular-nums mt-1.5">{formatPrice(card.price_cents, card.currency)}</p>
                               )}
                             </div>
                           </Link>

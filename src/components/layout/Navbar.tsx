@@ -34,10 +34,13 @@ const featureLinks: Feature[] = [
   { href: '/sales', label: 'Shop sale', desc: 'Today\u2019s reductions across catalog.', icon: Tag },
 ]
 
-const ACTIVE_PILL =
-  'bg-[#0a0a0a] text-white ring-1 ring-black/20'
-const IDLE_PILL =
-  'text-[#0a0a0a]/75 hover:text-[#0a0a0a] hover:bg-[#e5eeff]'
+// Glass nav: links stay readable but bar stays visibly transparent (no heavy beige slab).
+const ACTIVE_PILL = 'bg-[#2a2623]/90 text-white shadow-sm ring-1 ring-[#2a2623]/30'
+const IDLE_PILL = 'text-[#2a2623]/85 hover:text-[#2a2623] hover:bg-white/55'
+
+// Overlay variants — used on the home hero, white-on-image, no pill chrome.
+const OVERLAY_ACTIVE = 'text-white underline underline-offset-[6px] decoration-white/80'
+const OVERLAY_IDLE = 'text-white/90 hover:text-white'
 
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
@@ -79,32 +82,46 @@ export function Navbar() {
     setMobileOpen(false)
   }, [pathname, searchParams])
 
-  const featuresActive = featureLinks.some((f) => {
-    const base = f.href.split('?')[0]
-    return base === pathname || (base !== '/' && pathname.startsWith(base))
-  })
+  // Home at scroll 0: nav floats over the hero with white type (fully transparent bar).
+  // Any scroll or other route: keep a glass strip — still transparent, never the old solid pill.
+  const isHome = pathname === '/'
+  const homeOverHero = isHome && !scrolled
+  const glassNav =
+    'bg-white/18 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/35 shadow-[0_10px_40px_-18px_rgba(42,38,35,0.2)]'
 
   return (
     <motion.header
       initial={{ y: -12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="sticky top-0 z-50"
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="fixed top-0 inset-x-0 z-50"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 pt-3">
+      <div className="mx-auto w-full max-w-none px-0 pt-0 transition-all duration-300">
         <div
           className={clsx(
-            'flex items-center justify-between gap-3 h-14 px-4 sm:px-5 rounded-full transition-all duration-300',
-            scrolled
-              ? 'bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-22px_rgba(10,10,10,0.12)] ring-1 ring-black/10'
-              : 'bg-white/90 backdrop-blur-sm ring-1 ring-black/8'
+            'flex items-center justify-between gap-3 min-h-14 px-4 sm:px-6 lg:px-10 transition-all duration-300',
+            homeOverHero ? 'bg-transparent' : clsx(glassNav, scrolled && 'bg-white/28 border-white/45')
           )}
         >
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[0.7rem] font-extrabold tracking-tight">
+            <span
+              className={clsx(
+                'inline-flex h-8 w-8 items-center justify-center rounded-full text-[0.72rem] font-extrabold tracking-tight transition-colors',
+                homeOverHero
+                  ? 'bg-white text-[#2a2623]'
+                  : 'bg-[#2a2623] text-white'
+              )}
+            >
               TZ
             </span>
-            <span className="font-display text-[15px] font-bold tz-burgundy tracking-tight">
+            <span
+              className={clsx(
+                'font-display text-[15px] font-bold tracking-tight transition-colors',
+                homeOverHero
+                  ? 'text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-[#100809]'
+              )}
+            >
               TrendZone
             </span>
           </Link>
@@ -117,8 +134,13 @@ export function Navbar() {
                   key={`${link.href}-${link.label}`}
                   href={link.href}
                   className={clsx(
-                    'px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap',
-                    active ? ACTIVE_PILL : IDLE_PILL
+                    'px-3 py-1.5 rounded-full text-[13.5px] font-semibold transition-colors whitespace-nowrap',
+                    homeOverHero
+                      ? clsx(
+                          active ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                          'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                        )
+                      : active ? ACTIVE_PILL : IDLE_PILL
                   )}
                 >
                   {link.label}
@@ -181,27 +203,31 @@ export function Navbar() {
                 href="/admin"
                 className={clsx(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors',
-                  pathname.startsWith('/admin')
-                    ? 'bg-[#0a0a0a] text-white ring-1 ring-black'
-                    : 'text-[#0a0a0a] hover:bg-[#e5eeff] ring-1 ring-black/15'
+                  homeOverHero
+                    ? clsx(
+                        pathname.startsWith('/admin') ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                        'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      )
+                    : pathname.startsWith('/admin') ? ACTIVE_PILL : IDLE_PILL
                 )}
               >
-                <Shield className="w-3.5 h-3.5" />
-                Admin
+                <Shield className="w-3.5 h-3.5" /> Admin
               </Link>
             )}
-            {mounted && user?.user_type === 'business' && (
+            {canSeeBusinessDashboard && (
               <Link
                 href="/dashboard"
                 className={clsx(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors',
-                  pathname.startsWith('/dashboard')
-                    ? 'bg-[#0a0a0a] text-white'
-                    : 'text-[#0a0a0a] hover:bg-[#e5eeff]'
+                  homeOverHero
+                    ? clsx(
+                        pathname.startsWith('/dashboard') ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                        'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      )
+                    : pathname.startsWith('/dashboard') ? ACTIVE_PILL : IDLE_PILL
                 )}
               >
-                <Store className="w-3.5 h-3.5" />
-                Dashboard
+                <Store className="w-3.5 h-3.5" /> Dashboard
               </Link>
             )}
           </nav>
@@ -209,13 +235,24 @@ export function Navbar() {
           <div className="flex items-center gap-1 shrink-0">
             <Link
               href="/search"
-              className="p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
+              className={clsx(
+                'p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
               aria-label="Search"
             >
               <Search className="w-[18px] h-[18px]" />
             </Link>
             <Link
               href="/favorites"
+              className={clsx(
+                'hidden sm:inline-flex p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
               className="hidden sm:inline-flex p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
               aria-label="Saved"
             >
@@ -225,6 +262,24 @@ export function Navbar() {
               href="/compare"
               className={clsx(
                 'relative hidden sm:inline-flex p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : pathname.startsWith('/compare')
+                    ? 'bg-black/[0.06] text-slate-900 ring-1 ring-black/10'
+                    : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Compare"
+            >
+              <GitCompare className="w-[18px] h-[18px]" />
+              {mounted && compareCount > 0 && (
+                <span
+                  className={clsx(
+                    'absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full text-[10px] font-bold px-1 ring-2',
+                    homeOverHero
+                      ? 'bg-white text-[#2a2623] ring-transparent'
+                      : 'bg-[#2a2623] text-white ring-[#f5f3f2]'
+                  )}
+                >
                 pathname.startsWith('/compare')
                   ? 'bg-[#e5eeff] text-[#0a0a0a] ring-1 ring-black/15'
                   : 'text-[#0a0a0a] hover:bg-[#e5eeff]'
@@ -240,64 +295,76 @@ export function Navbar() {
             </Link>
             <Link
               href="/products"
-              className="p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
+              className={clsx(
+                'p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
               aria-label="Bag"
             >
               <ShoppingBag className="w-[18px] h-[18px]" />
             </Link>
+
             {mounted && isAuthenticated() ? (
               <div className="relative group">
                 <button
                   type="button"
-                  className="p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
+                  className={clsx(
+                    'p-2 rounded-full transition-colors',
+                    homeOverHero
+                      ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      : 'text-slate-800 hover:bg-black/[0.06]'
+                  )}
                 >
                   <User className="w-[18px] h-[18px]" />
                 </button>
-                <div className="absolute right-0 mt-2 w-48 py-1.5 rounded-xl ring-1 ring-black/10 bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <Link href="/account" className="block px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">Account</Link>
-                  {canSeeAdmin && (
-                    <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">
-                      <Shield className="w-3.5 h-3.5" /> Admin
-                    </Link>
-                  )}
-                  {user?.user_type === 'business' && (
-                    <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">
-                      <Store className="w-3.5 h-3.5" /> Dashboard
-                    </Link>
-                  )}
-                  <Link href="/wardrobe" className="block px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">My Wardrobe</Link>
-                  <Link href="/try-on" className="block px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">Virtual Try-On</Link>
-                  <Link href="/compare" className="flex items-center justify-between px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]">
-                    <span>Compare</span>
-                    {mounted && compareCount > 0 && (
-                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[10px] font-bold px-1.5">
-                        {compareCount}
-                      </span>
-                    )}
-                  </Link>
-                  <div className="border-t border-black/10 my-1" />
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="w-full text-left px-4 py-2 text-sm text-[#0a0a0a] hover:bg-[#e5eeff]"
-                  >
-                    Sign out
-                  </button>
+                <div className="absolute right-0 mt-2 w-48 py-1.5 rounded-xl ring-1 ring-slate-200 bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <Link href="/account" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Account</Link>
+                  <Link href="/wardrobe" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">My Wardrobe</Link>
+                  <Link href="/try-on" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Virtual Try-On</Link>
+                  {canSeeAdmin && <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-800 hover:bg-slate-100"><Shield className="w-3.5 h-3.5" /> Admin</Link>}
+                  {canSeeBusinessDashboard && <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-800 hover:bg-slate-100"><Store className="w-3.5 h-3.5" /> Dashboard</Link>}
+                  <div className="border-t border-slate-200 my-1" />
+                  <button type="button" onClick={logout} className="w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Sign out</button>
                 </div>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="hidden sm:inline-flex text-[13px] py-2 px-5 ml-1 items-center justify-center rounded-full bg-[#0a0a0a] text-white font-semibold hover:bg-black transition-colors"
-              >
-                Sign in
-              </Link>
+              <div className="hidden sm:flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className={clsx(
+                    'text-[13px] py-2 px-4 rounded-full transition-colors font-semibold',
+                    homeOverHero
+                      ? 'border border-white/70 text-white hover:bg-white/10 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      : 'border border-[#2a2623]/25 text-[#2a2623] hover:bg-black/[0.05]'
+                  )}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className={clsx(
+                    'text-[13px] py-2 px-4 rounded-full transition-colors font-semibold',
+                    homeOverHero
+                      ? 'bg-white text-[#2a2623] hover:bg-[#ece8e5]'
+                      : 'bg-[#2a2623] text-white hover:bg-black'
+                  )}
+                >
+                  Sign up
+                </Link>
+              </div>
             )}
 
             <button
               type="button"
               onClick={() => setMobileOpen((v) => !v)}
-              className="md:hidden p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
+              className={clsx(
+                'md:hidden p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
               aria-label="Open menu"
             >
               {mobileOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
@@ -347,6 +414,12 @@ export function Navbar() {
                   </Link>
                 ))}
               </div>
+              {!isAuthenticated() && (
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                  <Link href="/login" className="text-center px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-semibold">Login</Link>
+                  <Link href="/signup" className="text-center px-3 py-2 rounded-xl bg-[#2a2623] text-white font-semibold">Sign up</Link>
+                </div>
+              )}
             </motion.nav>
           )}
         </AnimatePresence>

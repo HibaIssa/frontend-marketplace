@@ -1,4 +1,4 @@
-﻿import { fetchFreshnessStats, fetchVendorFreshness } from '@/lib/catalog-queries'
+import { fetchFreshnessStats, fetchVendorFreshness } from '@/lib/catalog-queries'
 import { PageHeader, KpiCard, Section } from '@/components/catalog-admin/ui'
 import { formatRelativeTime } from '@/lib/utils/catalog-quality'
 
@@ -7,9 +7,9 @@ function FreshnessBar({ fresh, recent, aging, stale }: {
 }) {
   return (
     <div className="h-2 rounded-full overflow-hidden flex w-full">
-      <div className="bg-blue-600 transition-all" style={{ width: `${fresh}%` }} title={`Fresh: ${fresh}%`} />
-      <div className="bg-blue-400 transition-all" style={{ width: `${recent}%` }} title={`Recent: ${recent}%`} />
-      <div className="bg-amber-400 transition-all" style={{ width: `${aging}%` }} title={`Aging: ${aging}%`} />
+      <div className="bg-[#2a2623] transition-all" style={{ width: `${fresh}%` }} title={`Fresh: ${fresh}%`} />
+      <div className="bg-[#99624E] transition-all" style={{ width: `${recent}%` }} title={`Recent: ${recent}%`} />
+      <div className="bg-[#c9ae9f] transition-all" style={{ width: `${aging}%` }} title={`Aging: ${aging}%`} />
       <div className="bg-red-400 transition-all" style={{ width: `${stale}%` }} title={`Stale: ${stale}%`} />
     </div>
   )
@@ -32,9 +32,9 @@ export default async function FreshnessPage() {
         sub="Scrape staleness analysis by vendor"
         actions={
           <div className="flex items-center gap-3 text-[11px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600 inline-block" /> Fresh &lt;1d</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" /> Recent 1–7d</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Aging 7–14d</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#2a2623] inline-block" /> Fresh &lt;1d</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#99624E] inline-block" /> Recent 1–7d</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#c9ae9f] inline-block" /> Aging 7–14d</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Stale &gt;14d</span>
           </div>
         }
@@ -94,9 +94,9 @@ export default async function FreshnessPage() {
                         stale={v.stale_pct}
                       />
                     </td>
-                    <td className="px-4 py-3 text-xs text-blue-700 tabular-nums font-medium">{v.fresh_pct}%</td>
-                    <td className="px-4 py-3 text-xs text-blue-600 tabular-nums">{v.recent_pct}%</td>
-                    <td className="px-4 py-3 text-xs text-amber-600 tabular-nums">{v.aging_pct}%</td>
+                    <td className="px-4 py-3 text-xs text-[#2a2623] tabular-nums font-medium">{v.fresh_pct}%</td>
+                    <td className="px-4 py-3 text-xs text-[#7d4b3a] tabular-nums">{v.recent_pct}%</td>
+                    <td className="px-4 py-3 text-xs text-[#99624E] tabular-nums">{v.aging_pct}%</td>
                     <td className="px-4 py-3 text-xs text-red-500 tabular-nums">{v.stale_pct}%</td>
                     <td className="px-4 py-3 text-[11px] text-gray-400 whitespace-nowrap">
                       {v.last_scrape ? formatRelativeTime(v.last_scrape) : (

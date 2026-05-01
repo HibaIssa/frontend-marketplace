@@ -102,7 +102,7 @@ export function ProductCard({
             }}
           />
           {hasSale && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#0a0a0a] text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
+            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
               Sale
             </span>
           )}
@@ -144,7 +144,7 @@ export function ProductCard({
                   disabled={wardrobeStatus === 'loading' || wardrobeStatus === 'added'}
                   className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors border-r border-white/30
                     ${wardrobeStatus === 'added'
-                      ? 'bg-[#0a0a0a] text-white'
+                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white'
                       : wardrobeStatus === 'loading'
                         ? 'bg-[#161616]/85 text-white'
                         : 'bg-white/90 text-[#0a0a0a] hover:bg-white'
@@ -175,8 +175,8 @@ export function ProductCard({
                   }}
                   className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors
                     ${inCompare
-                      ? 'bg-[#0a0a0a] text-white'
-                      : 'bg-white/90 text-[#0a0a0a] hover:bg-white'
+                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white'
+                      : 'bg-white/90 text-[#100809] hover:bg-[#efe4de]'
                     }`}
                 >
                   {inCompare ? (

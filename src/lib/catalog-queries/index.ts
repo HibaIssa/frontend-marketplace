@@ -17,6 +17,8 @@ import type {
   CurrentSaleProduct,
 } from '@/types/catalog-admin'
 
+type BackendProductRow = Record<string, unknown>
+
 type ProductAggregateRow = {
   vendor_id: number | null
   category: string | null
@@ -43,6 +45,133 @@ let aggregateCache: {
   data: null,
   expiresAt: 0,
   inFlight: null,
+}
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-359201620993.asia-southeast1.run.app').replace(/\/+$/, '')
+
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return fallback
+}
+
+function toBoolOrNull(value: unknown): boolean | null {
+  if (value === true) return true
+  if (value === false) return false
+  if (typeof value === 'string') {
+    const v = value.toLowerCase()
+    if (v === 'true') return true
+    if (v === 'false') return false
+  }
+  return null
+}
+
+function toStringOrNull(value: unknown): string | null {
+  if (typeof value === 'string') return value
+  return null
+}
+
+function extractArray<T = unknown>(input: unknown): T[] {
+  if (Array.isArray(input)) return input as T[]
+  if (!input || typeof input !== 'object') return []
+  const rec = input as Record<string, unknown>
+  if (Array.isArray(rec.data)) return rec.data as T[]
+  if (Array.isArray(rec.results)) return rec.results as T[]
+  if (Array.isArray(rec.products)) return rec.products as T[]
+  if (rec.data && typeof rec.data === 'object') {
+    const inner = rec.data as Record<string, unknown>
+    if (Array.isArray(inner.results)) return inner.results as T[]
+    if (Array.isArray(inner.products)) return inner.products as T[]
+    if (Array.isArray(inner.data)) return inner.data as T[]
+  }
+  return []
+}
+
+async function backendGet(path: string, params?: Record<string, string | number | undefined>): Promise<unknown> {
+  const url = new URL(`${API_BASE}${path}`)
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      if (v != null && v !== '') url.searchParams.set(k, String(v))
+    }
+  }
+  const res = await fetch(url.toString(), { cache: 'no-store' })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Backend ${path} failed (${res.status}): ${body || res.statusText}`)
+  }
+  return res.json().catch(() => ({}))
+}
+
+function mapBackendProductToAggregate(row: BackendProductRow): ProductAggregateRow {
+  const vendorObj = row.vendor && typeof row.vendor === 'object' ? (row.vendor as Record<string, unknown>) : null
+  const vendorId = row.vendor_id ?? row.vendorId ?? vendorObj?.id
+  return {
+    vendor_id: Number.isFinite(toNumber(vendorId, NaN)) ? toNumber(vendorId, 0) : null,
+    category: toStringOrNull(row.category),
+    color: toStringOrNull(row.color),
+    size: toStringOrNull(row.size),
+    image_url: toStringOrNull(row.image_url ?? row.imageUrl ?? row.image_cdn ?? row.imageCdn),
+    image_urls: row.image_urls ?? row.imageUrls ?? null,
+    variant_id: toStringOrNull(row.variant_id ?? row.variantId),
+    parent_product_url: toStringOrNull(row.parent_product_url ?? row.parentProductUrl),
+    sales_price_cents: toNumber(row.sales_price_cents ?? row.salesPriceCents, 0) || null,
+    last_seen: toStringOrNull(row.last_seen ?? row.lastSeen),
+    availability: toBoolOrNull(row.availability),
+  }
+}
+
+function mapBackendProductToCatalog(row: BackendProductRow): Product {
+  const vendorObj = row.vendor && typeof row.vendor === 'object' ? (row.vendor as Record<string, unknown>) : null
+  const vendorId = toNumber(row.vendor_id ?? row.vendorId ?? vendorObj?.id, 0)
+  const vendorName =
+    toStringOrNull(vendorObj?.name) ??
+    toStringOrNull(row.vendor_name ?? row.vendorName) ??
+    (vendorId ? `Vendor ${vendorId}` : 'Unknown vendor')
+  return {
+    id: toNumber(row.id, 0),
+    vendor_id: vendorId,
+    product_url: toStringOrNull(row.product_url ?? row.productUrl) ?? '',
+    parent_product_url: toStringOrNull(row.parent_product_url ?? row.parentProductUrl),
+    variant_id: toStringOrNull(row.variant_id ?? row.variantId),
+    title: toStringOrNull(row.title) ?? 'Untitled product',
+    brand: toStringOrNull(row.brand),
+    category: toStringOrNull(row.category),
+    description: toStringOrNull(row.description),
+    size: toStringOrNull(row.size),
+    color: toStringOrNull(row.color),
+    currency: toStringOrNull(row.currency) ?? 'USD',
+    price_cents: toNumber(row.price_cents ?? row.priceCents, 0),
+    sales_price_cents: toNumber(row.sales_price_cents ?? row.salesPriceCents, 0) || null,
+    availability: toBoolOrNull(row.availability),
+    last_seen: toStringOrNull(row.last_seen ?? row.lastSeen),
+    image_url: toStringOrNull(row.image_url ?? row.imageUrl),
+    image_urls: Array.isArray(row.image_urls ?? row.imageUrls) ? ((row.image_urls ?? row.imageUrls) as string[]) : null,
+    image_cdn: toStringOrNull(row.image_cdn ?? row.imageCdn),
+    primary_image_id: toNumber(row.primary_image_id ?? row.primaryImageId, 0) || null,
+    p_hash: toStringOrNull(row.p_hash ?? row.pHash),
+    return_policy: toStringOrNull(row.return_policy ?? row.returnPolicy),
+    vendor: {
+      id: vendorId,
+      name: vendorName,
+      url: toStringOrNull(vendorObj?.url) ?? '',
+      ship_to_lebanon: Boolean(vendorObj?.ship_to_lebanon ?? vendorObj?.shipToLebanon ?? false),
+    },
+  }
+}
+
+async function fetchAllProductsFromBackend(limit = 200, maxPages = 50): Promise<BackendProductRow[]> {
+  const out: BackendProductRow[] = []
+  for (let page = 1; page <= maxPages; page += 1) {
+    const payload = await backendGet('/products', { page, limit })
+    const rows = extractArray<BackendProductRow>(payload)
+    if (rows.length === 0) break
+    out.push(...rows)
+    if (rows.length < limit) break
+  }
+  return out
 }
 
 function isBlank(value: string | null | undefined): boolean {
@@ -90,7 +219,13 @@ async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
         `)
         .range(from, to)
 
-      if (error) throw error
+      if (error) {
+        const backendRows = await fetchAllProductsFromBackend()
+        const mapped = backendRows.map(mapBackendProductToAggregate)
+        aggregateCache.data = mapped
+        aggregateCache.expiresAt = Date.now() + AGGREGATE_CACHE_TTL_MS
+        return mapped
+      }
 
       const batch = (data as ProductAggregateRow[]) ?? []
       rows.push(...batch)
@@ -117,9 +252,15 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
     fetchProductAggregateRows(),
   ])
 
-  if (vendorsRes.error) throw vendorsRes.error
-
   const now = Date.now()
+  const fallbackVendorCount = new Set(
+    rows
+      .map((row) => row.vendor_id)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+  ).size
+  const totalVendors =
+    vendorsRes.error ? fallbackVendorCount : (vendorsRes.count ?? fallbackVendorCount)
+
   let available = 0
   let unavailable = 0
   let seenToday = 0
@@ -155,7 +296,7 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
   }
 
   return {
-    total_vendors: vendorsRes.count ?? 0,
+    total_vendors: totalVendors,
     total_products: rows.length,
     available_products: available,
     unavailable_products: unavailable,
@@ -187,16 +328,13 @@ async function fetchCategoryCountsFallback(): Promise<CategoryCount[]> {
 }
 
 async function fetchVendorProductCountsFallback(): Promise<VendorProductCount[]> {
-  const [vendorsRes, rows] = await Promise.all([
-    sb.from('vendors').select('id, name'),
-    fetchProductAggregateRows(),
-  ])
-
-  if (vendorsRes.error) throw vendorsRes.error
+  const [vendorsRes, rows] = await Promise.all([sb.from('vendors').select('id, name'), fetchProductAggregateRows()])
 
   const vendorNames = new Map<number, string>()
-  for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string }>)) {
-    vendorNames.set(Number(vendor.id), vendor.name)
+  if (!vendorsRes.error) {
+    for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string }>)) {
+      vendorNames.set(Number(vendor.id), vendor.name)
+    }
   }
 
   const totals = new Map<number, VendorProductCount>()
@@ -204,7 +342,7 @@ async function fetchVendorProductCountsFallback(): Promise<VendorProductCount[]>
   for (const row of rows) {
     const vendorId = Number(row.vendor_id)
     const entry = totals.get(vendorId) ?? {
-      vendor_name: vendorNames.get(vendorId) ?? `Vendor ${vendorId}`,
+      vendor_name: vendorNames.get(vendorId) ?? `Vendor ${vendorId || 'Unknown'}`,
       total: 0,
       available: 0,
       unavailable: 0,
@@ -236,37 +374,56 @@ async function fetchVendorStatsFallback(): Promise<VendorStats[]> {
     fetchProductAggregateRows(),
   ])
 
-  if (vendorsRes.error) throw vendorsRes.error
-
   const vendorMap = new Map<number, VendorStats>()
 
-  for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string; url: string; ship_to_lebanon: boolean }>)) {
-    vendorMap.set(Number(vendor.id), {
-      id: Number(vendor.id),
-      name: vendor.name,
-      url: vendor.url,
-      ship_to_lebanon: vendor.ship_to_lebanon,
-      total_products: 0,
-      available_products: 0,
-      unavailable_products: 0,
-      missing_category: 0,
-      missing_image_url: 0,
-      missing_image_urls: 0,
-      missing_variant_id: 0,
-      missing_parent_url: 0,
-      missing_color: 0,
-      missing_size: 0,
-      latest_last_seen: null,
-      health_score: 0,
-    })
+  if (!vendorsRes.error) {
+    for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string; url: string; ship_to_lebanon: boolean }>)) {
+      vendorMap.set(Number(vendor.id), {
+        id: Number(vendor.id),
+        name: vendor.name,
+        url: vendor.url,
+        ship_to_lebanon: vendor.ship_to_lebanon,
+        total_products: 0,
+        available_products: 0,
+        unavailable_products: 0,
+        missing_category: 0,
+        missing_image_url: 0,
+        missing_image_urls: 0,
+        missing_variant_id: 0,
+        missing_parent_url: 0,
+        missing_color: 0,
+        missing_size: 0,
+        latest_last_seen: null,
+        health_score: 0,
+      })
+    }
   }
 
   const sevenDaysAgo = Date.now() - 7 * DAY_MS
 
   for (const row of rows) {
     const vendorId = Number(row.vendor_id)
-    const stats = vendorMap.get(vendorId)
-    if (!stats) continue
+    if (!vendorMap.has(vendorId)) {
+      vendorMap.set(vendorId, {
+        id: vendorId,
+        name: `Vendor ${vendorId || 'Unknown'}`,
+        url: '',
+        ship_to_lebanon: false,
+        total_products: 0,
+        available_products: 0,
+        unavailable_products: 0,
+        missing_category: 0,
+        missing_image_url: 0,
+        missing_image_urls: 0,
+        missing_variant_id: 0,
+        missing_parent_url: 0,
+        missing_color: 0,
+        missing_size: 0,
+        latest_last_seen: null,
+        health_score: 0,
+      })
+    }
+    const stats = vendorMap.get(vendorId)!
 
     stats.total_products += 1
     if (row.availability === true) stats.available_products += 1
@@ -420,14 +577,66 @@ export async function fetchProducts(
   query = query.order(sort.field, { ascending: sort.direction === 'asc' }).range(from, to)
 
   const { data, error, count } = await query
-  if (error) throw error
-
-  return {
-    data: (data as unknown as Product[]) ?? [],
-    total: count ?? 0,
-    page,
-    pageSize,
+  if (!error) {
+    return {
+      data: (data as unknown as Product[]) ?? [],
+      total: count ?? 0,
+      page,
+      pageSize,
+    }
   }
+
+  const all = (await fetchAllProductsFromBackend()).map(mapBackendProductToCatalog)
+  const staleCutoff = Date.now() - 14 * DAY_MS
+  const filtered = all.filter((p) => {
+    if (filters.search) {
+      const term = filters.search.toLowerCase()
+      const hay = `${p.title} ${p.brand ?? ''} ${p.category ?? ''}`.toLowerCase()
+      if (!hay.includes(term)) return false
+    }
+    if (filters.vendor_id != null && String(p.vendor_id) !== String(filters.vendor_id)) return false
+    if (filters.category && p.category !== filters.category) return false
+    if (filters.brand && !(p.brand ?? '').toLowerCase().includes(filters.brand.toLowerCase())) return false
+    if (filters.color && !(p.color ?? '').toLowerCase().includes(filters.color.toLowerCase())) return false
+    if (filters.availability !== undefined && p.availability !== filters.availability) return false
+    if (filters.has_sale && !((p.sales_price_cents ?? 0) > 0)) return false
+    if (filters.missing_category && !isBlank(p.category)) return false
+    if (filters.missing_image_url && p.image_url) return false
+    if (filters.missing_variant_id && !isBlank(p.variant_id)) return false
+    if (filters.is_stale) {
+      const ts = p.last_seen ? new Date(p.last_seen).getTime() : 0
+      if (!ts || ts >= staleCutoff) return false
+    }
+    if (filters.has_issues) {
+      const hasIssues =
+        isBlank(p.category) ||
+        isBlank(p.brand) ||
+        isBlank(p.color) ||
+        isBlank(p.size) ||
+        !p.image_url ||
+        isBlank(p.variant_id) ||
+        isBlank(p.parent_product_url) ||
+        isBlank(p.return_policy) ||
+        (p.price_cents ?? 0) === 0
+      if (!hasIssues) return false
+    }
+    return true
+  })
+
+  const sortDir = sort.direction === 'asc' ? 1 : -1
+  filtered.sort((a, b) => {
+    const av = (a as unknown as Record<string, unknown>)[sort.field]
+    const bv = (b as unknown as Record<string, unknown>)[sort.field]
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
+    return String(av).localeCompare(String(bv)) * sortDir
+  })
+
+  const total = filtered.length
+  const paged = filtered.slice(from, to + 1)
+  return { data: paged, total, page, pageSize }
 }
 
 export async function fetchPriceHistory(productId: string | number): Promise<PriceHistory[]> {
@@ -477,7 +686,21 @@ async function fetchRecentPriceChangesFallback(limit = 50) {
       .order('recorded_at', { ascending: true })
       .range(from, to)
 
-    if (error) throw error
+    if (error) {
+      const payload = await backendGet('/products/price-drops', { page: 1, limit })
+      const drops = extractArray<Record<string, unknown>>(payload)
+      return drops.map((row) => ({
+        product_id: toNumber(row.product_id ?? row.productId ?? row.id, 0),
+        product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
+        vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName) ?? 'Unknown vendor',
+        image_url: toStringOrNull(row.image_url ?? row.imageUrl),
+        old_price: toNumber(row.old_price_cents ?? row.old_price ?? row.oldPriceCents, 0),
+        new_price: toNumber(row.new_price_cents ?? row.new_price ?? row.newPriceCents, 0),
+        change_pct: toNumber(row.drop_percent ?? row.change_pct ?? row.changePct, 0) * -1,
+        recorded_at: toStringOrNull(row.detected_at ?? row.recorded_at ?? row.recordedAt) ?? new Date().toISOString(),
+        is_discount: true,
+      }))
+    }
 
     const batch = (batchData as RawHistoryRow[]) ?? []
     data.push(...batch)
@@ -563,7 +786,27 @@ async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSale
       .not('sales_price_cents', 'is', null)
       .range(from, to)
 
-    if (error) throw error
+    if (error) {
+      const payload = await backendGet('/products/sales', { page: 1, limit })
+      const sales = extractArray<Record<string, unknown>>(payload)
+      return sales
+        .map((row) => {
+          const price = toNumber(row.price_cents ?? row.priceCents, 0)
+          const sale = toNumber(row.sales_price_cents ?? row.salesPriceCents, 0)
+          return {
+            product_id: toNumber(row.id ?? row.product_id ?? row.productId, 0),
+            product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
+            vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName) ?? 'Unknown vendor',
+            image_url: toStringOrNull(row.image_url ?? row.imageUrl ?? row.image_cdn),
+            price_cents: price,
+            sales_price_cents: sale,
+            discount_pct: price > 0 && sale > 0 ? Math.round(((price - sale) / price) * 100) : 0,
+            last_seen: toStringOrNull(row.last_seen ?? row.lastSeen),
+          }
+        })
+        .filter((row) => row.price_cents > 0 && row.sales_price_cents > 0 && row.sales_price_cents < row.price_cents)
+        .slice(0, limit)
+    }
 
     const batch = (data as RawSaleRow[]) ?? []
     rows.push(...batch)
@@ -688,9 +931,22 @@ export async function fetchDistinctVendors(): Promise<Array<{ id: number; name: 
     .select('id, name')
     .order('name')
 
-  if (error) throw error
-  return ((data as Array<{ id: number; name: string }>) ?? []).map((vendor) => ({
-    id: Number(vendor.id),
-    name: vendor.name,
-  }))
+  if (!error) {
+    return ((data as Array<{ id: number; name: string }>) ?? []).map((vendor) => ({
+      id: Number(vendor.id),
+      name: vendor.name,
+    }))
+  }
+
+  const rows = await fetchProductAggregateRows()
+  const seen = new Set<number>()
+  const out: Array<{ id: number; name: string }> = []
+  for (const row of rows) {
+    const id = Number(row.vendor_id)
+    if (!Number.isFinite(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push({ id, name: `Vendor ${id}` })
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name))
+  return out
 }
