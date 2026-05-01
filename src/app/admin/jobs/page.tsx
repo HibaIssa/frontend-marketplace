@@ -143,7 +143,7 @@ export default function AdminJobsPage() {
             Job queued successfully.
           </p>
         ) : null}
-        {runError ? <p className="text-sm text-blue-800">{runError}</p> : null}
+        {runError ? <p className="text-sm text-[#2a2623]">{runError}</p> : null}
       </section>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5 space-y-3">
@@ -235,7 +235,7 @@ export default function AdminJobsPage() {
               <XAxis dataKey="status" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="count" fill="#7c3aed" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="count" fill="#7d4b3a" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -247,7 +247,7 @@ export default function AdminJobsPage() {
               <XAxis dataKey="jobType" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="runs" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="runs" fill="#99624E" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

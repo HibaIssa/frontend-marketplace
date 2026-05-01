@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -36,7 +36,7 @@ function tone(value: unknown): 'good' | 'warn' | 'bad' | 'unknown' {
 function toneClass(t: 'good' | 'warn' | 'bad' | 'unknown'): string {
   if (t === 'good') return 'bg-emerald-50 border-emerald-200 text-emerald-700'
   if (t === 'warn') return 'bg-amber-50 border-amber-200 text-amber-700'
-  if (t === 'bad') return 'bg-sky-50 border-blue-100 text-blue-800'
+  if (t === 'bad') return 'bg-[#f7f0eb] border-[#d8c6bb] text-[#2a2623]'
   return 'bg-slate-50 border-slate-200 text-slate-600'
 }
 
@@ -128,7 +128,7 @@ export default function AdminSystemPage() {
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-2xl border border-neutral-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-neutral-500">Live</p>
-          <p className={`text-2xl font-semibold mt-1 ${liveOk ? 'text-emerald-700' : 'text-blue-800'}`}>
+          <p className={`text-2xl font-semibold mt-1 ${liveOk ? 'text-emerald-700' : 'text-[#2a2623]'}`}>
             {live.isLoading ? '…' : liveOk ? 'Up' : 'Down'}
           </p>
         </div>
@@ -199,7 +199,7 @@ export default function AdminSystemPage() {
               </div>
               <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-neutral-500">Up</p>
-                <p className={`text-xl font-semibold mt-0.5 ${promSummary.up === 1 ? 'text-emerald-700' : 'text-blue-800'}`}>
+                <p className={`text-xl font-semibold mt-0.5 ${promSummary.up === 1 ? 'text-emerald-700' : 'text-[#2a2623]'}`}>
                   {promSummary.up == null ? 'n/a' : promSummary.up}
                 </p>
               </div>
@@ -238,7 +238,7 @@ export default function AdminSystemPage() {
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-18} textAnchor="end" height={48} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="value" fill="#7d4b3a" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -248,14 +248,14 @@ export default function AdminSystemPage() {
 
       <p className="text-xs text-neutral-500">
         Need raw payload for debugging? Use{' '}
-        <Link href="/admin/console?group=System" className="text-blue-800 hover:underline">
+        <Link href="/admin/console?group=System" className="text-[#2a2623] hover:underline">
           API console
         </Link>
         .
       </p>
 
       {(live.isError || ready.isError || detailed.isError || prom.isError) && (
-        <section className="rounded-xl border border-blue-100 bg-sky-50 px-4 py-3 text-sm text-blue-800">
+        <section className="rounded-xl border border-[#d8c6bb] bg-[#f7f0eb] px-4 py-3 text-sm text-[#2a2623]">
           Some system checks failed to load. Verify backend connectivity and admin permissions.
         </section>
       )}

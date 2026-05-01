@@ -1,4 +1,4 @@
-﻿import {
+import {
   fetchRecentPriceChanges,
   fetchCurrentSaleProducts,
 } from '@/lib/catalog-queries'
@@ -125,11 +125,11 @@ export default async function PricesPage() {
                     <td className="px-4 py-2 text-xs text-gray-500 line-through tabular-nums">
                       {formatCents(change.old_price)}
                     </td>
-                    <td className="px-4 py-2 text-xs text-blue-700 font-medium tabular-nums">
+                    <td className="px-4 py-2 text-xs text-[#7d4b3a] font-medium tabular-nums">
                       {formatCents(change.new_price)}
                     </td>
                     <td className="px-4 py-2">
-                      <span className="text-xs font-semibold text-blue-900 bg-sky-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-semibold text-[#2a2623] bg-[#f7f0eb] border border-[#d8c6bb] px-2 py-0.5 rounded-full">
                         -{Math.abs(Math.round(change.change_pct ?? change.discount_pct ?? 0))}%
                       </span>
                     </td>

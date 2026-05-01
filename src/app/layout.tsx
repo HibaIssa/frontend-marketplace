@@ -4,6 +4,7 @@ import { Playfair_Display, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Navbar } from '@/components/layout/Navbar'
+import { MainContent } from '@/components/layout/MainContent'
 import { Footer } from '@/components/layout/Footer'
 
 const display = Playfair_Display({
@@ -28,10 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="font-sans min-h-screen flex flex-col tz-pink-bg text-[#0a0a0a]">
         <Providers>
-          <Suspense fallback={<div className="h-[68px]" aria-hidden />}>
+          <Suspense fallback={<div className="h-14" aria-hidden />}>
             <Navbar />
           </Suspense>
-          <main className="flex-1">{children}</main>
+          <MainContent>{children}</MainContent>
           <Footer />
         </Providers>
       </body>

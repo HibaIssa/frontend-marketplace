@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -35,8 +35,8 @@ export function SearchBar({ variant = 'default', placeholder, initialQuery = '',
       <div
         className={`relative flex items-center rounded-2xl border transition-all duration-300
           ${isHero
-            ? 'border-[#d8cbc4] bg-white/95 backdrop-blur-sm h-[3.5rem] sm:h-[4rem] shadow-lg shadow-[#5a1814]/10 focus-within:border-[#99624E] focus-within:ring-4 focus-within:ring-[#5a1814]/12 focus-within:shadow-xl focus-within:shadow-[#5a1814]/15'
-            : 'border-neutral-200 bg-white h-12 focus-within:border-[#cdb8ac] focus-within:ring-2 focus-within:ring-[#5a1814]/10 shadow-sm'
+            ? 'border-[#d8cbc4] bg-white/95 backdrop-blur-sm h-[3.5rem] sm:h-[4rem] shadow-lg shadow-[#2a2623]/10 focus-within:border-[#99624E] focus-within:ring-4 focus-within:ring-[#2a2623]/12 focus-within:shadow-xl focus-within:shadow-[#2a2623]/15'
+            : 'border-neutral-200 bg-white h-12 focus-within:border-[#cdb8ac] focus-within:ring-2 focus-within:ring-[#2a2623]/10 shadow-sm'
           }`}
       >
         <Search className={`absolute left-4 w-5 h-5 ${isHero ? 'text-[#99624E]' : 'text-neutral-400'}`} />
@@ -56,8 +56,8 @@ export function SearchBar({ variant = 'default', placeholder, initialQuery = '',
           disabled={isLoading}
           className={`absolute right-2 px-4 sm:px-5 py-2 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all duration-200
             ${isHero
-              ? 'bg-gradient-to-r from-[#5a1814] to-[#99624E] text-white shadow-md shadow-[#5a1814]/25 hover:from-[#43110e] hover:to-[#7d4b3a]'
-              : 'bg-gradient-to-r from-[#5a1814] to-[#99624E] text-white hover:from-[#43110e] hover:to-[#7d4b3a]'
+              ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/25 hover:from-[#1a1816] hover:to-[#7d4b3a]'
+              : 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white hover:from-[#1a1816] hover:to-[#7d4b3a]'
             } disabled:opacity-70 disabled:pointer-events-none`}
         >
           {isLoading ? (

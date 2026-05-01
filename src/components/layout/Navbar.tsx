@@ -21,8 +21,13 @@ const navLinks: NavLink[] = [
   { href: '/sales', label: 'Sale' },
 ]
 
-const ACTIVE_PILL = 'bg-[#5a1814] text-white shadow-sm'
-const IDLE_PILL = 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+// Glass nav: links stay readable but bar stays visibly transparent (no heavy beige slab).
+const ACTIVE_PILL = 'bg-[#2a2623]/90 text-white shadow-sm ring-1 ring-[#2a2623]/30'
+const IDLE_PILL = 'text-[#2a2623]/85 hover:text-[#2a2623] hover:bg-white/55'
+
+// Overlay variants — used on the home hero, white-on-image, no pill chrome.
+const OVERLAY_ACTIVE = 'text-white underline underline-offset-[6px] decoration-white/80'
+const OVERLAY_IDLE = 'text-white/90 hover:text-white'
 
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
@@ -52,27 +57,48 @@ export function Navbar() {
     setMobileOpen(false)
   }, [pathname, searchParams])
 
+  // Home at scroll 0: nav floats over the hero with white type (fully transparent bar).
+  // Any scroll or other route: keep a glass strip — still transparent, never the old solid pill.
+  const isHome = pathname === '/'
+  const homeOverHero = isHome && !scrolled
+  const glassNav =
+    'bg-white/18 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/35 shadow-[0_10px_40px_-18px_rgba(42,38,35,0.2)]'
+
   return (
     <motion.header
       initial={{ y: -12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="sticky top-0 z-50"
+      className="fixed top-0 inset-x-0 z-50"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 pt-3">
+      <div className="mx-auto w-full max-w-none px-0 pt-0 transition-all duration-300">
         <div
           className={clsx(
-            'flex items-center justify-between gap-3 h-14 px-4 sm:px-5 rounded-2xl transition-all duration-300',
-            scrolled
-              ? 'bg-[#f1ece9]/95 backdrop-blur-md shadow-[0_12px_34px_-20px_rgba(90,24,20,0.24)] ring-1 ring-[#d8cbc4]'
-              : 'bg-[#f1ece9]/90 backdrop-blur-sm ring-1 ring-[#d8cbc4]/80'
+            'flex items-center justify-between gap-3 min-h-14 px-4 sm:px-6 lg:px-10 transition-all duration-300',
+            homeOverHero ? 'bg-transparent' : clsx(glassNav, scrolled && 'bg-white/28 border-white/45')
           )}
         >
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#5a1814] text-white text-[0.72rem] font-extrabold tracking-tight">
+            <span
+              className={clsx(
+                'inline-flex h-8 w-8 items-center justify-center rounded-full text-[0.72rem] font-extrabold tracking-tight transition-colors',
+                homeOverHero
+                  ? 'bg-white text-[#2a2623]'
+                  : 'bg-[#2a2623] text-white'
+              )}
+            >
               TZ
             </span>
-            <span className="font-display text-[15px] font-bold text-[#100809] tracking-tight">TrendZone</span>
+            <span
+              className={clsx(
+                'font-display text-[15px] font-bold tracking-tight transition-colors',
+                homeOverHero
+                  ? 'text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-[#100809]'
+              )}
+            >
+              TrendZone
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1.5 flex-1 justify-center min-w-0 mx-3 overflow-x-auto scrollbar-none">
@@ -82,7 +108,15 @@ export function Navbar() {
                 <Link
                   key={`${link.href}-${link.label}`}
                   href={link.href}
-                  className={clsx('px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap', active ? ACTIVE_PILL : IDLE_PILL)}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-full text-[13.5px] font-semibold transition-colors whitespace-nowrap',
+                    homeOverHero
+                      ? clsx(
+                          active ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                          'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                        )
+                      : active ? ACTIVE_PILL : IDLE_PILL
+                  )}
                 >
                   {link.label}
                 </Link>
@@ -90,29 +124,116 @@ export function Navbar() {
             })}
 
             {canSeeAdmin && (
-              <Link href="/admin" className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors', pathname.startsWith('/admin') ? ACTIVE_PILL : IDLE_PILL)}>
+              <Link
+                href="/admin"
+                className={clsx(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors',
+                  homeOverHero
+                    ? clsx(
+                        pathname.startsWith('/admin') ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                        'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      )
+                    : pathname.startsWith('/admin') ? ACTIVE_PILL : IDLE_PILL
+                )}
+              >
                 <Shield className="w-3.5 h-3.5" /> Admin
               </Link>
             )}
             {canSeeBusinessDashboard && (
-              <Link href="/dashboard" className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors', pathname.startsWith('/dashboard') ? ACTIVE_PILL : IDLE_PILL)}>
+              <Link
+                href="/dashboard"
+                className={clsx(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors',
+                  homeOverHero
+                    ? clsx(
+                        pathname.startsWith('/dashboard') ? OVERLAY_ACTIVE : OVERLAY_IDLE,
+                        'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      )
+                    : pathname.startsWith('/dashboard') ? ACTIVE_PILL : IDLE_PILL
+                )}
+              >
                 <Store className="w-3.5 h-3.5" /> Dashboard
               </Link>
             )}
           </nav>
 
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/search" className="p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Search"><Search className="w-[18px] h-[18px]" /></Link>
-            <Link href="/favorites" className="hidden sm:inline-flex p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Saved"><Heart className="w-[18px] h-[18px]" /></Link>
-            <Link href="/compare" className={clsx('relative hidden sm:inline-flex p-2 rounded-full transition-colors', pathname.startsWith('/compare') ? 'bg-slate-100 text-slate-900 ring-1 ring-slate-200' : 'text-slate-800 hover:bg-slate-100')} aria-label="Compare">
-              <GitCompare className="w-[18px] h-[18px]" />
-              {mounted && compareCount > 0 && <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#5a1814] text-white text-[10px] font-bold px-1 ring-2 ring-white">{compareCount}</span>}
+            <Link
+              href="/search"
+              className={clsx(
+                'p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Search"
+            >
+              <Search className="w-[18px] h-[18px]" />
             </Link>
-            <Link href="/products" className="p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Bag"><ShoppingBag className="w-[18px] h-[18px]" /></Link>
+            <Link
+              href="/favorites"
+              className={clsx(
+                'hidden sm:inline-flex p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Saved"
+            >
+              <Heart className="w-[18px] h-[18px]" />
+            </Link>
+            <Link
+              href="/compare"
+              className={clsx(
+                'relative hidden sm:inline-flex p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : pathname.startsWith('/compare')
+                    ? 'bg-black/[0.06] text-slate-900 ring-1 ring-black/10'
+                    : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Compare"
+            >
+              <GitCompare className="w-[18px] h-[18px]" />
+              {mounted && compareCount > 0 && (
+                <span
+                  className={clsx(
+                    'absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full text-[10px] font-bold px-1 ring-2',
+                    homeOverHero
+                      ? 'bg-white text-[#2a2623] ring-transparent'
+                      : 'bg-[#2a2623] text-white ring-[#f5f3f2]'
+                  )}
+                >
+                  {compareCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/products"
+              className={clsx(
+                'p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Bag"
+            >
+              <ShoppingBag className="w-[18px] h-[18px]" />
+            </Link>
 
             {mounted && isAuthenticated() ? (
               <div className="relative group">
-                <button type="button" className="p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors"><User className="w-[18px] h-[18px]" /></button>
+                <button
+                  type="button"
+                  className={clsx(
+                    'p-2 rounded-full transition-colors',
+                    homeOverHero
+                      ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      : 'text-slate-800 hover:bg-black/[0.06]'
+                  )}
+                >
+                  <User className="w-[18px] h-[18px]" />
+                </button>
                 <div className="absolute right-0 mt-2 w-48 py-1.5 rounded-xl ring-1 ring-slate-200 bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <Link href="/account" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">Account</Link>
                   <Link href="/wardrobe" className="block px-4 py-2 text-sm text-slate-800 hover:bg-slate-100">My Wardrobe</Link>
@@ -125,12 +246,42 @@ export function Navbar() {
               </div>
             ) : (
               <div className="hidden sm:flex items-center gap-2">
-                <Link href="/login" className="text-[13px] py-2 px-4 rounded-full border border-slate-300 text-slate-800 hover:bg-slate-100 transition-colors font-semibold">Login</Link>
-                <Link href="/signup" className="text-[13px] py-2 px-4 rounded-full bg-[#5a1814] text-white hover:bg-[#43110e] transition-colors font-semibold">Sign up</Link>
+                <Link
+                  href="/login"
+                  className={clsx(
+                    'text-[13px] py-2 px-4 rounded-full transition-colors font-semibold',
+                    homeOverHero
+                      ? 'border border-white/70 text-white hover:bg-white/10 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                      : 'border border-[#2a2623]/25 text-[#2a2623] hover:bg-black/[0.05]'
+                  )}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className={clsx(
+                    'text-[13px] py-2 px-4 rounded-full transition-colors font-semibold',
+                    homeOverHero
+                      ? 'bg-white text-[#2a2623] hover:bg-[#ece8e5]'
+                      : 'bg-[#2a2623] text-white hover:bg-black'
+                  )}
+                >
+                  Sign up
+                </Link>
               </div>
             )}
 
-            <button type="button" onClick={() => setMobileOpen((v) => !v)} className="md:hidden p-2 rounded-full text-slate-800 hover:bg-slate-100 transition-colors" aria-label="Open menu">
+            <button
+              type="button"
+              onClick={() => setMobileOpen((v) => !v)}
+              className={clsx(
+                'md:hidden p-2 rounded-full transition-colors',
+                homeOverHero
+                  ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-800 hover:bg-black/[0.06]'
+              )}
+              aria-label="Open menu"
+            >
               {mobileOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
             </button>
           </div>
@@ -149,7 +300,7 @@ export function Navbar() {
               {!isAuthenticated() && (
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                   <Link href="/login" className="text-center px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-semibold">Login</Link>
-                  <Link href="/signup" className="text-center px-3 py-2 rounded-xl bg-[#5a1814] text-white font-semibold">Sign up</Link>
+                  <Link href="/signup" className="text-center px-3 py-2 rounded-xl bg-[#2a2623] text-white font-semibold">Sign up</Link>
                 </div>
               )}
             </motion.nav>

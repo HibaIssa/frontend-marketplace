@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useCallback, useEffect, useTransition } from 'react'
 import { Search, SlidersHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
@@ -21,6 +21,7 @@ const PAGE_SIZE = 50
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal]       = useState(0)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [vendorOptions, setVendorOptions] = useState<Array<{ value: string; label: string }>>([
     { value: '', label: 'All vendors' },
   ])
@@ -47,6 +48,7 @@ export default function ProductsPage() {
   const load = useCallback((f: ProductFilters, s: SortConfig, p: number) => {
     startTransition(async () => {
       try {
+        setLoadError(null)
         const params = new URLSearchParams()
         if (f.search)        params.set('search', f.search)
         if (f.vendor_id)     params.set('vendor_id', String(f.vendor_id))
@@ -61,9 +63,27 @@ export default function ProductsPage() {
 
         const res = await fetch(`/api/catalog/products?${params}`)
         const json = await res.json()
-        setProducts(json.data ?? [])
-        setTotal(json.total ?? 0)
+        if (!res.ok) {
+          throw new Error(json?.error || 'Failed to load catalog products')
+        }
+        const items = Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json.results)
+            ? json.results
+            : []
+        setProducts(items)
+        const totalCount =
+          typeof json.total === 'number'
+            ? json.total
+            : typeof json?.meta?.total === 'number'
+              ? json.meta.total
+              : items.length
+        setTotal(totalCount)
       } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to load products'
+        setLoadError(msg)
+        setProducts([])
+        setTotal(0)
         console.error(e)
       }
     })
@@ -134,11 +154,17 @@ export default function ProductsPage() {
         title="Products"
         sub={`${total.toLocaleString()} rows`}
         actions={
-          <span className="text-xs bg-sky-50 text-blue-800 border border-blue-100 px-2.5 py-1 rounded-full font-medium">
+          <span className="text-xs bg-[#f4ece6] text-[#2a2623] border border-[#d8c6bb] px-2.5 py-1 rounded-full font-medium">
             {total.toLocaleString()} total
           </span>
         }
       />
+
+      {loadError && (
+        <div className="mx-4 mt-3 rounded-xl border border-[#d8c6bb] bg-[#f7f0eb] px-3 py-2 text-xs text-[#2a2623]">
+          Could not load products: {loadError}
+        </div>
+      )}
 
       {/* Filters bar */}
       <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex flex-wrap gap-2 items-center shrink-0">
@@ -267,9 +293,9 @@ export default function ProductsPage() {
                   <td className="px-3 py-2 text-xs font-medium tabular-nums">{formatCents(p.price_cents, p.currency ?? undefined)}</td>
                   <td className="px-3 py-2">
                     {p.sales_price_cents ? (
-                      <span className="text-blue-700 text-xs font-medium tabular-nums">
+                      <span className="text-[#2a2623] text-xs font-medium tabular-nums">
                         {formatCents(p.sales_price_cents, p.currency ?? undefined)}
-                        {disc && <span className="ml-1 text-[10px] text-blue-600">−{disc}%</span>}
+                        {disc && <span className="ml-1 text-[10px] text-[#99624E]">-{disc}%</span>}
                       </span>
                     ) : <span className="text-gray-300">—</span>}
                   </td>
@@ -302,14 +328,14 @@ export default function ProductsPage() {
             onClick={() => { const p = page - 1; setPage(p); load(filters, sort, p) }}
             className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
           >
-            ← Prev
+            ? Prev
           </button>
           <button
             disabled={page >= totalPages}
             onClick={() => { const p = page + 1; setPage(p); load(filters, sort, p) }}
             className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
           >
-            Next →
+            Next ?
           </button>
         </div>
       </div>

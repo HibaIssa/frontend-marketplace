@@ -1,11 +1,11 @@
-﻿import clsx from 'clsx'
+import clsx from 'clsx'
 import type { IssueSeverity } from '@/types/catalog-admin'
 
 const SEVERITY_CLASS: Record<IssueSeverity, string> = {
   critical: 'bg-red-50 text-red-800 border-red-200',
   warning: 'bg-amber-50 text-amber-800 border-amber-200',
   stale: 'bg-orange-50 text-orange-800 border-orange-200',
-  info: 'bg-sky-50 text-blue-950 border-blue-100',
+  info: 'bg-[#f4ece6] text-[#2a2623] border-[#d8c6bb]',
 }
 
 interface BadgeProps {
@@ -21,9 +21,9 @@ export function Badge({ severity, color, children, className }: BadgeProps) {
     : color === 'green'
       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
       : color === 'purple'
-        ? 'bg-sky-50 text-blue-950 border-blue-100'
+        ? 'bg-[#f4ece6] text-[#2a2623] border-[#d8c6bb]'
         : color === 'teal'
-          ? 'bg-sky-50 text-blue-900 border-blue-100'
+          ? 'bg-[#f4ece6] text-[#7d4b3a] border-[#d8c6bb]'
           : 'bg-neutral-100 text-neutral-700 border-neutral-200'
 
   return (
@@ -55,11 +55,11 @@ export function KpiCard({ label, value, sub, tone = 'default' }: KpiCardProps) {
         : tone === 'danger'
           ? 'text-red-600'
           : tone === 'purple'
-            ? 'text-blue-700'
+            ? 'text-[#7d4b3a]'
             : 'text-neutral-900'
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_24px_-4px_rgba(79,70,229,0.08)] hover:border-blue-100/70 transition-colors">
+    <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_24px_-4px_rgba(90,24,20,0.08)] hover:border-[#d8c6bb] transition-colors">
       <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1.5 font-display">
         {label}
       </p>
@@ -79,7 +79,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, sub, actions }: PageHeaderProps) {
   return (
-    <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-blue-100/35 px-6 py-3.5 flex items-center justify-between">
+    <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-[#d8c6bb]/45 px-6 py-3.5 flex items-center justify-between">
       <div>
         <h1 className="text-[15px] font-semibold text-neutral-900 font-display">{title}</h1>
         {sub && <p className="text-xs text-neutral-500 mt-0.5">{sub}</p>}
@@ -99,7 +99,7 @@ interface SectionProps {
 export function Section({ title, actions, children, noPad }: SectionProps) {
   const showBody = children != null
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_24px_-4px_rgba(79,70,229,0.06)]">
+    <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_24px_-4px_rgba(90,24,20,0.06)]">
       {(title || actions) && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
           {title && (
@@ -137,7 +137,7 @@ export function HealthBar({ score }: { score: number }) {
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={clsx('bg-sky-100/50 rounded animate-pulse', className)} />
+  return <div className={clsx('bg-[#f4ece6] rounded animate-pulse', className)} />
 }
 
 export function EmptyState({ message = 'No data found' }: { message?: string }) {
@@ -158,8 +158,8 @@ export function FilterBtn({ active, onClick, children }: FilterBtnProps) {
       className={clsx(
         'text-xs px-3 py-1.5 rounded-full border transition-colors font-medium',
         active
-          ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white border-transparent shadow-md shadow-blue-600/25'
-          : 'bg-white text-neutral-600 border-neutral-200 hover:border-sky-200 hover:text-blue-950'
+          ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white border-transparent shadow-md shadow-[#2a2623]/25'
+          : 'bg-white text-neutral-600 border-neutral-200 hover:border-[#d8c6bb] hover:text-[#2a2623]'
       )}
     >
       {children}
@@ -180,7 +180,7 @@ export function Input({ icon, className, ...props }: InputProps) {
       <input
         className={clsx(
           'h-8 border border-neutral-200 rounded-lg text-sm bg-white text-neutral-900 placeholder-neutral-400',
-          'focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-orange-500',
+          'focus:outline-none focus:ring-2 focus:ring-[#2a2623]/25 focus:border-[#c9ae9f]',
           icon ? 'pl-8 pr-3' : 'px-3',
           className
         )}
@@ -200,7 +200,7 @@ export function Select({ options, placeholder, className, ...props }: SelectProp
     <select
       className={clsx(
         'h-8 border border-neutral-200 rounded-lg text-sm bg-white text-neutral-900 px-2.5 pr-7',
-        'focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-orange-500',
+        'focus:outline-none focus:ring-2 focus:ring-[#2a2623]/25 focus:border-[#c9ae9f]',
         'appearance-none cursor-pointer',
         className
       )}
@@ -219,8 +219,8 @@ export function Select({ options, placeholder, className, ...props }: SelectProp
 export function ProductThumb({ src, alt }: { src?: string | null; alt: string }) {
   if (!src) {
     return (
-      <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center border border-sky-100">
-        <span className="text-sky-200 text-[10px]">img</span>
+      <div className="w-9 h-9 rounded-lg bg-[#f4ece6] flex items-center justify-center border border-[#e2d4cb]">
+        <span className="text-[#c9ae9f] text-[10px]">img</span>
       </div>
     )
   }

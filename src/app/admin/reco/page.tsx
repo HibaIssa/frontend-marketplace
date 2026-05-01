@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
@@ -32,7 +32,7 @@ type CandidateRow = { id: number; title: string; score: number | null; label: st
 type LabelRow = { baseProductId: number; candidateProductId: number; label: string; labelerId: string; createdAt: string }
 type ProductHint = { id: number; title: string }
 
-const CHART_COLORS = ['#7c3aed', '#4f46e5', '#db2777', '#0891b2', '#059669', '#ea580c']
+const CHART_COLORS = ['#2a2623', '#7d4b3a', '#99624E', '#c9ae9f', '#b99e90', '#a56f5a']
 
 function parseNum(v: string): number | null {
   const n = parseInt(v, 10)
@@ -156,7 +156,7 @@ function StatCard({ label, value, tone = 'neutral' }: { label: string; value: st
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${tone === 'violet' ? 'text-blue-800' : 'text-neutral-900'}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${tone === 'violet' ? 'text-[#2a2623]' : 'text-neutral-900'}`}>{value}</p>
     </div>
   )
 }
@@ -384,7 +384,7 @@ export default function AdminRecoPage() {
       <section className="space-y-4">
         <h2 className="font-semibold text-neutral-900">Overview</h2>
         {statsError ? (
-          <div className="rounded-xl border border-blue-100 bg-sky-50 px-4 py-3 text-sm text-blue-800">{statsError}</div>
+          <div className="rounded-xl border border-[#d8c6bb] bg-[#f7f0eb] px-4 py-3 text-sm text-[#2a2623]">{statsError}</div>
         ) : null}
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <StatCard label="Total labels" value={statsData.labelsTotal.toLocaleString()} tone="violet" />
@@ -409,7 +409,7 @@ export default function AdminRecoPage() {
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="value" fill="#7c3aed" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="value" fill="#7d4b3a" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           {statsData.byLabel.length === 0 ? <p className="text-xs text-neutral-500 mt-2">No label rows yet.</p> : null}
@@ -454,7 +454,7 @@ export default function AdminRecoPage() {
                   onClick={() => setBaseId(String(item.id))}
                   className={`text-xs rounded-full border px-2.5 py-1 transition-colors ${
                     active
-                      ? 'border-sky-200 bg-sky-50 text-blue-800'
+                      ? 'border-[#d8c6bb] bg-[#f7f0eb] text-[#2a2623]'
                       : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
@@ -490,7 +490,7 @@ export default function AdminRecoPage() {
                     <td className="px-3 py-2 text-neutral-700">{row.score == null ? '—' : row.score.toFixed(3)}</td>
                     <td className="px-3 py-2">
                       {row.label ? (
-                        <span className="inline-flex rounded-full bg-sky-100 text-blue-800 px-2 py-0.5 text-xs font-medium">{row.label}</span>
+                        <span className="inline-flex rounded-full bg-[#f4ece6] text-[#2a2623] px-2 py-0.5 text-xs font-medium">{row.label}</span>
                       ) : (
                         <span className="text-neutral-400">unlabeled</span>
                       )}
@@ -633,7 +633,7 @@ export default function AdminRecoPage() {
                     <td className="px-3 py-2">{row.baseProductId}</td>
                     <td className="px-3 py-2">{row.candidateProductId}</td>
                     <td className="px-3 py-2">
-                      <span className="inline-flex rounded-full bg-sky-100 text-blue-800 px-2 py-0.5 text-xs font-medium">
+                      <span className="inline-flex rounded-full bg-[#f4ece6] text-[#2a2623] px-2 py-0.5 text-xs font-medium">
                         {row.label}
                       </span>
                     </td>
@@ -657,7 +657,7 @@ export default function AdminRecoPage() {
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip />
-            <Bar dataKey="value" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="value" fill="#99624E" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         {statsData.byLabeler.length === 0 ? <p className="text-xs text-neutral-500 mt-2">No labeler activity yet.</p> : null}
