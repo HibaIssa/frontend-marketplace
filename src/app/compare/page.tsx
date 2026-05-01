@@ -10,6 +10,8 @@ import {
   ArrowRight,
   Sparkles,
   SlidersHorizontal,
+  MousePointerClick,
+  Layers,
   Info,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -80,6 +82,7 @@ const defaultForm = (): CompareDecisionFormState => ({
 export default function ComparePage() {
   const { productIds, remove, clear } = useCompareStore()
   const [form, setForm] = useState<CompareDecisionFormState>(defaultForm)
+  const [fineTuneOpen, setFineTuneOpen] = useState(true)
   /** Subset of `productIds` to send to the compare API (2–5). */
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
@@ -166,6 +169,11 @@ export default function ComparePage() {
     compareMutation.reset()
   }, [selectedKey, productIdsKey])
 
+  useEffect(() => {
+    if (compareResult) setFineTuneOpen(false)
+    else setFineTuneOpen(true)
+  }, [compareResult])
+
   const openComparePrepModal = () => {
     if (!canCompare) return
     setPrepFirstGlance('unset')
@@ -229,7 +237,7 @@ export default function ComparePage() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2a2623]/80 mb-1">Style decision lab</p>
                   <h1 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">Compare</h1>
                   <p className="text-sm text-neutral-600 mt-2 max-w-xl leading-relaxed">
-                    Pick 2–5 items and run comparison.
+                    Side-by-side picks — results first, details when you want them.
                   </p>
                 </div>
               </div>
@@ -366,10 +374,10 @@ export default function ComparePage() {
               </div>
             </div>
 
-            <div className="flex gap-5 overflow-x-auto pb-4 -mx-1 px-1 snap-x snap-mandatory scrollbar-thin mb-6">
+            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 overflow-x-auto md:overflow-visible pb-2 md:pb-0 snap-x snap-mandatory md:snap-none scrollbar-thin -mx-1 px-1 md:mx-0 md:px-0">
               {loadingProducts
                 ? [...Array(productIds.length)].map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-[200px] space-y-2 snap-start">
+                    <div key={i} className="flex-shrink-0 w-[min(46vw,200px)] md:w-auto md:min-w-0 md:flex-shrink space-y-2 snap-start">
                       <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
                       <div className="h-3 w-2/3 rounded-md skeleton-shimmer" />
                     </div>
@@ -384,7 +392,7 @@ export default function ComparePage() {
                         initial={{ opacity: 0, scale: 0.96, y: 16 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                        className={`relative flex-shrink-0 w-[200px] snap-start rounded-2xl p-2 transition-shadow duration-300 ${
+                        className={`relative flex-shrink-0 w-[min(46vw,200px)] md:w-auto md:flex-1 min-w-0 snap-start rounded-2xl p-2 transition-shadow duration-300 ${
                           isSelectedForRun
                             ? 'bg-white ring-2 ring-[#2a2623]/80 shadow-lg shadow-[#2a2623]/10'
                             : 'bg-neutral-50/80 ring-1 ring-neutral-200/80 hover:ring-neutral-300'
@@ -446,10 +454,8 @@ export default function ComparePage() {
                   <SlidersHorizontal className="w-5 h-5" />
                 </span>
                 <div>
-                  <h2 className="font-display font-bold text-lg text-neutral-900">Tune the decision</h2>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Optional — goal, occasion, alter ego, and three vibe axes shape the API read.
-                  </p>
+                  <h2 className="font-display font-bold text-lg text-neutral-900">Fine-tune your comparison</h2>
+                  <p className="text-xs text-neutral-500 mt-0.5">Optional — shapes value, risk, and style fit.</p>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -643,7 +649,7 @@ export default function ComparePage() {
                     Confirm your lineup
                   </h2>
                   <p className="text-xs text-neutral-600 mt-1.5 leading-relaxed">
-                    You&apos;re about to compare these pieces. Which one gave you the strongest first glance?
+                    Tap the piece that grabbed you first — or skip. Then we show your comparison.
                   </p>
                 </div>
                 <button
@@ -665,7 +671,7 @@ export default function ComparePage() {
                     {loadingProducts ? (
                       <div className="text-sm text-neutral-500 py-6 text-center">Loading products…</div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-row gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin -mx-1 px-1">
                         {selectedForCompare.map((id) => {
                           const p = compareTrayProducts?.find((x) => normalizeCompareProductId(x.id) === id)
                           const label = p?.title ?? `Product #${id}`
@@ -674,7 +680,7 @@ export default function ComparePage() {
                           return (
                             <label
                               key={id}
-                              className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all ${
+                              className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all shrink-0 w-[min(72vw,200px)] snap-start ${
                                 prepFirstGlance === id
                                   ? 'border-orange-500 shadow-md ring-2 ring-[#eadfd7]'
                                   : 'border-neutral-200/80 hover:border-[#d8c6bb]'

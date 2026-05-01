@@ -39,7 +39,7 @@ export function SearchBar({ variant = 'default', placeholder, initialQuery = '',
             : 'border-neutral-200 bg-white h-12 focus-within:border-[#cdb8ac] focus-within:ring-2 focus-within:ring-[#2a2623]/10 shadow-sm'
           }`}
       >
-        <Search className={`absolute left-4 w-5 h-5 ${isHero ? 'text-[#99624E]' : 'text-neutral-400'}`} />
+        <Search className={`absolute left-4 w-5 h-5 ${isHero ? 'text-orange-500' : 'text-neutral-400'}`} />
         <input
           type="search"
           value={q}
