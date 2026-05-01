@@ -4,21 +4,34 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, ShoppingBag, User, Store, Shield, Heart, Shirt, Layers, Tag, Menu, X, GitCompare } from 'lucide-react'
+import {
+  Search, ShoppingBag, User, Store, Shield, Heart, Shirt, Layers,
+  Sparkles, Tag, ChevronDown, Menu, X, GitCompare,
+} from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '@/store/auth'
 import { useCompareStore } from '@/store/compare'
 
 type NavLink = { href: string; label: string }
+type Feature = { href: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }
 
 const navLinks: NavLink[] = [
   { href: '/', label: 'Home' },
+  { href: '/products?gender=men', label: 'Men' },
+  { href: '/products?gender=women', label: 'Women' },
   { href: '/products', label: 'Shop' },
-  { href: '/search', label: 'Discover' },
-  { href: '/compare', label: 'Compare' },
-  { href: '/wardrobe', label: 'Wardrobe' },
-  { href: '/try-on', label: 'Try on' },
   { href: '/sales', label: 'Sale' },
+  { href: '/search', label: 'Discover' },
+]
+
+const featureLinks: Feature[] = [
+  { href: '/search?mode=shop', label: 'Shop the look', desc: 'Upload a photo, find every piece.', icon: Sparkles },
+  { href: '/search', label: 'Text search', desc: 'Describe a vibe, get matching items.', icon: Search },
+  { href: '/wardrobe', label: 'My wardrobe', desc: 'Save and remix what you own.', icon: Shirt },
+  { href: '/try-on', label: 'Virtual try-on', desc: 'Preview garments on yourself.', icon: Layers },
+  { href: '/compare', label: 'Compare items', desc: 'Side-by-side AI breakdown of any 2–5 picks.', icon: GitCompare },
+  { href: '/products', label: 'Complete the look', desc: 'Open a product to finish the outfit.', icon: Sparkles },
+  { href: '/sales', label: 'Shop sale', desc: 'Today\u2019s reductions across catalog.', icon: Tag },
 ]
 
 // Glass nav: links stay readable but bar stays visibly transparent (no heavy beige slab).
@@ -32,18 +45,29 @@ const OVERLAY_IDLE = 'text-white/90 hover:text-white'
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [featuresOpen, setFeaturesOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const navLinkActive = (href: string) => {
     if (href === '/') return pathname === '/'
-    return pathname === href || (href !== '/' && pathname.startsWith(href))
+    const [path, query] = href.split('?')
+    if (query) {
+      if (pathname !== path) return false
+      const want = new URLSearchParams(query)
+      for (const [k, v] of want.entries()) {
+        if (searchParams.get(k) !== v) return false
+      }
+      return true
+    }
+    if (path === '/products' && pathname === '/products') {
+      return !searchParams.get('gender')
+    }
+    return pathname === href || (path !== '/' && pathname.startsWith(path))
   }
-
   const { isAuthenticated, logout, user } = useAuthStore()
   const canSeeAdmin = mounted && isAuthenticated() && !!user?.is_admin
-  const canSeeBusinessDashboard = mounted && isAuthenticated() && (user?.user_type === 'business' || user?.is_admin)
   const compareCount = useCompareStore((s) => s.productIds.length)
 
   useEffect(() => setMounted(true), [])
@@ -54,6 +78,7 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
   useEffect(() => {
+    setFeaturesOpen(false)
     setMobileOpen(false)
   }, [pathname, searchParams])
 
@@ -101,7 +126,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1.5 flex-1 justify-center min-w-0 mx-3 overflow-x-auto scrollbar-none">
+          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center min-w-0 max-w-2xl mx-3 overflow-visible">
             {navLinks.map((link) => {
               const active = navLinkActive(link.href)
               return (
@@ -122,6 +147,56 @@ export function Navbar() {
                 </Link>
               )
             })}
+
+            {/* Features dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setFeaturesOpen(true)}
+              onMouseLeave={() => setFeaturesOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setFeaturesOpen((v) => !v)}
+                className={clsx(
+                  'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-colors',
+                  featuresActive || featuresOpen ? ACTIVE_PILL : IDLE_PILL
+                )}
+                aria-haspopup="true"
+                aria-expanded={featuresOpen}
+              >
+                Features
+                <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', featuresOpen && 'rotate-180')} />
+              </button>
+              <AnimatePresence>
+                {featuresOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute left-1/2 top-full -translate-x-1/2 mt-3 w-[min(640px,90vw)] rounded-2xl bg-white shadow-xl ring-1 ring-black/10 p-3 z-50"
+                  >
+                    <div className="grid grid-cols-2 gap-1">
+                      {featureLinks.map((f) => (
+                        <Link
+                          key={f.label}
+                          href={f.href}
+                          className="group flex items-start gap-3 rounded-xl p-3 hover:bg-[#e5eeff] transition-colors"
+                        >
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#e5eeff] text-[#0a0a0a] ring-1 ring-black/10 group-hover:bg-[#0a0a0a] group-hover:text-white transition-colors">
+                            <f.icon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-bold text-[#0a0a0a]">{f.label}</p>
+                            <p className="text-[12px] text-[#0a0a0a]/65 leading-snug line-clamp-2">{f.desc}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {canSeeAdmin && (
               <Link
@@ -178,6 +253,7 @@ export function Navbar() {
                   ? 'text-white hover:bg-white/15 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]'
                   : 'text-slate-800 hover:bg-black/[0.06]'
               )}
+              className="hidden sm:inline-flex p-2 rounded-full text-[#0a0a0a] hover:bg-[#e5eeff] transition-colors"
               aria-label="Saved"
             >
               <Heart className="w-[18px] h-[18px]" />
@@ -204,6 +280,15 @@ export function Navbar() {
                       : 'bg-[#2a2623] text-white ring-[#f5f3f2]'
                   )}
                 >
+                pathname.startsWith('/compare')
+                  ? 'bg-[#e5eeff] text-[#0a0a0a] ring-1 ring-black/15'
+                  : 'text-[#0a0a0a] hover:bg-[#e5eeff]'
+              )}
+              aria-label={mounted && compareCount > 0 ? `Compare (${compareCount} item${compareCount === 1 ? '' : 's'})` : 'Compare'}
+            >
+              <GitCompare className="w-[18px] h-[18px]" />
+              {mounted && compareCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#0a0a0a] text-white text-[10px] font-bold px-1 ring-2 ring-white">
                   {compareCount}
                 </span>
               )}
@@ -289,11 +374,43 @@ export function Navbar() {
 
         <AnimatePresence>
           {mobileOpen && (
-            <motion.nav initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }} className="md:hidden mt-2 rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 p-3" aria-label="Main">
+            <motion.nav
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden mt-2 rounded-2xl bg-white shadow-xl ring-1 ring-black/10 p-3"
+              aria-label="Main"
+            >
               <div className="grid grid-cols-2 gap-1 mb-2">
-                {navLinks.map((link) => (
-                  <Link key={`${link.href}-${link.label}-m`} href={link.href} className={clsx('px-3 py-2 rounded-xl text-sm font-semibold transition-colors', navLinkActive(link.href) ? ACTIVE_PILL : 'text-slate-700 hover:bg-slate-100')}>
-                    {link.label}
+                {navLinks.map((link) => {
+                  const active = navLinkActive(link.href)
+                  return (
+                    <Link
+                      key={`m-${link.href}-${link.label}`}
+                      href={link.href}
+                      className={clsx(
+                        'px-3 py-2 rounded-xl text-sm font-semibold transition-colors',
+                        active ? ACTIVE_PILL : 'text-[#0a0a0a]/85 hover:bg-[#e5eeff]'
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  )
+                })}
+              </div>
+              <p className="px-2 pt-2 pb-1 tz-eyebrow">Features</p>
+              <div className="grid grid-cols-1 gap-0.5">
+                {featureLinks.map((f) => (
+                  <Link
+                    key={`m-${f.label}`}
+                    href={f.href}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-[#e5eeff] text-[#0a0a0a]"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#e5eeff] text-[#0a0a0a] ring-1 ring-black/10">
+                      <f.icon className="h-4 w-4" />
+                    </span>
+                    <span className="text-sm font-semibold">{f.label}</span>
                   </Link>
                 ))}
               </div>

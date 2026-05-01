@@ -217,7 +217,6 @@
   }
 
   .mesh-bg {
-    animation: meshFloat 14s ease-in-out infinite alternate;
     background-image:
       radial-gradient(at 40% 20%, rgba(205, 184, 172, 0.38) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgba(212, 174, 158, 0.34) 0px, transparent 45%),
@@ -309,10 +308,4 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
-}
-
-
-@keyframes meshFloat {
-  0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
-  100% { background-position: 8% 6%, 92% 3%, 3% 96%, 97% 92%; }
 }

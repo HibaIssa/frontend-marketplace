@@ -4,10 +4,17 @@
  */
 
 /** Backend origin only (no trailing slash). Same join rules for GET and POST so paths stay consistent. */
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-359201620993.asia-southeast1.run.app').replace(
-  /\/+$/,
-  '',
-)
+const DEFAULT_CLOUD_API = 'https://marketplace-359201620993.asia-southeast1.run.app'
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_CLOUD_API).replace(/\/+$/, '')
+
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  const mode =
+    API_BASE === DEFAULT_CLOUD_API.replace(/\/+$/, '')
+      ? 'hosted Cloud Run (local code changes will NOT apply until you redeploy the API)'
+      : 'custom backend'
+  console.info(`[marketplace] NEXT_PUBLIC_API_URL → ${API_BASE} (${mode})`)
+}
 
 function joinApiUrl(path: string): string {
   const p = path.startsWith('/') ? path : `/${path}`
@@ -32,7 +39,7 @@ export type ApiResponse<T> = {
   success: boolean
   data?: T
   meta?: { total?: number; total_results?: number; page?: number; limit?: number; pages?: number }
-  pagination?: { page?: number; limit?: number; total?: number; pages?: number }
+  pagination?: { page?: number; limit?: number; total?: number; pages?: number; has_more?: boolean }
   error?: { message: string; code?: string; details?: unknown }
   /** Some endpoints (e.g. POST /search/multi-image) return top-level fields */
   results?: unknown

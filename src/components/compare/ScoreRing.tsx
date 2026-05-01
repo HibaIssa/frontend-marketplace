@@ -5,10 +5,11 @@ import { useId } from 'react'
 
 type LevelColor = 'green' | 'yellow' | 'red'
 
+/** Match Discover / search UI: blue primary, warm accent for caution states */
 const GRADIENT_STOPS: Record<LevelColor, [string, string]> = {
-  green: ['#7c3aed', '#db2777'],
-  yellow: ['#ca8a04', '#ea580c'],
-  red: ['#e11d48', '#be123c'],
+  green: ['#1e40af', '#2563eb'],
+  yellow: ['#d97706', '#ea580c'],
+  red: ['#e11d48', '#be185d'],
 }
 
 export function ScoreRing({
@@ -33,7 +34,7 @@ export function ScoreRing({
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative drop-shadow-[0_4px_12px_rgba(124,58,237,0.15)]" style={{ width: size, height: size }}>
+      <div className="relative drop-shadow-[0_4px_14px_rgba(37,99,235,0.18)]" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <defs>
             <linearGradient id={`sr-${gid}`} x1="0%" y1="0%" x2="100%" y2="100%">
