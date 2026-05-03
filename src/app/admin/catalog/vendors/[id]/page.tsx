@@ -96,7 +96,7 @@ export default async function VendorDetailPage({ params }: Props) {
                   <span className="text-xs text-gray-600 w-28 truncate">{cat}</span>
                   <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#99624E] rounded-full"
+                      className="h-full bg-brand rounded-full"
                       style={{ width: `${Math.round((count / vendor.total_products) * 100)}%` }}
                     />
                   </div>

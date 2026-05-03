@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AdminBasePathProvider value="/admin">
-      <div className="flex h-[calc(100vh-4rem)] w-full max-w-[1920px] mx-auto overflow-hidden admin-mesh-bg px-2 sm:px-4">
+      <div className="flex h-[calc(100vh-72px)] w-full max-w-[1920px] mx-auto overflow-hidden admin-mesh-bg px-2 sm:px-4">
         <AdminSidebar brandLabel="Admin" />
         <main className="flex-1 min-w-0 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">{children}</main>
       </div>

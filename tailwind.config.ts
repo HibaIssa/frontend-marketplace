@@ -9,6 +9,13 @@ const config: Config = {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
       colors: {
+        /** Primary UI — button & CTA charcoal */
+        brand: {
+          DEFAULT: '#3d3030',
+          hover: '#504545',
+          active: '#2c2424',
+          muted: '#ede8e4',
+        },
         neutral: {
           25: '#FCFCFC',
           50: '#FAFAFA',

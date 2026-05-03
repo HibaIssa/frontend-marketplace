@@ -1,33 +1,31 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useState, useCallback, useEffect, useMemo } from 'react'
+import { Suspense, useState, useCallback, useEffect, useMemo, memo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { getStablePagination } from '@/lib/shopPagination'
 import { compressImageForShopUpload } from '@/lib/image/compressImageForShopUpload'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import NextImage from 'next/image'
 import {
   Search,
   Sparkles,
-  Shirt,
-  Palette,
   Zap,
-  TrendingUp,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
   Camera,
   Upload,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { api, type ApiResponse } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { ProductCard } from '@/components/product/ProductCard'
 import { SearchBar } from '@/components/search/SearchBar'
+import { TextSearchProductCard } from '@/components/search/TextSearchProductCard'
 import {
   ShopTheLookResults,
-  mergeConsecutiveShoeDetectionGroups,
+  normalizeShopTheLookGroups,
   type DetectionGroup,
   type ShopTheLookStats,
 } from '@/components/search/ShopTheLookResults'
@@ -45,7 +43,7 @@ type HydratedShopPayload = {
   savedAt?: number
 }
 
-function SearchProductGrid({
+const SearchProductGrid = memo(function SearchProductGrid({
   products,
   addToCompare,
   inCompare,
@@ -72,7 +70,33 @@ function SearchProductGrid({
       ))}
     </div>
   )
-}
+})
+
+const TEXT_SEARCH_GENDER_CHIPS = ['All', 'Men', 'Women'] as const
+
+const TRY_SEARCHING_TAGS = [
+  'blue striped shirt',
+  'black formal shirt',
+  'oversized t-shirt',
+  'linen kurta',
+  'summer dress',
+] as const
+
+const TextSearchProductGrid = memo(function TextSearchProductGrid({
+  products,
+  fromReturnPath,
+}: {
+  products: Product[]
+  fromReturnPath?: string
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+      {products.map((product) => (
+        <TextSearchProductCard key={product.id} product={product} fromReturnPath={fromReturnPath} />
+      ))}
+    </div>
+  )
+})
 
 function parseCentsField(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v)
@@ -190,6 +214,8 @@ function SearchContent() {
   const pageFromUrl = Math.max(1, Math.min(999, parseInt(searchParams.get('page') || '1', 10) || 1))
   const rawMode = searchParams.get('mode')
   const mode = rawMode === 'shop' ? 'shop' : 'text'
+  const genderRaw = (searchParams.get('gender') ?? '').toLowerCase()
+  const genderFilter = genderRaw === 'men' || genderRaw === 'women' ? genderRaw : null
 
   useEffect(() => {
     if (rawMode === 'image' || rawMode === 'multi') {
@@ -215,6 +241,20 @@ function SearchContent() {
     },
     [router, pathname, searchParams],
   )
+
+  const setGenderFilter = useCallback(
+    (chip: string) => {
+      const next = new URLSearchParams(searchParams.toString())
+      const lower = chip.toLowerCase()
+      if (lower === 'all') next.delete('gender')
+      else if (lower === 'men' || lower === 'women') next.set('gender', lower)
+      next.delete('page')
+      const qs = next.toString()
+      router.push(qs ? `${pathname}?${qs}` : pathname)
+    },
+    [pathname, router, searchParams],
+  )
+
   const addToCompare = useCompareStore((s) => s.add)
   const inCompare = useCompareStore((s) => s.has)
 
@@ -299,7 +339,7 @@ function SearchContent() {
         ri && typeof ri.width === 'number' && typeof ri.height === 'number' && ri.width > 0 && ri.height > 0
           ? { width: ri.width, height: ri.height }
           : undefined
-      const groups = mergeConsecutiveShoeDetectionGroups((byDetection as DetectionGroup[]) || [])
+      const groups = normalizeShopTheLookGroups((byDetection as DetectionGroup[]) || [])
       const results = groups.flatMap((d) => (Array.isArray(d.products) ? d.products : []))
       return {
         results,
@@ -324,14 +364,17 @@ function SearchContent() {
   }, [imageFile, shopImageSearch])
 
   const textSearchPaged = useQuery({
-    queryKey: ['search', 'text', 'page', q.trim(), TEXT_SEARCH_PAGE_SIZE, pageFromUrl],
+    queryKey: ['search', 'text', 'page', q.trim(), TEXT_SEARCH_PAGE_SIZE, pageFromUrl, genderFilter ?? ''],
     queryFn: async () => {
-      const res = await api.get<unknown>(endpoints.products.search, {
+      const params: Record<string, string | number> = {
         q: q.trim(),
         limit: TEXT_SEARCH_PAGE_SIZE,
         page: pageFromUrl,
         includeRelated: 'false',
-      })
+      }
+      if (genderFilter) params.gender = genderFilter
+
+      const res = await api.get<unknown>(endpoints.products.search, params)
       if ((res as ApiResponse<unknown>).success === false) {
         throw new Error((res as ApiResponse<unknown>).error?.message ?? 'Search failed')
       }
@@ -355,7 +398,7 @@ function SearchContent() {
     enabled: textSearchActive,
     placeholderData: (previousData) => previousData,
     staleTime: 60_000,
-    gcTime: 300_000,
+    gcTime: 600_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: false,
@@ -377,7 +420,10 @@ function SearchContent() {
     shopImageMeta?: { width: number; height: number }
     shopTheLookStats?: ShopTheLookStats
   } | null
-  const shopDetections: DetectionGroup[] = shopPayload?.byDetection ?? hydratedShop?.byDetection ?? []
+  const shopDetections = useMemo(() => {
+    const raw = shopPayload?.byDetection ?? hydratedShop?.byDetection ?? []
+    return normalizeShopTheLookGroups(raw)
+  }, [shopPayload?.byDetection, hydratedShop?.byDetection])
   const shopImageMeta = shopPayload?.shopImageMeta ?? hydratedShop?.shopImageMeta
   const shopTheLookStats = shopPayload?.shopTheLookStats ?? hydratedShop?.shopTheLookStats
 
@@ -417,283 +463,202 @@ function SearchContent() {
   const textShowPagination =
     textSearchActive && products.length > 0 && (pageFromUrl > 1 || textHasNextPage || knownTotalPages > 1)
 
-  const suggestedSearches = [
-    { label: 'Summer dresses', icon: Shirt, gradient: 'from-[#2a2623] to-[#99624E]' },
-    { label: 'Casual sneakers', icon: TrendingUp, gradient: 'from-[#2a2623] to-[#7d4b3a]' },
-    { label: 'Evening outfit', icon: Sparkles, gradient: 'from-[#2a2623] to-[#99624E]' },
-    { label: 'Colorful accessories', icon: Palette, gradient: 'from-[#7d4b3a] to-[#c9ae9f]' },
-  ]
-
-  const POPULAR_SEARCH_TAGS = [
-    'Floral maxi dress',
-    'White sneakers',
-    'Leather jacket',
-    'Silk blouse',
-    'Denim jeans',
-    'Boho chic',
-    'Minimalist bags',
+  const HOW_IT_WORKS_STEPS = [
+    {
+      step: '01',
+      title: 'Text or outfit',
+      desc: 'Search by keywords or open Shop the look for an outfit photo.',
+      Icon: Search,
+    },
+    {
+      step: '02',
+      title: 'Refine',
+      desc: 'Try synonyms, brands, or a clearer full-body photo.',
+      Icon: Sparkles,
+    },
+    {
+      step: '03',
+      title: 'Browse results',
+      desc: 'Open products and add favorites to compare.',
+      Icon: Zap,
+    },
   ] as const
 
-  /** Show starter shortcuts under the bar + mode tabs (text with no query, or shop before an upload). */
-  const showPopularSearchShortcuts =
-    (mode === 'text' && !q.trim()) || (mode === 'shop' && !imageFile)
-
-  const { data: trendingProducts } = useQuery({
-    queryKey: ['search-trending'],
-    queryFn: async () => {
-      const res = await api.get<Array<{
-        id: number; title: string; brand?: string | null; category?: string | null
-        price_cents: number; currency?: string; image_cdn?: string | null; image_url?: string | null
-      }>>(endpoints.products.list, { limit: 8, page: 1 })
-      const raw = Array.isArray(res?.data) ? res.data : []
-      return raw.filter((p: { image_cdn?: string | null; image_url?: string | null }) => p.image_cdn || p.image_url).slice(0, 6)
-    },
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-    retry: false,
-    enabled: showPopularSearchShortcuts,
-  })
-
-  const discoverBelowFold =
-    showPopularSearchShortcuts ? (
-      <div className="max-w-5xl mx-auto space-y-12 pt-2">
-        {trendingProducts && trendingProducts.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.45 }}
-          >
-            <div className="flex items-center gap-2 mb-5">
-              <Zap className="w-4 h-4 text-amber-500" />
-              <h3 className="font-display text-base font-bold text-neutral-800">Trending now</h3>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {(trendingProducts as Array<{
-                id: number
-                title: string
-                brand?: string | null
-                price_cents: number
-                image_cdn?: string | null
-                image_url?: string | null
-              }>).map((p, i) => (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.12 + i * 0.05 }}
-                >
-                  <Link
-                    href={`/products/${p.id}`}
-                    prefetch={false}
-                    className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-blue-600/10 hover:-translate-y-1 transition-all duration-300"
-                  >
-                    <div className="relative aspect-[3/4] bg-neutral-100">
-                      <NextImage
-                        src={p.image_cdn || p.image_url || ''}
-                        alt={p.title}
-                        fill
-                        unoptimized
-                        sizes="(max-width: 640px) 33vw, 120px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                    <div className="p-2.5">
-                      {p.brand ? (
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-800 truncate">{p.brand}</p>
-                      ) : null}
-                      <p className="text-xs font-medium text-neutral-700 truncate mt-0.5">{p.title}</p>
-                      <p className="text-xs font-bold text-neutral-900 mt-1">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
-                      </p>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="p-6 rounded-2xl bg-gradient-to-r from-sky-50 via-sky-50 to-sky-50 border border-sky-100/60"
-        >
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-800 mb-4 text-center">How it works</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {[
-              {
-                step: '01',
-                title: 'Text or outfit',
-                desc: 'Search by keywords or open Shop the look for an outfit photo.',
-                Icon: Search,
-              },
-              {
-                step: '02',
-                title: 'Refine',
-                desc: 'Try synonyms, brands, or a clearer full-body photo.',
-                Icon: Sparkles,
-              },
-              {
-                step: '03',
-                title: 'Browse results',
-                desc: 'Open products and add favorites to compare.',
-                Icon: Zap,
-              },
-            ].map((s) => (
-              <div key={s.step} className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-sky-100/60">
-                  <s.Icon className="w-4 h-4 text-blue-800" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-orange-500 mb-0.5">{s.step}</p>
-                  <p className="text-sm font-semibold text-neutral-800">{s.title}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    ) : null
+  /** Hide onboarding strip once Shop the look has run, has results, or user landed with a hydrated session (e.g. try-on). */
+  const shopHideHowItWorks =
+    shopImageSearch.status !== 'idle' || Boolean(hydratedShop) || shopDetections.length > 0
 
   return (
-    <>
-      {/* ── Header area with mesh background ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#f7f0eb] via-[#f3ece6] to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-[#c9ae9f]/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-[#d8c6bb]/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute bottom-0 left-1/2 h-48 w-48 rounded-full bg-amber-200/20 blur-3xl" aria-hidden />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
-          <motion.div
+    <div className="min-h-screen bg-[#F9F8F6]">
+      {mode === 'text' ? (
+        <header className="border-b border-[#ebe8e4] bg-[#F9F8F6]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-5">
+            {!q.trim() ? (
+              <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#7d4b3a] text-white shadow-md shadow-[#2a2623]/20">
-                <Search className="w-5 h-5" />
+                transition={{ duration: 0.4 }}
+                aria-labelledby="text-search-how-it-works-heading"
+                className="max-w-5xl mx-auto mb-6 p-6 rounded-2xl bg-gradient-to-r from-[#f7f0eb] via-[#f3ece6] to-[#f7f0eb] border border-[#eadfd7]"
+              >
+                <p id="text-search-how-it-works-heading" className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center">
+                  How it works
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  {HOW_IT_WORKS_STEPS.map((s) => (
+                    <div key={s.step} className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-[#eadfd7]">
+                        <s.Icon className="w-4 h-4 text-[#2a2623]" aria-hidden />
               </div>
               <div>
-                <h1 className="font-display text-2xl sm:text-3xl font-bold text-neutral-900">Discover</h1>
-                <p className="text-sm text-neutral-500 mt-0.5">
-                  Search by keywords, or use Shop the look on an outfit photo
-                </p>
+                        <p className="text-xs font-bold text-[#3d3030] mb-0.5">{s.step}</p>
+                        <p className="text-sm font-semibold text-[#2a2623]">{s.title}</p>
+                        <p className="text-xs text-[#7a726b] mt-0.5">{s.desc}</p>
               </div>
             </div>
-
+                  ))}
+                </div>
+              </motion.section>
+            ) : null}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.06 }}
+              className="text-center max-w-3xl mx-auto"
+            >
+              <h1 className="font-display text-[1.85rem] sm:text-[2.35rem] font-bold text-[#2a2623] tracking-[-0.02em]">
+                Text Search
+              </h1>
+              <p className="mt-3 text-[15px] sm:text-base text-[#7a726b] leading-relaxed px-2">
+                Find exactly what you&apos;re looking for using natural language.
+              </p>
+              <div className="mt-8 px-1">
             <SearchBar
-              placeholder='Search "red summer dress", "casual sneakers"...'
+                  variant="textSearch"
+                  placeholder='Try "white linen shirt for summer"'
               initialQuery={q}
               isLoading={textSearchActive && textSearchPaged.isFetching}
             />
-
-            <div className="grid grid-cols-2 gap-2 mt-5">
+              </div>
+              <div className="mt-5 flex flex-wrap justify-center gap-2.5 max-w-lg mx-auto">
               {modeTabs.map((tab, i) => (
                 <motion.a
                   key={tab.key}
                   href={tab.href}
-                  initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.05 }}
-                  className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    transition={{ delay: 0.08 + i * 0.04 }}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2.5 text-[13px] font-semibold border transition-all ${
                     mode === tab.key
-                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
-                      : 'bg-white/80 text-neutral-600 border border-neutral-200/80 hover:border-[#d8c6bb] hover:text-[#2a2623] hover:bg-[#f7f0eb]/70 backdrop-blur-sm'
-                  }`}
+                        ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623] shadow-sm'
+                        : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-[#d4cdc4] hover:text-[#2a2623]'
+                    }`}
+                  >
+                    <tab.Icon className="w-4 h-4 shrink-0 opacity-80" aria-hidden />
+                    <span>{tab.label}</span>
+                  </motion.a>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </header>
+      ) : (
+        <header className="border-b border-[#ebe8e4] bg-[#F9F8F6]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-5">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+            >
+              {!shopHideHowItWorks ? (
+                <motion.section
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  aria-labelledby="discover-how-it-works-heading"
+                  className="max-w-5xl mx-auto mb-6 p-6 rounded-2xl bg-gradient-to-r from-[#f7f0eb] via-[#f3ece6] to-[#f7f0eb] border border-[#eadfd7]"
                 >
-                  <tab.Icon className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="leading-tight">{tab.label}</p>
-                    <p
-                      className={`text-[10px] font-normal leading-tight mt-0.5 ${
-                        mode === tab.key ? 'text-white/80' : 'text-neutral-400'
+                  <p
+                    id="discover-how-it-works-heading"
+                    className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center"
+                  >
+                    How it works
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    {HOW_IT_WORKS_STEPS.map((s) => (
+                      <div key={s.step} className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-[#eadfd7]">
+                          <s.Icon className="w-4 h-4 text-[#2a2623]" aria-hidden />
+                  </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#3d3030] mb-0.5">{s.step}</p>
+                          <p className="text-sm font-semibold text-[#2a2623]">{s.title}</p>
+                          <p className="text-xs text-[#7a726b] mt-0.5">{s.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.section>
+              ) : null}
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.06 }}
+                className="text-center max-w-3xl mx-auto"
+              >
+                <h1 className="font-display text-[1.85rem] sm:text-[2.35rem] font-bold text-[#2a2623] tracking-[-0.02em]">
+                  Discover
+                </h1>
+                <p className="mt-3 text-[15px] sm:text-base text-[#7a726b] leading-relaxed px-2">
+                  Upload an outfit photo to shop the look, or switch to Text search for keywords.
+                </p>
+                <div className="mt-8 flex flex-wrap justify-center gap-2.5">
+                  {modeTabs.map((tab, i) => (
+                    <motion.a
+                      key={tab.key}
+                      href={tab.href}
+                      title={tab.desc}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 + i * 0.04 }}
+                      className={`inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2.5 text-[13px] font-semibold border transition-all ${
+                        mode === tab.key
+                          ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623] shadow-sm'
+                          : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-[#d4cdc4] hover:text-[#2a2623]'
                       }`}
                     >
-                      {tab.desc}
-                    </p>
-                  </div>
+                      <tab.Icon className="w-4 h-4 shrink-0 opacity-80" aria-hidden />
+                      <span>{tab.label}</span>
                 </motion.a>
               ))}
             </div>
-
-            {showPopularSearchShortcuts ? (
-              <div className="mt-8 pt-6 border-t border-neutral-200/60">
-                <p className="text-center text-sm text-neutral-500 mb-5">
-                  Type a description or try one of these popular searches.
-                </p>
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={{ visible: { transition: { staggerChildren: 0.06 } }, hidden: {} }}
-                  className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
-                >
-                  {suggestedSearches.map((s) => (
-                    <motion.a
-                      key={s.label}
-                      href={`/search?q=${encodeURIComponent(s.label)}`}
-                      variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
-                      whileHover={{ y: -4, scale: 1.02 }}
-                      className="group relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-neutral-200/80 bg-white overflow-hidden hover:shadow-xl hover:shadow-blue-600/10 transition-shadow duration-300"
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-300`} />
-                      <div
-                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg`}
-                      >
-                        <s.icon className="w-5 h-5" />
-                      </div>
-                      <span className="text-sm font-semibold text-neutral-700 group-hover:text-neutral-900 transition-colors text-center">
-                        {s.label}
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                    </motion.a>
-                  ))}
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex flex-wrap justify-center gap-2 text-xs"
-                >
-                  {POPULAR_SEARCH_TAGS.map((term) => (
-                    <a
-                      key={term}
-                      href={`/search?q=${encodeURIComponent(term)}`}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-neutral-200/80 text-neutral-600 hover:bg-sky-50 hover:border-blue-100 hover:text-blue-900 transition-all duration-200 shadow-sm"
-                    >
-                      <TrendingUp className="w-3 h-3 shrink-0" />
-                      {term}
-                    </a>
-                  ))}
-                </motion.div>
-              </div>
-            ) : null}
+              </motion.div>
           </motion.div>
         </div>
-      </div>
+        </header>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pt-3 sm:pt-4 pb-10">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mb-8"
+          className={mode === 'shop' ? 'mb-8' : ''}
         >
           {mode === 'shop' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
               {!imageFile ? (
-                <div className="relative p-8 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-b from-white to-slate-50/80 hover:border-[#d8c6bb] transition-colors">
+                <div className="relative p-8 sm:p-10 rounded-[18px] border border-dashed border-[#d8d2cd] bg-white shadow-[0_6px_28px_-16px_rgba(42,38,35,0.08)] hover:border-[#c9ae9f] transition-colors">
                   <div className="text-center">
-                    <div className="relative w-16 h-16 mx-auto mb-4">
-                      <div className="absolute inset-0 rounded-xl bg-[#2a2623]/12 blur-lg" />
-                      <div className="relative w-16 h-16 rounded-xl bg-slate-100 ring-1 ring-slate-200/80 flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-[#2a2623]" strokeWidth={1.75} />
+                    <div className="relative w-16 h-16 mx-auto mb-5">
+                      <div className="absolute inset-0 rounded-2xl bg-[#eadfd7]/90 blur-lg" aria-hidden />
+                      <div className="relative w-16 h-16 rounded-2xl bg-[#faf9f7] ring-1 ring-[#ebe8e4] flex items-center justify-center">
+                        <Sparkles className="w-7 h-7 text-[#3d3030]" strokeWidth={1.75} aria-hidden />
                       </div>
                     </div>
-                    <p className="font-display text-base font-semibold text-slate-900 mb-1">Upload an outfit photo</p>
-                    <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto leading-relaxed">
+                    <p className="font-display text-base font-semibold text-[#2a2623] mb-1">Upload an outfit photo</p>
+                    <p className="text-sm text-[#7a726b] mb-7 max-w-sm mx-auto leading-relaxed">
                       We detect pieces in your shot and match each one to similar products you can shop.
                     </p>
                     <input
@@ -720,45 +685,45 @@ function SearchContent() {
                     <div className="flex flex-wrap justify-center gap-3">
                       <label
                         htmlFor="shop-image-file-pick"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#2a2623] text-sm font-semibold border border-[#d8c6bb] hover:bg-[#f7f0eb] hover:border-[#c9ae9f] shadow-sm active:scale-[0.97] transition-all"
+                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#2a2623] text-sm font-semibold border border-[#e8e4df] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] active:scale-[0.98] transition-all"
                       >
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-4 h-4 text-[#3d3030]" aria-hidden />
                         Choose file
                       </label>
                       <label
                         htmlFor="shop-image-camera-capture"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 active:scale-[0.97] transition-all"
+                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm active:scale-[0.98] transition-all"
                       >
-                        <Camera className="w-4 h-4" />
+                        <Camera className="w-4 h-4 opacity-90" aria-hidden />
                         Take a photo
                       </label>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
-                  <div className="flex items-start gap-5">
-                    <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 ring-1 ring-slate-200/80">
+                <div className="p-5 sm:p-6 rounded-[18px] bg-white border border-[#ebe8e4] shadow-[0_6px_28px_-16px_rgba(42,38,35,0.08)]">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+                    <div className="relative w-[min(100%,200px)] h-[200px] sm:w-36 sm:h-36 sm:max-w-none rounded-[14px] overflow-hidden bg-[#faf9f7] flex-shrink-0 ring-1 ring-[#ebe8e4] mx-auto sm:mx-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imagePreviewUrl} alt="Preview" className="object-cover w-full h-full" />
                     </div>
-                    <div className="flex-1 min-w-0 pt-1">
-                      <p className="text-sm font-semibold text-neutral-800 truncate">{imageFile.name}</p>
-                      <p className="text-xs text-neutral-500 mt-0.5">{(imageFile.size / 1024).toFixed(0)} KB</p>
-                      <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="flex-1 min-w-0 pt-1 text-center sm:text-left">
+                      <p className="text-sm font-semibold text-[#2a2623] truncate">{imageFile.name}</p>
+                      <p className="text-xs text-[#9c9590] mt-0.5">{(imageFile.size / 1024).toFixed(0)} KB</p>
+                      <div className="flex flex-wrap gap-2 mt-5 justify-center sm:justify-start">
                         <button
                           type="button"
                           onClick={handleShopSearch}
                           disabled={shopImageSearch.isPending}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 active:scale-[0.97] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm transition-all disabled:opacity-60 disabled:pointer-events-none"
                         >
-                          <Search className="w-4 h-4" />
+                          <Search className="w-4 h-4 opacity-90" aria-hidden />
                           Search
                         </button>
                         <button
                           type="button"
                           onClick={() => setImageFile(null)}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-[#6b6560] border border-[#e8e4df] bg-[#faf9f7] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] transition-all"
                         >
                           Change image
                         </button>
@@ -805,12 +770,20 @@ function SearchContent() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="space-y-3">
-                    <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
-                    <div className="h-3 w-2/3 rounded-md skeleton-shimmer" />
-                    <div className="h-3 w-1/2 rounded-md skeleton-shimmer" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="rounded-[18px] border border-[#ebe8e4] bg-white overflow-hidden shadow-sm">
+                    <div className="aspect-square skeleton-shimmer" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 w-[85%] rounded skeleton-shimmer" />
+                      <div className="h-2.5 w-1/2 rounded skeleton-shimmer" />
+                      <div className="h-4 w-1/3 rounded skeleton-shimmer mt-2" />
+                      <div className="flex gap-1.5 mt-3">
+                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
+                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
+                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -825,23 +798,92 @@ function SearchContent() {
             />
           ) : products.length > 0 ? (
             <>
-              <div className="flex items-center justify-between mb-6">
-                <p className="text-sm font-medium text-neutral-500">
                   {textSearchActive ? (
-                    products.length === 0 ? (
-                      <>No results on this page</>
-                    ) : (
-                      <>
-                        Showing {(pageFromUrl - 1) * TEXT_SEARCH_PAGE_SIZE + 1}–
-                        {(pageFromUrl - 1) * TEXT_SEARCH_PAGE_SIZE + products.length}
-                        {textReportedTotal > 0 ? ` of ${textReportedTotal.toLocaleString()}` : ''}
-                      </>
-                    )
+                <>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
+                    <p className="text-[14px] sm:text-[15px] text-[#5c5752] leading-snug">
+                      Results for{' '}
+                      <span className="font-semibold text-[#2a2623]">&ldquo;{q.trim()}&rdquo;</span>
+                    </p>
+                    <p className="text-[13px] sm:text-[14px] text-[#9c9590] tabular-nums shrink-0">
+                      {(textReportedTotal || products.length).toLocaleString()} item
+                      {(textReportedTotal || products.length) !== 1 ? 's' : ''} found
+                      {genderFilter ? (
+                        <span className="text-[#b8aea5]">
+                          {' '}
+                          · {genderFilter === 'men' ? 'Men' : 'Women'}
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {TEXT_SEARCH_GENDER_CHIPS.map((chip) => {
+                        const key = chip.toLowerCase()
+                        const active =
+                          key === 'all' ? genderFilter === null : genderFilter === key
+                        return (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => setGenderFilter(chip)}
+                            className={`px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-semibold border transition-colors ${
+                              active
+                                ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623]'
+                                : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-[#d4cdc4]'
+                            }`}
+                          >
+                            {chip}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <Link
+                      href={
+                        q.trim()
+                          ? `/products?q=${encodeURIComponent(q.trim())}${genderFilter ? `&gender=${genderFilter}` : ''}`
+                          : genderFilter
+                            ? `/products?gender=${genderFilter}`
+                            : '/products'
+                      }
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-brand/35 bg-white px-4 py-2.5 text-[13px] font-semibold text-brand hover:bg-brand-muted transition-colors min-h-[44px] shrink-0 self-start xl:self-auto"
+                    >
+                      <SlidersHorizontal className="w-4 h-4 text-[#9c9590]" aria-hidden />
+                      Filter
+                    </Link>
+                  </div>
+
+                  <TextSearchProductGrid
+                    products={products}
+                    fromReturnPath={discoverReturnPath}
+                  />
+
+                  <div className="mt-8 rounded-[20px] bg-[#f3f1ee] border border-[#e8e4df] px-5 py-5 sm:px-8 sm:py-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                      <div className="flex items-center gap-2 text-[13px] font-semibold text-[#5c5752] shrink-0">
+                        <Sparkles className="w-4 h-4 text-[#b8aea5]" aria-hidden />
+                        Try searching for something like:
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {TRY_SEARCHING_TAGS.map((tag) => (
+                          <Link
+                            key={tag}
+                            href={`/search?q=${encodeURIComponent(tag)}`}
+                            className="px-3.5 py-2 rounded-full bg-white border border-[#e8e4df] text-[12px] sm:text-[13px] text-[#5c5752] hover:border-[#d8d2cd] hover:text-[#2a2623] transition-colors"
+                          >
+                            {tag}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
                   ) : (
                     <>
+                  <div className="flex items-center justify-between mb-6">
+                    <p className="text-sm font-medium text-neutral-500">
                       {products.length} result{products.length !== 1 ? 's' : ''} shown
-                    </>
-                  )}
                 </p>
               </div>
               <SearchProductGrid
@@ -850,6 +892,8 @@ function SearchContent() {
                 inCompare={inCompare}
                 fromReturnPath={discoverReturnPath}
               />
+                </>
+              )}
               {textShowPagination ? (
                 <nav
                   className="mt-10 flex flex-col items-center gap-5"
@@ -893,7 +937,7 @@ function SearchContent() {
                                 disabled={textSearchPaged.isFetching}
                                 className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all shrink-0 ${
                                   pageNum === pageFromUrl
-                                    ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+                                    ? 'bg-brand text-white shadow-md shadow-brand/20'
                                     : 'text-neutral-600 hover:bg-[#f7f0eb] hover:text-[#2a2623]'
                                 }`}
                               >
@@ -981,9 +1025,7 @@ function SearchContent() {
               transition={{ delay: 0.15, duration: 0.5 }}
               className="py-12"
             >
-              {mode === 'shop' && !imageFile ? (
-                discoverBelowFold
-              ) : mode === 'shop' &&
+              {mode === 'shop' && !imageFile ? null : mode === 'shop' &&
                 imageFile &&
                 !shopImageSearch.isPending &&
                 !shopImageSearch.data &&
@@ -1016,19 +1058,16 @@ function SearchContent() {
                   <p className="text-neutral-500">Try different keywords or browse by category.</p>
                 </div>
               ) : mode === 'text' && !q ? (
-                /* ── Rich empty state ── */
-                <div className="max-w-5xl mx-auto">
-                  {/* Hero prompt */}
-                  <div className="text-center mb-10">
+                <div className="max-w-5xl mx-auto text-center py-4">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       className="relative w-20 h-20 mx-auto mb-6"
                     >
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-20 blur-xl animate-pulse" />
-                      <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
-                        <Search className="w-9 h-9 text-[#2a2623]" />
+                    <div className="absolute inset-0 rounded-2xl bg-brand opacity-20 blur-xl animate-pulse" />
+                    <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
+                      <Search className="w-9 h-9 text-[#2a2623]" />
                       </div>
                     </motion.div>
                     <motion.h2
@@ -1043,142 +1082,17 @@ function SearchContent() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.18 }}
-                      className="text-neutral-500 max-w-md mx-auto"
+                    className="text-neutral-500 max-w-md mx-auto text-[15px]"
                     >
-                      Type a description or try one of these popular searches.
+                    Use the search bar above to describe styles, brands, or occasions — then browse ranked matches from the catalog.
                     </motion.p>
-                  </div>
-
-                  {/* Quick search categories */}
-                  <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={{ visible: { transition: { staggerChildren: 0.06 } }, hidden: {} }}
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10"
-                  >
-                    {suggestedSearches.map((s) => (
-                      <motion.a
-                        key={s.label}
-                        href={`/search?q=${encodeURIComponent(s.label)}`}
-                        variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
-                        whileHover={{ y: -4, scale: 1.02 }}
-                        className="group relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-neutral-200/80 bg-white overflow-hidden hover:shadow-xl hover:shadow-[#2a2623]/10 transition-shadow duration-300"
-                      >
-                        <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-300`} />
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg`}>
-                          <s.icon className="w-5.5 h-5.5" />
-                        </div>
-                        <span className="text-sm font-semibold text-neutral-700 group-hover:text-neutral-900 transition-colors">{s.label}</span>
-                        <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-[#2a2623] group-hover:translate-x-1 transition-all" />
-                      </motion.a>
-                    ))}
-                  </motion.div>
-
-                  {/* Trending products */}
-                  {trendingProducts && trendingProducts.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.35, duration: 0.5 }}
-                    >
-                      <div className="flex items-center gap-2 mb-5">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        <h3 className="font-display text-base font-bold text-neutral-800">Trending now</h3>
-                      </div>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                        {(trendingProducts as Array<{
-                          id: number; title: string; brand?: string | null
-                          price_cents: number; image_cdn?: string | null; image_url?: string | null
-                        }>).map((p, i) => (
-                          <motion.div
-                            key={p.id}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 + i * 0.06 }}
-                          >
-                            <Link
-                              href={`/products/${p.id}`}
-                              prefetch={false}
-                              className="group block rounded-2xl overflow-hidden bg-white border border-neutral-200/80 hover:shadow-lg hover:shadow-[#2a2623]/10 hover:-translate-y-1 transition-all duration-300"
-                            >
-                              <div className="relative aspect-[3/4] bg-neutral-100">
-                                <NextImage
-                                  src={p.image_cdn || p.image_url || ''}
-                                  alt={p.title}
-                                  fill
-                                  unoptimized
-                                  sizes="(max-width: 640px) 33vw, 120px"
-                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                              </div>
-                              <div className="p-2.5">
-                                {p.brand && <p className="text-[10px] font-semibold uppercase tracking-wider text-[#2a2623] truncate">{p.brand}</p>}
-                                <p className="text-xs font-medium text-neutral-700 truncate mt-0.5">{p.title}</p>
-                                <p className="text-xs font-bold text-neutral-900 mt-1">
-                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
-                                </p>
-                              </div>
-                            </Link>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Trending tags */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                    className="flex flex-wrap justify-center gap-2 text-xs mt-10"
-                  >
-                    {['Floral maxi dress', 'White sneakers', 'Leather jacket', 'Silk blouse', 'Denim jeans', 'Boho chic', 'Minimalist bags'].map((term) => (
-                      <a
-                        key={term}
-                        href={`/search?q=${encodeURIComponent(term)}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-neutral-200/80 text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] transition-all duration-200 shadow-sm"
-                      >
-                        <TrendingUp className="w-3 h-3" />
-                        {term}
-                      </a>
-                    ))}
-                  </motion.div>
-
-                  {/* How it works strip */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 }}
-                    className="mt-14 p-6 rounded-2xl bg-gradient-to-r from-[#f7f0eb] via-[#f3ece6] to-[#f7f0eb] border border-[#eadfd7]"
-                  >
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center">How it works</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                      {[
-                        { step: '01', title: 'Text or outfit', desc: 'Search by keywords or open Shop the look for an outfit photo.', Icon: Search },
-                        { step: '02', title: 'Refine', desc: 'Try synonyms, brands, or a clearer full-body photo.', Icon: Sparkles },
-                        { step: '03', title: 'Browse results', desc: 'Open products and add favorites to compare.', Icon: Zap },
-                      ].map((s) => (
-                        <div key={s.step} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-[#eadfd7]">
-                            <s.Icon className="w-4 h-4 text-[#2a2623]" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-orange-500 mb-0.5">{s.step}</p>
-                            <p className="text-sm font-semibold text-neutral-800">{s.title}</p>
-                            <p className="text-xs text-neutral-500 mt-0.5">{s.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
                 </div>
               ) : null}
             </motion.div>
           )}
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

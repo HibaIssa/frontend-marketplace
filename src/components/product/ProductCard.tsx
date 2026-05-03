@@ -2,9 +2,12 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, GitCompare, Check, Shirt } from 'lucide-react'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd, storedAmountToUsdCents } from '@/lib/money/displayUsd'
+import { resolvePrimaryImageUrl } from '@/lib/productImage'
 
 interface ProductCardProps {
   product: Product
@@ -29,21 +32,47 @@ function toCents(v: unknown): number {
   return 0
 }
 
-function formatPrice(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(cents / 100)
-}
-
 function useDirectRemoteImage(url: string): boolean {
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false
   if (url.includes('placehold.co')) return false
   return true
 }
 
-export function ProductCard({
+function productCardPropsAreEqual(prev: ProductCardProps, next: ProductCardProps): boolean {
+  if (prev.index !== next.index) return false
+  if (prev.snappyMotion !== next.snappyMotion) return false
+  if (prev.fromReturnPath !== next.fromReturnPath) return false
+  if (prev.inCompare !== next.inCompare) return false
+  if (prev.isFavorite !== next.isFavorite) return false
+  if (prev.wardrobeStatus !== next.wardrobeStatus) return false
+  if (prev.onFavorite !== next.onFavorite) return false
+  if (prev.onAddToCompare !== next.onAddToCompare) return false
+  if (prev.onAddToWardrobe !== next.onAddToWardrobe) return false
+
+  const va = prev.variantPrice
+  const vb = next.variantPrice
+  if (va !== vb) {
+    if (!va || !vb) return false
+    if (va.minPriceCents !== vb.minPriceCents || va.maxPriceCents !== vb.maxPriceCents) return false
+  }
+
+  const pa = prev.product
+  const pb = next.product
+  return (
+    pa.id === pb.id &&
+    pa.title === pb.title &&
+    pa.price_cents === pb.price_cents &&
+    pa.sales_price_cents === pb.sales_price_cents &&
+    pa.image_url === pb.image_url &&
+    pa.image_cdn === pb.image_cdn &&
+    pa.brand === pb.brand &&
+    pa.category === pb.category &&
+    pa.currency === pb.currency &&
+    resolvePrimaryImageUrl(pa) === resolvePrimaryImageUrl(pb)
+  )
+}
+
+export const ProductCard = memo(function ProductCard({
   product,
   index = 0,
   snappyMotion = false,
@@ -56,7 +85,7 @@ export function ProductCard({
   wardrobeStatus = 'idle',
   variantPrice,
 }: ProductCardProps) {
-  const imgUrl = product.image_cdn || product.image_url || '/placeholder-product.jpg'
+  const imgUrl = resolvePrimaryImageUrl(product) || '/placeholder-product.jpg'
   const imageUnoptimized = useDirectRemoteImage(imgUrl)
   const productHref =
     fromReturnPath && fromReturnPath.startsWith('/search')
@@ -64,7 +93,11 @@ export function ProductCard({
       : `/products/${product.id}`
   const priceCents = toCents(product.price_cents)
   const saleCents = toCents(product.sales_price_cents)
-  const hasSale = saleCents > 0 && saleCents < priceCents
+  const curr = product.currency
+  const hasSale =
+    saleCents > 0 &&
+    storedAmountToUsdCents(saleCents, curr) > 0 &&
+    storedAmountToUsdCents(saleCents, curr) < storedAmountToUsdCents(priceCents, curr)
   const showMinMax = variantPrice && variantPrice.minPriceCents !== variantPrice.maxPriceCents
   const hasCompare = Boolean(onAddToCompare)
   const hasWardrobe = Boolean(onAddToWardrobe)
@@ -102,7 +135,7 @@ export function ProductCard({
             }}
           />
           {hasSale && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
+            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-brand text-white text-[11px] font-bold uppercase tracking-wide shadow-md">
               Sale
             </span>
           )}
@@ -144,7 +177,7 @@ export function ProductCard({
                   disabled={wardrobeStatus === 'loading' || wardrobeStatus === 'added'}
                   className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors border-r border-white/30
                     ${wardrobeStatus === 'added'
-                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white'
+                      ? 'bg-brand text-white'
                       : wardrobeStatus === 'loading'
                         ? 'bg-[#161616]/85 text-white'
                         : 'bg-white/90 text-[#0a0a0a] hover:bg-white'
@@ -175,7 +208,7 @@ export function ProductCard({
                   }}
                   className={`flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wide backdrop-blur-md transition-colors
                     ${inCompare
-                      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white'
+                      ? 'bg-brand text-white'
                       : 'bg-white/90 text-[#100809] hover:bg-[#efe4de]'
                     }`}
                 >
@@ -210,20 +243,20 @@ export function ProductCard({
             <div className="shrink-0 text-right">
               {showMinMax ? (
                 <span className="font-extrabold text-sm tz-burgundy">
-                  {formatPrice(variantPrice!.minPriceCents, product.currency)}
+                  {formatStoredPriceAsUsd(variantPrice!.minPriceCents, curr)}
                 </span>
               ) : hasSale ? (
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-sm tz-burgundy">
-                    {formatPrice(saleCents, product.currency)}
+                    {formatStoredPriceAsUsd(saleCents, curr)}
                   </span>
                   <span className="text-xs text-[#161616]/40 line-through">
-                    {formatPrice(priceCents, product.currency)}
+                    {formatStoredPriceAsUsd(priceCents, curr)}
                   </span>
                 </div>
               ) : priceCents > 0 ? (
                 <span className="font-extrabold text-sm tz-burgundy">
-                  {formatPrice(priceCents, product.currency)}
+                  {formatStoredPriceAsUsd(priceCents, curr)}
                 </span>
               ) : (
                 <span className="text-xs text-[#161616]/50 italic">—</span>
@@ -241,4 +274,4 @@ export function ProductCard({
       </Link>
     </motion.article>
   )
-}
+}, productCardPropsAreEqual)

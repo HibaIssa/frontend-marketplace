@@ -12,7 +12,8 @@ import {
   SlidersHorizontal,
   MousePointerClick,
   Layers,
-  Info,
+  Check,
+  Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -20,6 +21,7 @@ import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { useCompareStore, normalizeCompareProductId } from '@/store/compare'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 import type { CompareDecisionResponse, CompareGoal, CompareOccasion } from '@/types/compareDecision'
 import { unwrapCompareDecisionResponse } from '@/lib/compare-decision/selectors'
 import {
@@ -27,6 +29,7 @@ import {
   type CompareDecisionFormState,
 } from '@/lib/compare-decision/buildRequest'
 import { CompareDecisionResults } from '@/components/compare/CompareDecisionResults'
+import { productDetailHrefFromCompare } from '@/lib/navigation/productDetailReturn'
 
 /** Align GET /products/:id payload with `Product` (title, primary image). */
 function normalizeCompareTrayProduct(raw: Record<string, unknown>, forcedId: number): Product {
@@ -82,7 +85,6 @@ const defaultForm = (): CompareDecisionFormState => ({
 export default function ComparePage() {
   const { productIds, remove, clear } = useCompareStore()
   const [form, setForm] = useState<CompareDecisionFormState>(defaultForm)
-  const [fineTuneOpen, setFineTuneOpen] = useState(true)
   /** Subset of `productIds` to send to the compare API (2–5). */
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
@@ -159,6 +161,9 @@ export default function ComparePage() {
   const compareResult = compareMutation.data
   const canCompare = selectedForCompare.length >= 2 && selectedForCompare.length <= 5
 
+  /** Collapse lineup/preferences after a verdict so results stay above the fold. */
+  const [setupOpen, setSetupOpen] = useState(true)
+
   /** Step before API: confirm lineup + mandatory first-glance answer. */
   const [showComparePrepModal, setShowComparePrepModal] = useState(false)
   type FirstGlancePrep = 'unset' | 'none' | number
@@ -170,8 +175,11 @@ export default function ComparePage() {
   }, [selectedKey, productIdsKey])
 
   useEffect(() => {
-    if (compareResult) setFineTuneOpen(false)
-    else setFineTuneOpen(true)
+    if (compareResult) setSetupOpen(false)
+  }, [compareResult])
+
+  useEffect(() => {
+    if (!compareResult) setSetupOpen(true)
   }, [compareResult])
 
   const openComparePrepModal = () => {
@@ -208,8 +216,8 @@ export default function ComparePage() {
   const selectAllInTray = () => setSelectedIds([...productIds])
   const clearCompareSelection = () => setSelectedIds([])
 
-  const formatPrice = (cents: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(cents / 100)
+  const formatPrice = (cents: number, currency?: string | null) =>
+    formatStoredPriceAsUsd(cents, currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   const sliderPct = (v: number | undefined) => (v == null ? 50 : Math.round(v * 100))
   const setPreferenceSlider = (
@@ -220,159 +228,188 @@ export default function ComparePage() {
   }
 
   return (
-    <>
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#f7f0eb]/90 via-[#f3ece6]/70 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-20 -right-10 h-72 w-72 rounded-full bg-[#d8c6bb]/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-10 -left-16 h-56 w-56 rounded-full bg-[#eadfd7]/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-32 w-96 rounded-full bg-[#c9ae9f]/25 blur-3xl" aria-hidden />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-lg shadow-[#2a2623]/30 ring-4 ring-white/50">
-                  <GitCompare className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2a2623]/80 mb-1">Style decision lab</p>
-                  <h1 className="font-display text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">Compare</h1>
-                  <p className="text-sm text-neutral-600 mt-2 max-w-xl leading-relaxed">
-                    Side-by-side picks — results first, details when you want them.
-                  </p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-[#F9F8F6] pb-14 pt-4 sm:pt-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-[28px] bg-[#F2EFE9] p-6 shadow-[0_24px_56px_-36px_rgba(42,38,35,0.18)] ring-1 ring-[#e6e0d8] sm:p-8 lg:p-10">
+          <div className="flex flex-col gap-4 border-b border-[#e0dbd4]/90 pb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="font-sans text-[1.65rem] font-bold tracking-tight text-[#1c1917] sm:text-[2rem]">
+                Compare
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#5c5752]">
+                Stack pieces side by side — fabric, fit, price and reviews — then run an AI-backed comparison to decide with confidence.
+              </p>
             </div>
-          </motion.div>
-        </div>
-      </div>
+            {productIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => clear()}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#d8d2cd] bg-white px-4 py-2.5 text-sm font-semibold text-[#2a2623] shadow-[0_6px_20px_-12px_rgba(42,38,35,0.2)] transition hover:bg-[#faf9f7]"
+              >
+                <Trash2 className="h-4 w-4 shrink-0 text-[#6b6560]" aria-hidden />
+                Clear all
+              </button>
+            ) : null}
+          </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="pt-6">
         {productIds.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="py-16 max-w-lg mx-auto text-center"
+            className="py-12 max-w-md mx-auto text-center"
           >
-            <div className="relative w-24 h-24 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-15 blur-xl" />
-              <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
-                <GitCompare className="w-10 h-10 text-[#2a2623]" />
-              </div>
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#faf9f7] ring-1 ring-[#ebe8e4] flex items-center justify-center">
+              <GitCompare className="w-7 h-7 text-[#3d3030]" aria-hidden />
             </div>
-            <h2 className="font-display text-xl font-bold text-neutral-900 mb-2">No products to compare</h2>
-            <p className="text-neutral-500 mb-8">Browse the shop and tap the compare button on any product card.</p>
+            <h2 className="font-display text-lg font-bold text-[#2a2623] mb-1">Nothing to compare yet</h2>
+            <p className="text-sm text-[#7a726b] mb-6">Use Compare on product cards, then come back here.</p>
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white font-semibold shadow-lg shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] active:scale-[0.97] transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm ring-1 ring-brand/25 transition-colors"
             >
-              Browse products
-              <ArrowRight className="w-4 h-4" />
+              Browse
+              <ArrowRight className="w-4 h-4" aria-hidden />
             </Link>
           </motion.div>
         ) : (
           <>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="text-neutral-500">
-                  <span className="font-semibold text-neutral-800">{productIds.length}</span> saved in tray
-                </span>
-                <span className="text-neutral-300 hidden sm:inline" aria-hidden>
-                  ·
-                </span>
-                <span className="text-neutral-500">
-                  <span className="font-semibold text-[#2a2623]">{selectedForCompare.length}</span> included in analysis
-                </span>
-                {!canCompare && selectedForCompare.length === 1 && (
-                  <span className="text-amber-700 font-medium">Add one more to compare</span>
-                )}
-                {!canCompare && selectedForCompare.length === 0 && productIds.length >= 2 && (
-                  <span className="text-amber-700 font-medium">Include at least 2 items below</span>
-                )}
+            {compareMutation.isPending && !compareResult && (
+              <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#ebe8e4] bg-white px-4 py-3 text-sm text-[#2a2623] shadow-sm">
+                <div
+                  className="h-8 w-8 rounded-full border-2 border-[#eadfd7] border-t-brand animate-spin shrink-0"
+                  aria-hidden
+                />
+                Comparing your picks…
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={selectAllInTray}
-                  className="text-sm font-semibold text-[#2a2623] hover:text-[#1a1816] px-2 py-1 rounded-lg hover:bg-[#f7f0eb] transition-colors"
+            )}
+
+            {compareMutation.isError && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 p-3 rounded-xl bg-[#faf9f7] border border-[#eadfd7] text-[#2a2623] text-sm mb-4"
+              >
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
+                <p>{(compareMutation.error as Error)?.message ?? 'Comparison failed'}</p>
+              </motion.div>
+            )}
+
+            <AnimatePresence mode="wait">
+              {compareResult && loadingProducts && !compareTrayProducts?.length ? (
+                <motion.div
+                  key="result-loading"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-3 p-4 rounded-xl bg-white border border-[#ebe8e4] text-[#2a2623] text-sm mb-4 shadow-sm"
                 >
-                  Include all
-                </button>
-                <button
-                  type="button"
-                  onClick={clearCompareSelection}
-                  className="text-sm font-medium text-neutral-500 hover:text-neutral-800 px-2 py-1 rounded-lg hover:bg-neutral-100 transition-colors"
+                  <div
+                    className="h-8 w-8 rounded-full border-2 border-[#eadfd7] border-t-brand animate-spin shrink-0"
+                    aria-hidden
+                  />
+                  <p>Loading product info…</p>
+                </motion.div>
+              ) : compareResult && (!loadingProducts || (compareTrayProducts?.length ?? 0) > 0) ? (
+                <motion.div
+                  key="results"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="mb-6"
                 >
-                  Clear included
-                </button>
-                <button
-                  type="button"
-                  onClick={clear}
-                  className="text-sm text-neutral-400 hover:text-[#7d4b3a] px-2 py-1 transition-colors"
-                >
-                  Empty tray
-                </button>
-                {canCompare && (
+                  <CompareDecisionResults
+                    result={compareResult}
+                    products={
+                      compareTrayProducts?.filter((p) => {
+                        const id = normalizeCompareProductId(p.id)
+                        return id != null && selectedForCompare.includes(id)
+                      }) ?? []
+                    }
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <div className="mb-3 rounded-[20px] border border-[#ebe8e4] bg-white p-3 shadow-[0_10px_36px_-22px_rgba(42,38,35,0.14)] sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#7a726b]">
+                  <span>
+                    <span className="font-semibold text-[#2a2623]">{productIds.length}</span> saved
+                  </span>
+                  <span className="text-[#e3ddd4] hidden sm:inline" aria-hidden>
+                    ·
+                  </span>
+                  <span>
+                    <span className="font-semibold text-[#2a2623]">{selectedForCompare.length}</span> in this run
+                  </span>
+                  {!canCompare && selectedForCompare.length === 1 && (
+                    <span className="text-amber-700 font-medium text-xs">Add one more</span>
+                  )}
+                  {!canCompare && selectedForCompare.length === 0 && productIds.length >= 2 && (
+                    <span className="text-amber-700 font-medium text-xs">Pick at least 2</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={openComparePrepModal}
-                    disabled={compareMutation.isPending}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold shadow-md shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] active:scale-[0.97] transition-all disabled:opacity-60"
+                    onClick={selectAllInTray}
+                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[13px] font-semibold bg-brand text-white shadow-sm ring-1 ring-brand/25 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 transition-colors"
                   >
-                    {compareMutation.isPending ? (
-                      <>
-                        <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                        Analyzing…
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Run comparison
-                      </>
-                    )}
+                    Include all
                   </button>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#d8c6bb]/80 bg-gradient-to-br from-[#f7f0eb]/90 via-white to-[#f3ece6]/70 px-4 py-4 sm:px-5 sm:py-4 mb-6 shadow-sm">
-              <div className="flex gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#2a2623] shadow-sm ring-1 ring-[#eadfd7]">
-                  <Info className="w-4 h-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900">How to use this page</p>
-                  <ol className="mt-2 space-y-2 text-sm text-neutral-600 leading-relaxed list-none">
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2a2623] text-[11px] font-bold text-white">
-                        1
-                      </span>
-                      <span>
-                        <strong className="text-neutral-800">Include</strong> each piece you want in this run (2–5).
-                        Uncheck anything you only want to keep on the side.
-                      </span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f4ece6] text-[11px] font-bold text-[#2a2623]">
-                        2
-                      </span>
-                      <span>
-                        Optionally tune <strong className="text-neutral-800">goal, occasion,</strong> and sliders below.
-                      </span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f4ece6] text-[11px] font-bold text-[#2a2623]">
-                        3
-                      </span>
-                      <span>
-                        Press <strong className="text-neutral-800">Run comparison</strong> — a short form lists your picks
-                        and asks <strong className="text-neutral-800">which one caught your eye first</strong> before results
-                        load.
-                      </span>
-                    </li>
-                  </ol>
+                  <button
+                    type="button"
+                    onClick={clearCompareSelection}
+                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[13px] font-semibold bg-brand-muted text-brand border-2 border-brand hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 transition-colors"
+                  >
+                    Clear included
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clear}
+                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[13px] font-semibold bg-brand-muted text-brand border-2 border-brand hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 transition-colors"
+                  >
+                    Empty tray
+                  </button>
+                  {canCompare && (
+                    <button
+                      type="button"
+                      onClick={openComparePrepModal}
+                      disabled={compareMutation.isPending}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand text-white text-[13px] font-semibold hover:bg-brand-hover shadow-sm ring-1 ring-brand/25 transition-all disabled:opacity-60"
+                    >
+                      {compareMutation.isPending ? (
+                        <>
+                          <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                          Wait…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" aria-hidden />
+                          Run
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setSetupOpen((v) => !v)}
+              className="mb-3 w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-semibold text-white shadow-sm ring-1 ring-brand/25 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 transition-colors"
+              aria-expanded={setupOpen}
+            >
+              {setupOpen ? 'Hide lineup & preferences' : 'Show lineup & preferences'}
+              <span className="tabular-nums text-white/90">({productIds.length})</span>
+            </button>
+
+            {setupOpen ? (
+              <div className="space-y-5">
+                <p className="text-[11px] text-[#9c9590]">2–5 checked items · optional goal & sliders</p>
 
             <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 overflow-x-auto md:overflow-visible pb-2 md:pb-0 snap-x snap-mandatory md:snap-none scrollbar-thin -mx-1 px-1 md:mx-0 md:px-0">
               {loadingProducts
@@ -401,12 +438,12 @@ export default function ComparePage() {
                         <button
                           type="button"
                           onClick={() => remove(pid)}
-                          className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-white/95 shadow-md border border-neutral-200/80 text-neutral-400 hover:text-[#2a2623] hover:border-[#d8c6bb] transition-colors"
+                          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#5c5752] shadow-md ring-1 ring-[#ebe8e4] transition hover:bg-[#faf9f7] hover:text-[#2a2623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           aria-label="Remove from compare tray"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="h-4 w-4" strokeWidth={2} />
                         </button>
-                        <Link href={`/products/${pid}`} className="block rounded-xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
+                        <Link href={productDetailHrefFromCompare(pid)} className="block rounded-xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                           <div className="aspect-[3/4] rounded-xl overflow-hidden bg-neutral-100">
                             <Image
                               src={p.image_cdn || p.image_url || 'https://placehold.co/200x260/f5f5f5/737373?text=No+Image'}
@@ -418,28 +455,43 @@ export default function ComparePage() {
                           </div>
                         </Link>
                         <div className="mt-2.5 px-0.5 space-y-2.5">
-                          <Link href={`/products/${pid}`} className="block min-h-[3.25rem]">
+                          <Link href={productDetailHrefFromCompare(pid)} className="block min-h-[3.25rem]">
                             <p className="text-[10px] font-semibold text-[#2a2623] uppercase tracking-wider truncate">
                               {p.brand || p.category || 'Product'}
                             </p>
                             <p className="text-sm font-medium text-neutral-800 line-clamp-2 leading-snug mt-0.5">{p.title}</p>
-                            <p className="text-sm font-bold text-neutral-900 mt-1">{formatPrice(p.price_cents)}</p>
+                            <p className="text-sm font-bold text-neutral-900 mt-1">{formatPrice(p.price_cents, p.currency)}</p>
                           </Link>
 
                           <label
-                            className={`flex items-center gap-2.5 cursor-pointer rounded-xl border bg-white px-2.5 py-2 shadow-sm transition-colors ${
+                            className={`group flex cursor-pointer items-center gap-3 rounded-full border-2 px-3 py-2.5 shadow-sm transition-all duration-200 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand/35 focus-within:ring-offset-2 ${
                               isSelectedForRun
-                                ? 'border-[#d8c6bb] ring-1 ring-[#eadfd7]'
-                                : 'border-neutral-200/90 hover:border-[#d8c6bb]'
+                                ? 'border-brand bg-brand-muted ring-1 ring-brand/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]'
+                                : 'border-brand/35 bg-[#f6f1ec] hover:border-brand/55 hover:bg-brand-muted/80'
                             }`}
                           >
                             <input
                               type="checkbox"
-                              className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-[#2a2623] focus:ring-[#7d4b3a]"
+                              className="sr-only"
                               checked={isSelectedForRun}
                               onChange={() => toggleCompareSelection(pid)}
                             />
-                            <span className="text-xs font-semibold text-neutral-800">Include in comparison</span>
+                            <span
+                              className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-2 transition-colors ${
+                                isSelectedForRun
+                                  ? 'border-brand bg-brand'
+                                  : 'border-brand/55 bg-white group-hover:border-brand'
+                              }`}
+                              aria-hidden
+                            >
+                              <Check
+                                className={`h-3 w-3 text-white transition-[opacity,transform] duration-150 ${
+                                  isSelectedForRun ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
+                                }`}
+                                strokeWidth={3}
+                              />
+                            </span>
+                            <span className="text-xs font-semibold text-[#2a2623]">Include in comparison</span>
                           </label>
                         </div>
                       </motion.div>
@@ -462,7 +514,7 @@ export default function ComparePage() {
                 <div>
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Goal</label>
                   <select
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-[#d8c6bb]"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/45 focus:border-brand/40"
                     value={form.compareGoal ?? ''}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -482,7 +534,7 @@ export default function ComparePage() {
                 <div>
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Occasion</label>
                   <select
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-[#d8c6bb]"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/45 focus:border-brand/40"
                     value={form.occasion ?? ''}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -514,7 +566,7 @@ export default function ComparePage() {
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Current self (tags)</label>
                   <input
                     type="text"
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-[#d8c6bb]"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/45 focus:border-brand/40"
                     placeholder="e.g. minimal, practical, office"
                     value={form.currentSelfRaw}
                     onChange={(e) => setForm((f) => ({ ...f, currentSelfRaw: e.target.value }))}
@@ -524,7 +576,7 @@ export default function ComparePage() {
                   <label className="block text-xs font-semibold text-neutral-500 uppercase mb-1.5">Aspirational self (tags)</label>
                   <input
                     type="text"
-                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-[#d8c6bb]"
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50/90 px-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/45 focus:border-brand/40"
                     placeholder="e.g. bold, artful, statement"
                     value={form.aspirationalSelfRaw}
                     onChange={(e) => setForm((f) => ({ ...f, aspirationalSelfRaw: e.target.value }))}
@@ -543,7 +595,7 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.safeBoldPreference)}
                     onChange={(e) => setPreferenceSlider('safeBoldPreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-[#2a2623]"
+                    className="w-full h-2 rounded-full accent-brand"
                   />
                 </div>
                 <div className="rounded-2xl bg-neutral-50/80 px-3 py-3 ring-1 ring-neutral-200/60">
@@ -559,7 +611,7 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.practicalExpressivePreference)}
                     onChange={(e) => setPreferenceSlider('practicalExpressivePreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-[#2a2623]"
+                    className="w-full h-2 rounded-full accent-brand"
                   />
                 </div>
                 <div className="rounded-2xl bg-neutral-50/80 px-3 py-3 ring-1 ring-neutral-200/60">
@@ -575,49 +627,18 @@ export default function ComparePage() {
                     max={100}
                     value={sliderPct(form.polishedEffortlessPreference)}
                     onChange={(e) => setPreferenceSlider('polishedEffortlessPreference', Number(e.target.value) / 100)}
-                    className="w-full h-2 rounded-full accent-[#2a2623]"
+                    className="w-full h-2 rounded-full accent-brand"
                   />
                 </div>
               </div>
               </div>
             </div>
-
-            {compareMutation.isError && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 p-4 rounded-2xl bg-[#f7f0eb] border border-[#d8c6bb] text-[#2a2623] mb-8"
-              >
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p className="text-sm">{(compareMutation.error as Error)?.message ?? 'Comparison failed'}</p>
-              </motion.div>
-            )}
-
-            <AnimatePresence>
-              {compareResult && loadingProducts && !compareTrayProducts?.length ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-5 rounded-2xl bg-[#f7f0eb]/80 border border-[#d8c6bb] text-[#2a2623] text-sm mb-6"
-                >
-                  <div className="h-9 w-9 rounded-xl border-2 border-[#eadfd7] border-t-[#2a2623] animate-spin shrink-0" aria-hidden />
-                  <p>Loading product names and images for your comparison…</p>
-                </motion.div>
-              ) : null}
-              {compareResult && (!loadingProducts || (compareTrayProducts?.length ?? 0) > 0) && (
-                <CompareDecisionResults
-                  result={compareResult}
-                  products={
-                    compareTrayProducts?.filter((p) => {
-                      const id = normalizeCompareProductId(p.id)
-                      return id != null && selectedForCompare.includes(id)
-                    }) ?? []
-                  }
-                />
-              )}
-            </AnimatePresence>
+              </div>
+            ) : null}
           </>
         )}
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -656,7 +677,7 @@ export default function ComparePage() {
                   type="button"
                   onClick={closeComparePrepModal}
                   disabled={compareMutation.isPending}
-                  className="p-2 rounded-xl text-neutral-400 hover:bg-white/80 hover:text-neutral-700 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-xl text-brand hover:bg-brand-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-colors disabled:opacity-50"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
@@ -682,8 +703,8 @@ export default function ComparePage() {
                               key={id}
                               className={`cursor-pointer rounded-2xl border bg-white overflow-hidden transition-all shrink-0 w-[min(72vw,200px)] snap-start ${
                                 prepFirstGlance === id
-                                  ? 'border-orange-500 shadow-md ring-2 ring-[#eadfd7]'
-                                  : 'border-neutral-200/80 hover:border-[#d8c6bb]'
+                                  ? 'border-brand shadow-md ring-2 ring-brand/25'
+                                  : 'border-neutral-200/80 hover:border-brand/50'
                               }`}
                             >
                               <input
@@ -707,14 +728,14 @@ export default function ComparePage() {
                     <label
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
                         prepFirstGlance === 'none'
-                          ? 'border-orange-500 bg-white shadow-sm ring-1 ring-[#eadfd7]'
-                          : 'border-neutral-200/80 bg-white/70 hover:border-[#d8c6bb]'
+                          ? 'border-brand bg-brand-muted shadow-sm ring-1 ring-brand/20'
+                          : 'border-neutral-200/80 bg-white/70 hover:border-brand/40'
                       }`}
                     >
                       <input
                         type="radio"
                         name="compare-first-glance"
-                        className="h-4 w-4 text-[#2a2623] border-neutral-300 focus:ring-[#7d4b3a]"
+                        className="h-4 w-4 text-brand border-brand/40 focus:ring-brand"
                         checked={prepFirstGlance === 'none'}
                         onChange={() => setPrepFirstGlance('none')}
                       />
@@ -729,7 +750,7 @@ export default function ComparePage() {
                   type="button"
                   onClick={closeComparePrepModal}
                   disabled={compareMutation.isPending}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-200/60 transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold border-2 border-brand text-brand bg-brand-muted hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -737,7 +758,7 @@ export default function ComparePage() {
                   type="button"
                   onClick={confirmComparePrep}
                   disabled={prepFirstGlance === 'unset' || compareMutation.isPending || loadingProducts}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold shadow-md shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold shadow-md shadow-brand/20 hover:bg-brand-hover disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {compareMutation.isPending ? (
                     <>
@@ -756,6 +777,6 @@ export default function ComparePage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }

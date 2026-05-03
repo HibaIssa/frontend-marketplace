@@ -247,7 +247,7 @@ export default function AdminJobsPage() {
               <XAxis dataKey="jobType" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="runs" fill="#99624E" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="runs" fill="#3d3030" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

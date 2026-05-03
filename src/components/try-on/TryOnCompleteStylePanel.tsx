@@ -6,13 +6,10 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Loader2, Shirt, Sparkles, AlertCircle } from 'lucide-react'
 import { fetchCompleteStyleForGarmentFile, type TryOnCompleteStyleData } from '@/lib/tryon/completeStyleFromGarment'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
-function formatPrice(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
+function formatPrice(storedCents: number, currency?: string | null) {
+  return formatStoredPriceAsUsd(storedCents, currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function resolveNumericId(p: { id?: number; product_id?: number }): number | null {
@@ -38,16 +35,13 @@ export function TryOnCompleteStylePanel({ garmentFile, jobId, enabled }: Props) 
 
   if (!garmentFile) {
     return (
-      <div className="rounded-2xl border border-dashed border-[#d8c6bb] bg-[#f7f0eb]/70 p-6 text-center">
-        <Sparkles className="mx-auto mb-3 h-8 w-8 text-orange-500" />
-        <p className="text-sm font-medium text-neutral-800">Complete the look</p>
-        <p className="mt-1 text-xs text-neutral-500">
+      <div className="rounded-2xl border border-dashed border-[#d8d2cd] bg-[#faf9f7] p-6 text-center ring-1 ring-[#ebe8e4]">
+        <Sparkles className="mx-auto mb-3 h-8 w-8 text-brand" aria-hidden />
+        <p className="text-sm font-semibold text-[#2a2623]">Complete the look</p>
+        <p className="mt-1 text-xs text-[#6b6560]">
           Outfit ideas use your garment photo. Start a new try-on to unlock suggestions here.
         </p>
-        <Link
-          href="/search"
-          className="mt-4 inline-flex text-sm font-semibold text-[#2a2623] hover:text-[#1a1816]"
-        >
+        <Link href="/search" className="mt-4 inline-flex text-sm font-semibold text-brand hover:text-brand-hover">
           Search the catalog →
         </Link>
       </div>
@@ -98,12 +92,12 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/25">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-md shadow-brand/25">
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="font-display text-lg font-bold text-neutral-900">Complete the look</h3>
-          <p className="text-xs text-neutral-500">Pieces that pair with your try-on</p>
+          <h3 className="font-display text-lg font-bold text-[#2a2623]">Complete the look</h3>
+          <p className="text-xs text-[#6b6560]">Pieces that pair with your try-on</p>
         </div>
       </div>
 
@@ -166,7 +160,7 @@ function CompleteStyleSections({ data }: { data: TryOnCompleteStyleData }) {
                   >
                     <Link
                       href={`/products/${id}?from=${encodeURIComponent('/try-on')}`}
-                      className="group block overflow-hidden rounded-xl border border-neutral-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-[#d8c6bb] hover:shadow-md hover:shadow-[#2a2623]/10"
+                      className="group block overflow-hidden rounded-xl border border-[#ebe8e4] bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-md hover:shadow-brand/10"
                     >
                       <div className="relative aspect-[3/4] bg-neutral-100">
                         {shot && (

@@ -1,3 +1,11 @@
+/** Optional gallery from browse/search APIs when `image_cdn` is unset in DB. */
+export interface ProductGalleryImage {
+  id?: number
+  url?: string
+  cdn_url?: string
+  is_primary?: boolean
+}
+
 export interface Product {
   id: number
   vendor_id?: number
@@ -17,6 +25,7 @@ export interface Product {
   last_seen?: string
   relevance_score?: number
   similarity_score?: number
+  images?: ProductGalleryImage[]
 }
 
 export interface ProductImage {

@@ -27,6 +27,7 @@ type NavItem = {
   exact?: boolean
 }
 
+/** Business dashboard keeps ops + intel; Admin hides those sections but shows full catalog nav. */
 type CatalogLinkItem = {
   segment: 'catalog' | 'catalog/vendors' | 'catalog/products' | 'catalog/prices' | 'catalog/freshness'
   label: string
@@ -70,6 +71,7 @@ const ICON_BG_ACTIVE = 'bg-[#0a0a0a] text-[#ffffff] ring-1 ring-[#0a0a0a]'
 export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) {
   const pathname = usePathname()
   const base = useAdminBasePath()
+  const adminCatalogOnly = brandLabel === 'Admin'
 
   return (
     <aside className="w-[220px] min-w-[220px] h-full shrink-0 flex flex-col overflow-y-auto border-r border-[#0a0a0a]/10 bg-[#ffffff]/95 backdrop-blur-sm">
@@ -88,43 +90,44 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
       </div>
 
       <nav className="flex-1 py-3">
-        {SECTIONS.map(({ section, items }) => (
-          <div key={section} className="mb-4">
-            <p className="px-4 py-1 text-[10px] font-semibold text-[#0a0a0a]/55 uppercase tracking-widest">
-              {section}
-            </p>
-            {items.map(({ segment, label, icon: Icon, exact }) => {
-              const href = segment === '' ? base : `${base}/${segment}`
-              const active = exact
-                ? pathname === href || pathname === `${href}/`
-                : pathname === href || pathname.startsWith(`${href}/`)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={clsx(
-                    'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
-                    active
-                      ? 'bg-[#f3e9e2] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
-                      : 'text-[#0a0a0a]/75 hover:bg-[#f1e8e2]/80 hover:text-[#0a0a0a]'
-                  )}
-                >
-                  <span
+        {!adminCatalogOnly &&
+          SECTIONS.map(({ section, items }) => (
+            <div key={section} className="mb-4">
+              <p className="px-4 py-1 text-[10px] font-semibold text-[#0a0a0a]/55 uppercase tracking-widest">
+                {section}
+              </p>
+              {items.map(({ segment, label, icon: Icon, exact }) => {
+                const href = segment === '' ? base : `${base}/${segment}`
+                const active = exact
+                  ? pathname === href || pathname === `${href}/`
+                  : pathname === href || pathname.startsWith(`${href}/`)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
                     className={clsx(
-                      'w-5 h-5 rounded-md flex items-center justify-center shrink-0',
-                      active ? ICON_BG_ACTIVE : ICON_BG_IDLE
+                      'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
+                      active
+                        ? 'bg-[#f3e9e2] tz-burgundy font-semibold shadow-sm ring-1 ring-[#0a0a0a]/10'
+                        : 'text-[#0a0a0a]/75 hover:bg-[#f1e8e2]/80 hover:text-[#0a0a0a]'
                     )}
                   >
-                    <Icon className="w-3 h-3" />
-                  </span>
-                  <span className="flex-1">{label}</span>
-                  {active && <ChevronRight className="w-3 h-3 text-[#0a0a0a]/60 shrink-0" />}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-        <div className="mb-4">
+                    <span
+                      className={clsx(
+                        'w-5 h-5 rounded-md flex items-center justify-center shrink-0',
+                        active ? ICON_BG_ACTIVE : ICON_BG_IDLE
+                      )}
+                    >
+                      <Icon className="w-3 h-3" />
+                    </span>
+                    <span className="flex-1">{label}</span>
+                    {active && <ChevronRight className="w-3 h-3 text-[#0a0a0a]/60 shrink-0" />}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        <div className={clsx('mb-4', adminCatalogOnly && 'pt-1')}>
           <p className="px-4 py-1 text-[10px] font-semibold text-[#0a0a0a]/55 uppercase tracking-widest">
             {CATALOG_LINKS.section}
           </p>

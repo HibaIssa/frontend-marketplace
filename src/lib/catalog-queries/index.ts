@@ -37,6 +37,38 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const BATCH_SIZE = 1000
 const AGGREGATE_CACHE_TTL_MS = 60_000
 
+/** GET /products clamps `limit` to 100 — requesting more makes `rows.length < limit` and stops after page 1. */
+const BACKEND_PRODUCT_PAGE_SIZE = 100
+/** Default max pages when crawling GET /products for aggregates (~120k rows). Override with CATALOG_AGGREGATE_BACKEND_MAX_PAGES. */
+const DEFAULT_BACKEND_AGGREGATE_MAX_PAGES = 1200
+
+/**
+ * If Supabase returns fewer product rows than this, we also crawl GET /products and keep the larger set.
+ * Small mirrors (e.g. ~100 rows) are common while the live catalog is 100k+ on the API/OpenSearch.
+ */
+const SUPABASE_ROWS_BEFORE_BACKEND_MERGE = 5000
+
+function getBackendAggregateMaxPages(): number {
+  const raw = process.env.CATALOG_AGGREGATE_BACKEND_MAX_PAGES?.trim()
+  if (raw && /^\d+$/.test(raw)) {
+    return Math.min(5000, Math.max(1, parseInt(raw, 10)))
+  }
+  return DEFAULT_BACKEND_AGGREGATE_MAX_PAGES
+}
+
+function catalogAggregateBackendMergeEnabled(): boolean {
+  return process.env.CATALOG_AGGREGATE_SKIP_BACKEND !== '1'
+}
+
+function backendPaginationHasMore(payload: unknown, rowCount: number, limit: number): boolean {
+  if (!payload || typeof payload !== 'object') return rowCount >= limit
+  const pag = (payload as Record<string, unknown>).pagination
+  if (pag && typeof pag === 'object' && 'has_more' in pag) {
+    return Boolean((pag as Record<string, unknown>).has_more)
+  }
+  return rowCount >= limit
+}
+
 let aggregateCache: {
   data: ProductAggregateRow[] | null
   expiresAt: number
@@ -123,6 +155,86 @@ function mapBackendProductToAggregate(row: BackendProductRow): ProductAggregateR
   }
 }
 
+/** Filters that only exist in Supabase or require loading the full mirror into memory. */
+function productFiltersNeedSupabaseOnlyMirror(filters: ProductFilters): boolean {
+  if (filters.has_issues) return true
+  if (filters.missing_category) return true
+  if (filters.missing_image_url) return true
+  if (filters.missing_variant_id) return true
+  if (filters.is_stale) return true
+  if (filters.last_seen_after || filters.last_seen_before) return true
+  if (filters.has_sale) return true
+  if (filters.sale_exceeds_base) return true
+  return false
+}
+
+/**
+ * One page from GET /products or GET /products/search (live catalog).
+ * Sort order follows the API (browse/search); Supabase-only filters return null.
+ */
+async function fetchProductsPageFromBackend(
+  filters: ProductFilters,
+  pagination: PaginationConfig
+): Promise<ProductsQueryResult | null> {
+  if (productFiltersNeedSupabaseOnlyMirror(filters)) return null
+
+  const { page, pageSize } = pagination
+  const limit = Math.min(100, Math.max(1, pageSize))
+
+  const common: Record<string, string | number | undefined> = {
+    page,
+    limit,
+  }
+  if (filters.vendor_id != null && filters.vendor_id !== '')
+    common.vendorId = Number(filters.vendor_id)
+  if (filters.category) common.category = filters.category
+  if (filters.brand) common.brand = filters.brand
+  if (filters.color) common.color = filters.color
+  if (filters.currency) common.currency = filters.currency
+  if (filters.availability !== undefined) common.availability = filters.availability ? 'true' : 'false'
+  if (filters.price_min != null) common.minPriceCents = filters.price_min
+  if (filters.price_max != null) common.maxPriceCents = filters.price_max
+
+  try {
+    if (filters.search && filters.search.trim()) {
+      const payload = await backendGet('/products/search', {
+        ...common,
+        q: filters.search.trim(),
+      })
+      const rows = extractArray<BackendProductRow>(payload)
+      const pag = (payload as Record<string, unknown>).pagination as Record<string, unknown> | undefined
+      const total =
+        typeof pag?.total === 'number' && Number.isFinite(pag.total)
+          ? Math.max(0, Math.trunc(pag.total))
+          : rows.length
+      const pageNum = typeof pag?.page === 'number' ? pag.page : page
+      const pages = typeof pag?.pages === 'number' ? pag.pages : Math.max(1, Math.ceil(total / limit))
+      const has_more = pag?.has_more === true || pageNum < pages
+      return {
+        data: rows.map(mapBackendProductToCatalog),
+        total,
+        page,
+        pageSize,
+        has_more,
+      }
+    }
+
+    const payload = await backendGet('/products', common)
+    const rows = extractArray<BackendProductRow>(payload)
+    const has_more = backendPaginationHasMore(payload, rows.length, limit)
+    const mapped = rows.map(mapBackendProductToCatalog)
+    return {
+      data: mapped,
+      total: (page - 1) * limit + mapped.length,
+      page,
+      pageSize,
+      has_more,
+    }
+  } catch {
+    return null
+  }
+}
+
 function mapBackendProductToCatalog(row: BackendProductRow): Product {
   const vendorObj = row.vendor && typeof row.vendor === 'object' ? (row.vendor as Record<string, unknown>) : null
   const vendorId = toNumber(row.vendor_id ?? row.vendorId ?? vendorObj?.id, 0)
@@ -162,14 +274,16 @@ function mapBackendProductToCatalog(row: BackendProductRow): Product {
   }
 }
 
-async function fetchAllProductsFromBackend(limit = 200, maxPages = 50): Promise<BackendProductRow[]> {
+async function fetchAllProductsFromBackend(maxPages = getBackendAggregateMaxPages()): Promise<BackendProductRow[]> {
+  const limit = BACKEND_PRODUCT_PAGE_SIZE
   const out: BackendProductRow[] = []
-  for (let page = 1; page <= maxPages; page += 1) {
+  const cap = Math.max(1, maxPages)
+  for (let page = 1; page <= cap; page += 1) {
     const payload = await backendGet('/products', { page, limit })
     const rows = extractArray<BackendProductRow>(payload)
     if (rows.length === 0) break
     out.push(...rows)
-    if (rows.length < limit) break
+    if (!backendPaginationHasMore(payload, rows.length, limit)) break
   }
   return out
 }
@@ -234,9 +348,25 @@ async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
       from += BATCH_SIZE
     }
 
-    aggregateCache.data = rows
+    let chosen = rows
+    if (
+      catalogAggregateBackendMergeEnabled() &&
+      chosen.length < SUPABASE_ROWS_BEFORE_BACKEND_MERGE
+    ) {
+      try {
+        const backendRows = await fetchAllProductsFromBackend()
+        const mapped = backendRows.map(mapBackendProductToAggregate)
+        if (mapped.length > chosen.length) {
+          chosen = mapped
+        }
+      } catch {
+        /* keep Supabase snapshot */
+      }
+    }
+
+    aggregateCache.data = chosen
     aggregateCache.expiresAt = Date.now() + AGGREGATE_CACHE_TTL_MS
-    return rows
+    return chosen
   })()
 
   try {
@@ -578,11 +708,29 @@ export async function fetchProducts(
 
   const { data, error, count } = await query
   if (!error) {
-    return {
-      data: (data as unknown as Product[]) ?? [],
-      total: count ?? 0,
-      page,
-      pageSize,
+    const rows = (data as unknown as Product[]) ?? []
+    const total = count ?? 0
+    const preferBackend =
+      catalogAggregateBackendMergeEnabled() &&
+      total > 0 &&
+      total < SUPABASE_ROWS_BEFORE_BACKEND_MERGE &&
+      !productFiltersNeedSupabaseOnlyMirror(filters)
+
+    if (preferBackend) {
+      const live = await fetchProductsPageFromBackend(filters, pagination)
+      if (live && live.data.length > 0) {
+        return live
+      }
+    }
+
+    /** Shop traffic often hits the Node API + Postgres; admin Supabase can be empty or another env. */
+    if (total > 0 || rows.length > 0) {
+      return {
+        data: rows,
+        total,
+        page,
+        pageSize,
+      }
     }
   }
 
@@ -650,6 +798,61 @@ export async function fetchPriceHistory(productId: string | number): Promise<Pri
   return (data as unknown as PriceHistory[]) ?? []
 }
 
+/** Shop API price-drop events — used when Supabase `price_history` is missing or yields no derived changes. */
+async function fetchPriceChangeEventsFromBackend(limit: number): Promise<PriceChangeEvent[]> {
+  try {
+    const payload = await backendGet('/products/price-drops', { page: 1, limit })
+    const drops = extractArray<Record<string, unknown>>(payload)
+    return drops
+      .map((row) => ({
+        product_id: toNumber(row.product_id ?? row.productId ?? row.id, 0),
+        product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
+        vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName ?? row.brand) ?? 'Unknown vendor',
+        image_url: toStringOrNull(row.image_url ?? row.imageUrl ?? row.image_cdn ?? row.imageCdn),
+        old_price: toNumber(row.old_price_cents ?? row.old_price ?? row.oldPriceCents, 0),
+        new_price: toNumber(row.new_price_cents ?? row.new_price ?? row.newPriceCents, 0),
+        change_pct: toNumber(row.drop_percent ?? row.change_pct ?? row.changePct, 0) * -1,
+        recorded_at: toStringOrNull(row.detected_at ?? row.recorded_at ?? row.recordedAt) ?? new Date().toISOString(),
+        is_discount: true,
+      }))
+      .filter((e) => e.product_id > 0 && (e.old_price > 0 || e.new_price > 0))
+      .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
+      .slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
+async function fetchCurrentSaleProductsFromBackend(limit: number): Promise<CurrentSaleProduct[]> {
+  try {
+    const payload = await backendGet('/products/sales', { page: 1, limit })
+    const sales = extractArray<Record<string, unknown>>(payload)
+    return sales
+      .map((row) => {
+        const price = toNumber(row.price_cents ?? row.priceCents, 0)
+        const sale = toNumber(row.sales_price_cents ?? row.salesPriceCents, 0)
+        return {
+          product_id: toNumber(row.id ?? row.product_id ?? row.productId, 0),
+          product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
+          vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName) ?? 'Unknown vendor',
+          image_url: toStringOrNull(row.image_url ?? row.imageUrl ?? row.image_cdn ?? row.imageCdn),
+          price_cents: price,
+          sales_price_cents: sale,
+          discount_pct: price > 0 && sale > 0 ? Math.round(((price - sale) / price) * 100) : 0,
+          last_seen: toStringOrNull(row.last_seen ?? row.lastSeen),
+        }
+      })
+      .filter((row) => row.price_cents > 0 && row.sales_price_cents > 0 && row.sales_price_cents < row.price_cents)
+      .sort((a, b) => {
+        if (b.discount_pct !== a.discount_pct) return b.discount_pct - a.discount_pct
+        return (new Date(b.last_seen ?? 0).getTime()) - (new Date(a.last_seen ?? 0).getTime())
+      })
+      .slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
 async function fetchRecentPriceChangesFallback(limit = 50) {
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - 30)
@@ -687,19 +890,7 @@ async function fetchRecentPriceChangesFallback(limit = 50) {
       .range(from, to)
 
     if (error) {
-      const payload = await backendGet('/products/price-drops', { page: 1, limit })
-      const drops = extractArray<Record<string, unknown>>(payload)
-      return drops.map((row) => ({
-        product_id: toNumber(row.product_id ?? row.productId ?? row.id, 0),
-        product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
-        vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName) ?? 'Unknown vendor',
-        image_url: toStringOrNull(row.image_url ?? row.imageUrl),
-        old_price: toNumber(row.old_price_cents ?? row.old_price ?? row.oldPriceCents, 0),
-        new_price: toNumber(row.new_price_cents ?? row.new_price ?? row.newPriceCents, 0),
-        change_pct: toNumber(row.drop_percent ?? row.change_pct ?? row.changePct, 0) * -1,
-        recorded_at: toStringOrNull(row.detected_at ?? row.recorded_at ?? row.recordedAt) ?? new Date().toISOString(),
-        is_discount: true,
-      }))
+      return fetchPriceChangeEventsFromBackend(limit)
     }
 
     const batch = (batchData as RawHistoryRow[]) ?? []
@@ -747,9 +938,11 @@ async function fetchRecentPriceChangesFallback(limit = 50) {
     }
   }
 
-  return events
+  const sorted = events
     .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
     .slice(0, limit)
+  if (sorted.length > 0) return sorted
+  return fetchPriceChangeEventsFromBackend(limit)
 }
 
 export async function fetchRecentPriceChanges(limit = 50) {
@@ -787,25 +980,7 @@ async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSale
       .range(from, to)
 
     if (error) {
-      const payload = await backendGet('/products/sales', { page: 1, limit })
-      const sales = extractArray<Record<string, unknown>>(payload)
-      return sales
-        .map((row) => {
-          const price = toNumber(row.price_cents ?? row.priceCents, 0)
-          const sale = toNumber(row.sales_price_cents ?? row.salesPriceCents, 0)
-          return {
-            product_id: toNumber(row.id ?? row.product_id ?? row.productId, 0),
-            product_title: toStringOrNull(row.title ?? row.product_title ?? row.productTitle) ?? 'Untitled product',
-            vendor_name: toStringOrNull(row.vendor_name ?? row.vendorName) ?? 'Unknown vendor',
-            image_url: toStringOrNull(row.image_url ?? row.imageUrl ?? row.image_cdn),
-            price_cents: price,
-            sales_price_cents: sale,
-            discount_pct: price > 0 && sale > 0 ? Math.round(((price - sale) / price) * 100) : 0,
-            last_seen: toStringOrNull(row.last_seen ?? row.lastSeen),
-          }
-        })
-        .filter((row) => row.price_cents > 0 && row.sales_price_cents > 0 && row.sales_price_cents < row.price_cents)
-        .slice(0, limit)
+      return fetchCurrentSaleProductsFromBackend(limit)
     }
 
     const batch = (data as RawSaleRow[]) ?? []
@@ -815,7 +990,7 @@ async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSale
     from += BATCH_SIZE
   }
 
-  return rows
+  const result = rows
     .filter((row) => (row.price_cents ?? 0) > 0 && (row.sales_price_cents ?? 0) > 0 && (row.sales_price_cents ?? 0) < (row.price_cents ?? 0))
     .map((row) => {
       const vendorField = row.vendor
@@ -839,6 +1014,9 @@ async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSale
       return (new Date(b.last_seen ?? 0).getTime()) - (new Date(a.last_seen ?? 0).getTime())
     })
     .slice(0, limit)
+
+  if (result.length > 0) return result
+  return fetchCurrentSaleProductsFromBackend(limit)
 }
 
 async function fetchDailyPriceVolumeFallback(daysBack = 30): Promise<DailyScrapeStat[]> {
@@ -876,19 +1054,30 @@ export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
     fetchProductAggregateRows(),
   ])
 
-  if (vendorsRes.error) throw vendorsRes.error
-
-  const now = Date.now()
-  const map = new Map<string, { name: string; fresh: number; recent: number; aging: number; stale: number; last: number }>()
+  // Names from `vendors` when allowed (same pattern as fetchOverviewKPIsFallback). If this query
+  // fails (RLS, schema drift), we still break down freshness by vendor_id from product rows alone.
   const vendorNames = new Map<string, string>()
-
-  for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string }>)) {
-    vendorNames.set(String(vendor.id), vendor.name)
+  if (!vendorsRes.error && vendorsRes.data) {
+    for (const vendor of (vendorsRes.data as Array<{ id: number | string; name: string }>)) {
+      vendorNames.set(String(vendor.id), vendor.name ?? String(vendor.id))
+    }
   }
 
+  const now = Date.now()
+  const map = new Map<
+    string,
+    { name: string; fresh: number; recent: number; aging: number; stale: number; last: number }
+  >()
+
   for (const row of rows) {
-    const vendorId = String(row.vendor_id)
-    const name = vendorNames.get(vendorId) ?? vendorId
+    const vendorId =
+      row.vendor_id != null && Number.isFinite(Number(row.vendor_id))
+        ? String(row.vendor_id)
+        : '__none__'
+    const name =
+      vendorId === '__none__'
+        ? 'Unknown vendor'
+        : vendorNames.get(vendorId) ?? `Vendor ${vendorId}`
     if (!map.has(vendorId)) {
       map.set(vendorId, { name, fresh: 0, recent: 0, aging: 0, stale: 0, last: 0 })
     }
@@ -906,18 +1095,23 @@ export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
     }
   }
 
-  return Array.from(map.entries()).map(([vendor_id, entry]) => {
-    const total = entry.fresh + entry.recent + entry.aging + entry.stale || 1
+  const out: VendorFreshness[] = Array.from(map.entries()).map(([vendor_id, entry]) => {
+    const product_count = entry.fresh + entry.recent + entry.aging + entry.stale
+    const denom = Math.max(1, product_count)
     return {
       vendor_id,
       vendor_name: entry.name,
-      fresh_pct: Math.round((entry.fresh / total) * 100),
-      recent_pct: Math.round((entry.recent / total) * 100),
-      aging_pct: Math.round((entry.aging / total) * 100),
-      stale_pct: Math.round((entry.stale / total) * 100),
+      product_count,
+      fresh_pct: Math.round((entry.fresh / denom) * 100),
+      recent_pct: Math.round((entry.recent / denom) * 100),
+      aging_pct: Math.round((entry.aging / denom) * 100),
+      stale_pct: Math.round((entry.stale / denom) * 100),
       last_scrape: entry.last ? new Date(entry.last).toISOString() : null,
     }
   })
+
+  out.sort((a, b) => b.product_count - a.product_count)
+  return out
 }
 
 export async function fetchDistinctCategories(): Promise<string[]> {
@@ -926,27 +1120,28 @@ export async function fetchDistinctCategories(): Promise<string[]> {
 }
 
 export async function fetchDistinctVendors(): Promise<Array<{ id: number; name: string }>> {
+  const byId = new Map<number, string>()
+
   const { data, error } = await sb
     .from('vendors')
     .select('id, name')
     .order('name')
 
-  if (!error) {
-    return ((data as Array<{ id: number; name: string }>) ?? []).map((vendor) => ({
-      id: Number(vendor.id),
-      name: vendor.name,
-    }))
+  if (!error && data) {
+    for (const vendor of data as Array<{ id: number; name: string }>) {
+      const id = Number(vendor.id)
+      if (Number.isFinite(id) && vendor.name) byId.set(id, vendor.name)
+    }
   }
 
   const rows = await fetchProductAggregateRows()
-  const seen = new Set<number>()
-  const out: Array<{ id: number; name: string }> = []
   for (const row of rows) {
     const id = Number(row.vendor_id)
-    if (!Number.isFinite(id) || seen.has(id)) continue
-    seen.add(id)
-    out.push({ id, name: `Vendor ${id}` })
+    if (!Number.isFinite(id) || byId.has(id)) continue
+    byId.set(id, `Vendor ${id}`)
   }
+
+  const out = Array.from(byId.entries()).map(([id, name]) => ({ id, name }))
   out.sort((a, b) => a.name.localeCompare(b.name))
   return out
 }

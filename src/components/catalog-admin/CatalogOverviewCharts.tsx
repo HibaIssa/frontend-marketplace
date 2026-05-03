@@ -15,7 +15,7 @@ import {
 import type { VendorProductCount, CategoryCount } from '@/types/catalog-admin'
 import { EmptyState, Section } from '@/components/catalog-admin/ui'
 
-const COLORS = ['#2a2623', '#7d4b3a', '#99624E', '#c9ae9f', '#b99e90', '#a56f5a', '#6d3f34']
+const COLORS = ['#2a2623', '#7d4b3a', '#3d3030', '#c9ae9f', '#b99e90', '#a56f5a', '#6d3f34']
 
 interface Props {
   vendorCounts: VendorProductCount[]
@@ -67,7 +67,7 @@ export function CatalogOverviewCharts({ vendorCounts, catCounts }: Props) {
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 formatter={(value: number) => value.toLocaleString()}
               />
-              <Bar dataKey="available" name="Available" fill="#99624E" radius={[3, 3, 0, 0]} stackId="a" />
+              <Bar dataKey="available" name="Available" fill="#3d3030" radius={[3, 3, 0, 0]} stackId="a" />
               <Bar dataKey="unavailable" name="Unavailable" fill="#e4d7cd" radius={[0, 0, 0, 0]} stackId="a" />
             </BarChart>
           </ResponsiveContainer>

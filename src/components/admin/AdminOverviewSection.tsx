@@ -200,7 +200,7 @@ export function AdminOverviewSection() {
                   <span className="text-xs text-[#161616]/70">{item.name}</span>
                   <div className="h-2.5 rounded-full bg-[#f2e9e2] overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#99624E] to-[#2a2623]"
+                      className="h-full rounded-full bg-brand"
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
@@ -239,7 +239,7 @@ export function AdminOverviewSection() {
                   outerRadius={92}
                   paddingAngle={2}
                 >
-                  <Cell fill="#99624E" />
+                  <Cell fill="#3d3030" />
                   <Cell fill="#2a2623" />
                   <Cell fill="#e8dbd2" />
                 </Pie>

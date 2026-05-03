@@ -1,27 +1,41 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Percent, ArrowUpDown, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { getStablePagination } from '@/lib/shopPagination'
 import { ProductCard } from '@/components/product/ProductCard'
+import { SaleHero } from '@/components/sales/SaleHero'
 import { useCompareStore } from '@/store/compare'
 import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
 
 function chipClass(active: boolean) {
-  return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+  return `shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
     active
-      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
-      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-[#d8c6bb] hover:text-[#2a2623] hover:bg-[#f7f0eb]/70'
+      ? 'bg-brand text-white shadow-md shadow-brand/20'
+      : 'bg-white text-[#5c5752] border border-[#ebe8e4] hover:border-[#d8c6bb] hover:text-[#2a2623] hover:bg-[#f9f7f2]'
   }`
 }
+
+const FILTER_PILL =
+  'inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#ebe8e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#2a2623] shadow-sm ring-1 ring-transparent hover:bg-[#f9f7f2] hover:ring-[#ebe8e4]/80 transition-colors'
+
+const SALE_CATEGORY_TABS = [
+  { label: 'All', value: '' },
+  { label: 'Dresses', value: 'dress' },
+  { label: 'Tops', value: 'top' },
+  { label: 'Jackets', value: 'jacket' },
+  { label: 'Pants', value: 'pant' },
+  { label: 'Shoes', value: 'shoe' },
+  { label: 'Accessories', value: 'accessor' },
+] as const
 
 function normalizeProduct(raw: Record<string, unknown>): Product {
   const id = Number(raw.id)
@@ -47,11 +61,10 @@ function SalesContent() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const sort = searchParams.get('sort') ?? ''
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const limit = 24
 
-  const setQuery = (patch: Record<string, string | null | undefined>) => {
+  const setPageParams = (patch: Record<string, string | null | undefined>) => {
     const p = new URLSearchParams(searchParams.toString())
     for (const [k, v] of Object.entries(patch)) {
       if (v === undefined || v === null || v === '') p.delete(k)
@@ -73,24 +86,29 @@ function SalesContent() {
     },
   })
 
-  const handleAddToWardrobe = (product: Product) => {
-    if (!isAuthenticated()) {
-      const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
-      router.push(`/login?${qs.toString()}`)
-      return
-    }
-    addToWardrobeMutation.mutate(product)
-  }
+  const handleAddToWardrobe = useCallback(
+    (product: Product) => {
+      if (!isAuthenticated()) {
+        const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
+        router.push(`/login?${qs.toString()}`)
+        return
+      }
+      addToWardrobeMutation.mutate(product)
+    },
+    [addToWardrobeMutation, isAuthenticated, pathname, router, searchParams],
+  )
 
-  const queryKey = ['products', 'sales', page, sort, limit] as const
+  const queryKey = ['products', 'sales', page, limit] as const
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isPending, isFetching } = useQuery({
     queryKey,
     queryFn: async () => {
       const params: Record<string, string | number> = { page, limit }
-      if (sort) params.sort = sort
       return api.get<unknown[]>(endpoints.products.sales, params)
     },
+    placeholderData: keepPreviousData,
+    staleTime: 90_000,
+    gcTime: 600_000,
   })
 
   const rawList: unknown[] = Array.isArray(data?.data) ? data.data : []
@@ -105,8 +123,8 @@ function SalesContent() {
 
   const pagination = useMemo(() => getStablePagination(data, limit), [data, limit])
   const knownTotalPages = pagination?.totalPages ?? 0
-  const hasFullPage = products.length >= limit
-  const canGoNext = knownTotalPages > 1 ? page < knownTotalPages : hasFullPage
+  const hasMoreFromApi = data?.pagination?.has_more === true
+  const canGoNext = hasMoreFromApi || (knownTotalPages > 1 && page < knownTotalPages)
 
   const [pageJump, setPageJump] = useState(String(page))
   useEffect(() => {
@@ -130,64 +148,27 @@ function SalesContent() {
   }
 
   return (
-    <>
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#f7f0eb] via-[#f3ece6] to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#c9ae9f]/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-[#d8c6bb]/35 blur-3xl" aria-hidden />
+    <div className="min-h-screen bg-[#f9f8f6]">
+      <SaleHero />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20">
-                  <Percent className="w-5 h-5" />
-                </div>
-                <div>
-                  <h1 className="font-display text-2xl sm:text-3xl font-bold text-neutral-900">Sale</h1>
-                  <p className="text-sm text-neutral-500 mt-0.5">
-                    {pagination
-                      ? `${pagination.totalItems.toLocaleString()} deals`
-                      : 'Limited-time prices on select styles'}
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/products"
-                className="text-sm font-semibold text-[#2a2623] hover:text-[#1a1816] shrink-0"
-              >
-                Browse full shop →
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-1.5 text-neutral-500 mr-1">
-                <ArrowUpDown className="w-3.5 h-3.5" />
-                <span className="text-xs font-medium uppercase tracking-wider">Sort</span>
-              </div>
-              <button type="button" className={chipClass(!sort)} onClick={() => setQuery({ sort: null, page: null })}>
-                Biggest discount
-              </button>
-              <button
-                type="button"
-                className={chipClass(sort === 'price_asc')}
-                onClick={() => setQuery({ sort: 'price_asc', page: '1' })}
-              >
-                Sale price ↑
-              </button>
-              <button
-                type="button"
-                className={chipClass(sort === 'price_desc')}
-                onClick={() => setQuery({ sort: 'price_desc', page: '1' })}
-              >
-                Sale price ↓
-              </button>
-            </div>
-          </motion.div>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-[#2a2623] sm:text-2xl">Featured deals</h2>
+            {pagination && pagination.totalItems > 0 ? (
+              <p className="mt-1 text-sm text-[#7a726b]">{pagination.totalItems.toLocaleString()} items on sale</p>
+            ) : pagination?.indeterminate ? (
+              <p className="mt-1 text-sm text-[#7a726b]">Sale items — use the pager for more</p>
+            ) : (
+              <p className="mt-1 text-sm text-[#7a726b]">Limited-time markdowns</p>
+            )}
+          </div>
+          <Link href="/products" className="text-sm font-semibold text-brand hover:text-brand-hover shrink-0">
+            Browse full shop →
+          </Link>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading || isFetching ? (
+        {isPending ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="space-y-3">
@@ -203,7 +184,7 @@ function SalesContent() {
               initial="hidden"
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.05 } }, hidden: {} }}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6"
+              className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6 ${isFetching ? 'opacity-[0.92] transition-opacity duration-200' : ''}`}
             >
               {products.map((product, i) => {
                 const pct = discountLabel(product)
@@ -214,7 +195,7 @@ function SalesContent() {
                     className="relative"
                   >
                     {pct != null && pct > 0 ? (
-                      <span className="absolute top-2 right-2 z-[5] rounded-full bg-[#2a2623] text-white text-[10px] font-bold px-2 py-0.5 shadow-md">
+                      <span className="absolute top-2 right-2 z-[5] rounded-full bg-brand text-white text-[10px] font-bold px-2 py-0.5 shadow-md">
                         −{pct}%
                       </span>
                     ) : null}
@@ -242,7 +223,7 @@ function SalesContent() {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setQuery({ page: String(Math.max(1, page - 1)) })}
+                    onClick={() => setPageParams({ page: String(Math.max(1, page - 1)) })}
                     disabled={page <= 1}
                     className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 transition-all"
                   >
@@ -267,10 +248,10 @@ function SalesContent() {
                           <button
                             key={pageNum}
                             type="button"
-                            onClick={() => setQuery({ page: String(pageNum) })}
+                            onClick={() => setPageParams({ page: String(pageNum) })}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
-                                ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
+                                ? 'bg-brand text-white shadow-md shadow-brand/20'
                                 : 'text-neutral-600 hover:bg-[#f7f0eb] hover:text-[#2a2623]'
                             }`}
                           >
@@ -285,7 +266,7 @@ function SalesContent() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setQuery({ page: String(page + 1) })}
+                    onClick={() => setPageParams({ page: String(page + 1) })}
                     disabled={!canGoNext}
                     className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 transition-all"
                   >
@@ -299,7 +280,7 @@ function SalesContent() {
                     e.preventDefault()
                     const n = parseInt(pageJump, 10)
                     if (!Number.isFinite(n) || n < 1) return
-                    setQuery({ page: String(knownTotalPages > 0 ? Math.min(n, knownTotalPages) : n) })
+                    setPageParams({ page: String(knownTotalPages > 0 ? Math.min(n, knownTotalPages) : n) })
                   }}
                 >
                   <label htmlFor="sales-page-jump" className="text-sm text-neutral-500 whitespace-nowrap">
@@ -323,8 +304,13 @@ function SalesContent() {
                 </form>
 
                 <span className="text-sm text-neutral-500">
-                  Page {page}
-                  {knownTotalPages > 0 ? ` of ${knownTotalPages}` : ''}
+                  {pagination?.indeterminate && hasMoreFromApi
+                    ? `Page ${page} · more results`
+                    : pagination?.indeterminate
+                      ? `Page ${page}`
+                      : knownTotalPages > 0
+                        ? `Page ${page} of ${knownTotalPages}`
+                        : `Page ${page}`}
                 </span>
               </div>
             )}
@@ -336,7 +322,7 @@ function SalesContent() {
             className="text-center py-20 max-w-md mx-auto"
           >
             <div className="relative w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-20 blur-xl" />
+              <div className="absolute inset-0 rounded-2xl bg-brand opacity-20 blur-xl" />
               <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
                 <ShoppingBag className="w-9 h-9 text-[#2a2623]" />
               </div>
@@ -345,14 +331,51 @@ function SalesContent() {
             <p className="text-neutral-500 mb-5">Check back soon or browse the full catalog.</p>
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white font-semibold shadow-lg shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white font-semibold shadow-lg shadow-brand/20 hover:bg-brand-hover transition-all"
             >
               Go to shop
             </Link>
           </motion.div>
         )}
       </div>
-    </>
+
+      <section className="border-t border-[#ebe8e4]/80 bg-[#f2ebe4]/40 py-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h3 className="font-display text-lg font-bold text-[#2a2623]">More ways to shop</h3>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                href: '/products',
+                title: 'Shop by price',
+                desc: 'Browse the full catalog and sort by what fits your budget.',
+              },
+              {
+                href: '/search',
+                title: 'Editor picks',
+                desc: 'Discover styles tailored to your taste with smart search.',
+              },
+              {
+                href: '/products',
+                title: 'Under $50',
+                desc: 'Great finds at gentler price points — updated regularly.',
+              },
+            ].map((card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="group flex flex-col rounded-2xl border border-[#ebe8e4] bg-white p-5 shadow-[0_12px_36px_-28px_rgba(42,38,35,0.22)] transition-all hover:border-[#d8c6bb] hover:shadow-[0_16px_40px_-28px_rgba(42,38,35,0.28)]"
+              >
+                <span className="font-semibold text-[#2a2623] group-hover:text-brand">{card.title}</span>
+                <span className="mt-2 text-sm leading-relaxed text-[#7a726b]">{card.desc}</span>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand">
+                  Explore <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   )
 }
 

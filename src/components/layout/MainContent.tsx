@@ -1,22 +1,21 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import clsx from 'clsx'
 
 /**
- * Spaces page content below the fixed-overlay <Navbar />.
- *
- * On `/` the hero is full-bleed and must start at the very top of the
- * viewport (the navbar sits on top of it as a transparent overlay), so we
- * skip the top padding. On every other route we leave room for the floating
- * transparent glass nav (~56px bar height, flush to top).
+ * Hero pages keep content flush with the top so the fixed navbar overlays imagery.
+ * Other routes get padding so content clears the bar when there is no full-bleed hero.
  */
-export function MainContent({ children }: { children: React.ReactNode }) {
+export function MainContent({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const isHome = pathname === '/'
-  return (
-    <main className={clsx('flex-1', !isHome && 'pt-14')}>
-      {children}
-    </main>
-  )
+  const normalized = pathname.replace(/\/$/, '') || '/'
+  const heroUnderNav =
+    normalized === '/' ||
+    normalized === '/products' ||
+    normalized === '/try-on' ||
+    normalized === '/sales'
+
+  return <main className={clsx('flex-1', !heroUnderNav && 'pt-[72px]')}>{children}</main>
 }

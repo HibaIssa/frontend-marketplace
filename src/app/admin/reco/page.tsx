@@ -32,7 +32,7 @@ type CandidateRow = { id: number; title: string; score: number | null; label: st
 type LabelRow = { baseProductId: number; candidateProductId: number; label: string; labelerId: string; createdAt: string }
 type ProductHint = { id: number; title: string }
 
-const CHART_COLORS = ['#2a2623', '#7d4b3a', '#99624E', '#c9ae9f', '#b99e90', '#a56f5a']
+const CHART_COLORS = ['#2a2623', '#7d4b3a', '#3d3030', '#c9ae9f', '#b99e90', '#a56f5a']
 
 function parseNum(v: string): number | null {
   const n = parseInt(v, 10)
@@ -657,7 +657,7 @@ export default function AdminRecoPage() {
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip />
-            <Bar dataKey="value" fill="#99624E" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="value" fill="#3d3030" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         {statsData.byLabeler.length === 0 ? <p className="text-xs text-neutral-500 mt-2">No labeler activity yet.</p> : null}

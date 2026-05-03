@@ -10,6 +10,7 @@ import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { useAuthStore } from '@/store/auth'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 interface CompleteLookSuggestion {
   id?: number
@@ -60,12 +61,8 @@ interface CompleteStyleData {
   totalRecommendations: number
 }
 
-function formatPrice(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
+function formatPrice(storedCents: number, currency?: string | null) {
+  return formatStoredPriceAsUsd(storedCents, currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function suggestionProductId(s: CompleteLookSuggestion): number | null {

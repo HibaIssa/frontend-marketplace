@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="font-sans min-h-screen flex flex-col tz-pink-bg text-[#0a0a0a]">
         <Providers>
-          <Suspense fallback={<div className="h-14" aria-hidden />}>
+          <Suspense fallback={<div className="h-[72px]" aria-hidden />}>
             <Navbar />
           </Suspense>
           <MainContent>{children}</MainContent>

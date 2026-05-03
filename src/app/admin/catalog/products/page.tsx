@@ -21,6 +21,8 @@ const PAGE_SIZE = 50
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal]       = useState(0)
+  /** Live GET /products omits an exact total; Next stays enabled while true. */
+  const [hasMore, setHasMore]   = useState<boolean | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [vendorOptions, setVendorOptions] = useState<Array<{ value: string; label: string }>>([
     { value: '', label: 'All vendors' },
@@ -84,6 +86,7 @@ export default function ProductsPage() {
         setLoadError(msg)
         setProducts([])
         setTotal(0)
+        setHasMore(undefined)
         console.error(e)
       }
     })
@@ -98,6 +101,7 @@ export default function ProductsPage() {
       has_sale: hasSale || undefined,
       has_issues: hasIssues || undefined,
     }
+    setFilters(f)
     setPage(1)
     load(f, sort, 1)
   }, [debouncedSearch, vendorId, category, availability, hasSale, hasIssues, sort, load])
@@ -146,16 +150,20 @@ export default function ProductsPage() {
       : <ChevronDown className="w-3 h-3" />
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const resultsSummary =
+    hasMore === true
+      ? `${((page - 1) * PAGE_SIZE + products.length).toLocaleString()}+`
+      : total.toLocaleString()
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader
         title="Products"
-        sub={`${total.toLocaleString()} rows`}
+        sub={hasMore === true ? 'Live catalog (API)' : `${total.toLocaleString()} rows`}
         actions={
           <span className="text-xs bg-[#f4ece6] text-[#2a2623] border border-[#d8c6bb] px-2.5 py-1 rounded-full font-medium">
-            {total.toLocaleString()} total
+            {hasMore === true ? 'Paged · more available' : `${total.toLocaleString()} total`}
           </span>
         }
       />
@@ -295,7 +303,7 @@ export default function ProductsPage() {
                     {p.sales_price_cents ? (
                       <span className="text-[#2a2623] text-xs font-medium tabular-nums">
                         {formatCents(p.sales_price_cents, p.currency ?? undefined)}
-                        {disc && <span className="ml-1 text-[10px] text-[#99624E]">-{disc}%</span>}
+                        {disc && <span className="ml-1 text-[10px] text-[#3d3030]">-{disc}%</span>}
                       </span>
                     ) : <span className="text-gray-300">—</span>}
                   </td>
@@ -320,7 +328,10 @@ export default function ProductsPage() {
       {/* Pagination */}
       <div className="bg-white border-t border-gray-200 px-4 py-2.5 flex items-center justify-between shrink-0">
         <span className="text-xs text-gray-400">
-          Page {page} of {totalPages} · {total.toLocaleString()} results
+          Page {page}
+          {hasMore !== true ? ` of ${totalPages}` : ''}
+          {' · '}
+          {resultsSummary} results
         </span>
         <div className="flex gap-2">
           <button
@@ -328,14 +339,17 @@ export default function ProductsPage() {
             onClick={() => { const p = page - 1; setPage(p); load(filters, sort, p) }}
             className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
           >
-            ? Prev
+            ← Prev
           </button>
           <button
-            disabled={page >= totalPages}
+            disabled={
+              hasMore === false ||
+              (hasMore === undefined && page >= totalPages)
+            }
             onClick={() => { const p = page + 1; setPage(p); load(filters, sort, p) }}
             className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
           >
-            Next ?
+            Next →
           </button>
         </div>
       </div>
