@@ -158,7 +158,7 @@ export function FilterBtn({ active, onClick, children }: FilterBtnProps) {
       className={clsx(
         'text-xs px-3 py-1.5 rounded-full border transition-colors font-medium',
         active
-          ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white border-transparent shadow-md shadow-[#2a2623]/25'
+          ? 'bg-brand text-white border-transparent shadow-md shadow-brand/25'
           : 'bg-white text-neutral-600 border-neutral-200 hover:border-[#d8c6bb] hover:text-[#2a2623]'
       )}
     >

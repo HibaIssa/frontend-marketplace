@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import { api } from '@/lib/api/client'
@@ -17,6 +18,10 @@ export default function FavoritesPage() {
     mutationFn: (productId: number) => api.post(endpoints.favorites.toggle, { product_id: productId }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['favorites'] }),
   })
+
+  const onFavorite = useCallback((productId: number) => {
+    toggleFavorite.mutate(productId)
+  }, [toggleFavorite.mutate])
 
   const { data, isLoading } = useQuery({
     queryKey: ['favorites'],
@@ -74,7 +79,7 @@ export default function FavoritesPage() {
               product={product}
               index={i}
               isFavorite
-              onFavorite={(id) => toggleFavorite.mutate(id)}
+              onFavorite={onFavorite}
             />
           ))}
         </div>

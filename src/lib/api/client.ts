@@ -77,7 +77,21 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== 'undefined') {
+    /** Don't redirect on wrong-password login/signup — those return 401/400 with a JSON body. */
+    let pathname = ''
+    try {
+      pathname = new URL(res.url).pathname
+    } catch {
+      pathname = res.url
+    }
+    const isCredentialAuthFailure =
+      /^\/api\/auth\/(login|signup|forgot-password|reset-password)$/.test(pathname) ||
+      pathname.endsWith('/api/auth/login') ||
+      pathname.endsWith('/api/auth/signup') ||
+      pathname.endsWith('/api/auth/forgot-password') ||
+      pathname.endsWith('/api/auth/reset-password')
+
+    if (res.status === 401 && typeof window !== 'undefined' && !isCredentialAuthFailure) {
       const refreshToken = localStorage.getItem('refreshToken')
       if (refreshToken) {
         const refreshed = await refreshTokens(refreshToken)

@@ -1,10 +1,11 @@
 'use client'
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { Suspense, useState, useEffect, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Suspense, useState, useEffect, useMemo, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Search, SlidersHorizontal, ArrowUpDown, X, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
+import Image from 'next/image'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { getStablePagination } from '@/lib/shopPagination'
@@ -13,6 +14,7 @@ import { useCompareStore } from '@/store/compare'
 import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
+import { storedAmountToUsdCents } from '@/lib/money/displayUsd'
 
 function asProductArray(input: unknown): Product[] {
   if (!Array.isArray(input)) return []
@@ -41,10 +43,10 @@ function extractProductsFromResponse(res: unknown): Product[] {
 }
 
 function chipClass(active: boolean) {
-  return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+  return `px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-colors duration-200 ${
     active
-      ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
-      : 'bg-white text-neutral-600 border border-neutral-200/80 hover:border-[#cdb8ac] hover:text-[#2a2623] hover:bg-[#f4ede8]'
+      ? 'bg-brand border-brand text-white shadow-sm hover:bg-brand-hover'
+      : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-brand/35 hover:text-brand'
   }`
 }
 
@@ -76,14 +78,17 @@ function ProductsContent() {
     },
   })
 
-  const handleAddToWardrobe = (product: Product) => {
-    if (!isAuthenticated()) {
-      const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
-      router.push(`/login?${qs.toString()}`)
-      return
-    }
-    addToWardrobeMutation.mutate(product)
-  }
+  const handleAddToWardrobe = useCallback(
+    (product: Product) => {
+      if (!isAuthenticated()) {
+        const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
+        router.push(`/login?${qs.toString()}`)
+        return
+      }
+      addToWardrobeMutation.mutate(product)
+    },
+    [addToWardrobeMutation, isAuthenticated, pathname, router, searchParams],
+  )
 
   useEffect(() => { setSearchDraft(q) }, [q])
   useEffect(() => { setPage(1); setPageJump('') }, [q, gender, sort, category])
@@ -102,7 +107,9 @@ function ProductsContent() {
 
   const queryKey = ['products', page, category, q, gender, sort, limit] as const
 
-  const { data, isLoading, isFetching } = useQuery({
+  const isSearchMode = Boolean(q.trim())
+
+  const { data, isPending, isFetching } = useQuery({
     queryKey,
     queryFn: async () => {
       const params: Record<string, string | number> = { page, limit }
@@ -120,36 +127,44 @@ function ProductsContent() {
 
       return api.get<Product[]>(endpoints.products.list, params)
     },
+    placeholderData: keepPreviousData,
+    staleTime: isSearchMode ? 45_000 : 120_000,
+    gcTime: 600_000,
   })
 
   const rawProducts: Product[] = extractProductsFromResponse(data)
 
   const products = useMemo(() => {
     if (!sort || rawProducts.length === 0) return rawProducts
-    const getEffectivePrice = (p: Product) =>
-      (p.sales_price_cents != null && p.sales_price_cents > 0 ? p.sales_price_cents : p.price_cents) || 0
+    const getEffectivePrice = (p: Product) => {
+      const raw =
+        (p.sales_price_cents != null && p.sales_price_cents > 0 ? p.sales_price_cents : p.price_cents) || 0
+      return storedAmountToUsdCents(raw, p.currency)
+    }
     const sorted = [...rawProducts]
     if (sort === 'price_asc') sorted.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b))
     else if (sort === 'price_desc') sorted.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a))
     return sorted
   }, [rawProducts, sort])
 
-  const stablePagination = useMemo(() => getStablePagination(data, limit), [data, limit])
-
   const pagination = useMemo(() => {
-    if (stablePagination) return stablePagination
-    if (rawProducts.length > 0) {
-      return { totalItems: rawProducts.length, totalPages: 0 }
+    const stable = getStablePagination(data, limit)
+    if (stable) return stable
+    if (rawProducts.length === 0) return null
+    /** Browse responses often omit `total`/`pages`; when `has_more` is false this is the last chunk — infer size. */
+    if (data?.pagination?.has_more !== true) {
+      const totalItems = (page - 1) * limit + rawProducts.length
+      const totalPages = Math.max(1, Math.ceil(totalItems / limit))
+      return { totalItems, totalPages }
     }
     return null
-  }, [stablePagination, rawProducts.length])
+  }, [data, limit, page, rawProducts.length])
 
   const hasMoreFromApi = data?.pagination?.has_more === true
 
   const knownTotalPages = pagination?.totalPages ?? 0
-  const hasFullPage = rawProducts.length >= limit
-  const canGoNext =
-    knownTotalPages > 1 ? page < knownTotalPages : hasMoreFromApi || hasFullPage
+  /** Rely on API `has_more` or a known page count — a full last page must not imply another page exists. */
+  const canGoNext = hasMoreFromApi || (knownTotalPages > 1 && page < knownTotalPages)
 
   useEffect(() => {
     if (knownTotalPages > 0 && page > knownTotalPages) setPage(knownTotalPages)
@@ -159,10 +174,10 @@ function ProductsContent() {
 
   const showPaginationControls =
     rawProducts.length > 0 &&
-    (stablePagination != null ||
-      page > 1 ||
-      canGoNext ||
-      knownTotalPages > 1)
+    (page > 1 ||
+      (pagination?.totalPages ?? 0) > 1 ||
+      hasMoreFromApi ||
+      rawProducts.length >= limit)
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -172,54 +187,75 @@ function ProductsContent() {
   const activeFilterCount = [gender, sort].filter(Boolean).length
 
   return (
-    <>
-      {/* ── Header with gradient background ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-sky-50/40 to-neutral-100 border-b border-neutral-200/60">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-blue-100/40 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-8 -left-12 h-48 w-48 rounded-full bg-blue-100/30 blur-3xl" aria-hidden />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="font-display text-2xl sm:text-3xl font-bold text-neutral-900">
-                  {category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Shop'}
-                </h1>
-                <p className="text-sm text-neutral-500 mt-0.5">
-                  {pagination ? `${pagination.totalItems.toLocaleString()} products` : 'Browse the full catalog'}
-                </p>
-              </div>
-            </div>
-
-            {/* Search */}
-            <form
-              onSubmit={onSearchSubmit}
-              className="relative flex items-center w-full max-w-2xl rounded-2xl bg-white border border-neutral-200 shadow-sm h-12 focus-within:ring-2 focus-within:ring-[#2a2623]/20 focus-within:border-[#99624E] transition-all"
+    <div className="min-h-screen bg-[#F9F8F6]">
+      <header className="relative overflow-hidden">
+        {/* Full-bleed under fixed navbar; gradient keeps title + search readable on the left */}
+        <div className="relative min-h-[300px] sm:min-h-[360px] lg:min-h-[400px]">
+          <Image
+            src="/brand/shop-hero.png"
+            alt=""
+            fill
+            priority
+            className="object-cover object-[52%_center] sm:object-[58%_center]"
+            sizes="100vw"
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-[#f9f8f6] via-[#f9f8f6]/78 to-[#f9f8f6]/10 sm:from-[#f9f8f6] sm:via-[#f9f8f6]/55 sm:to-transparent"
+            aria-hidden
+          />
+          {/* Clear ~56px fixed nav + breathing room (same idea as home hero `top-[72px]`). */}
+          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10 sm:pt-24 sm:pb-14 lg:pt-28 lg:pb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              className="text-left max-w-xl"
             >
-              <Search className="absolute left-4 w-5 h-5 text-neutral-400" />
-              <input
-                type="search"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
-                placeholder='Search "dress", "sneakers", brand name...'
-                className="w-full h-full pl-12 pr-24 bg-transparent text-neutral-700 placeholder-neutral-400 focus:outline-none text-base rounded-2xl"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-sm shadow-[#2a2623]/20 transition-all active:scale-[0.97]"
-              >
-                Search
-              </button>
-            </form>
+              <h1 className="font-display text-[1.85rem] sm:text-[2.35rem] lg:text-[2.6rem] font-bold text-[#2a2623] tracking-[-0.02em] drop-shadow-[0_1px_0_rgba(249,248,246,0.85)]">
+                {q.trim()
+                  ? q.trim().charAt(0).toUpperCase() + q.trim().slice(1)
+                  : category
+                    ? category.charAt(0).toUpperCase() + category.slice(1)
+                    : 'Shop'}
+              </h1>
+              <p className="mt-2 sm:mt-3 text-[15px] sm:text-base text-[#4a4540] leading-relaxed max-w-md drop-shadow-[0_1px_0_rgba(249,248,246,0.9)]">
+                {pagination && !pagination.approximate && !pagination.indeterminate
+                  ? `${pagination.totalItems.toLocaleString()} pieces to explore`
+                  : pagination?.indeterminate
+                    ? 'Browse page by page — the catalog is large.'
+                    : pagination?.approximate
+                      ? 'More styles on the next pages — use the pager below'
+                      : 'Browse the catalog'}
+              </p>
 
-            {/* ── Compact inline filters ── */}
-            <div className="flex flex-wrap items-center gap-2.5 mt-5">
-              <div className="flex items-center gap-1.5 text-neutral-500 mr-1">
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="text-xs font-medium uppercase tracking-wider">Filter</span>
+              <form onSubmit={onSearchSubmit} className="mt-6 sm:mt-8 w-full max-w-xl">
+                <div className="relative flex items-center h-14 sm:h-[3.75rem] rounded-full border border-[#e8e4df]/90 bg-white/95 backdrop-blur-sm shadow-[0_8px_40px_-12px_rgba(42,38,35,0.15)] transition-all duration-300 focus-within:border-[#d4cdc4] focus-within:shadow-[0_12px_48px_-14px_rgba(42,38,35,0.18)]">
+                  <Search className="absolute left-5 sm:left-6 w-5 h-5 text-[#9c9590]" aria-hidden />
+                  <input
+                    type="search"
+                    value={searchDraft}
+                    onChange={(e) => setSearchDraft(e.target.value)}
+                    placeholder='Search "dress", "sneakers", brand name…'
+                    className="w-full h-full pl-14 sm:pl-[3.25rem] pr-[5.75rem] sm:pr-[6.25rem] bg-transparent rounded-full focus:outline-none text-[15px] sm:text-[16px] text-[#2a2623] placeholder:text-[#a39e98]"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-2.5 sm:right-3 px-4 sm:px-5 py-2 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm ring-1 ring-brand/25 transition-all active:scale-[0.98]"
+                  >
+                    Search
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </div>
+
+        <div className="relative z-10 bg-[#F9F8F6]/98 backdrop-blur-md border-t border-[#ebe8e4]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+              <div className="flex items-center gap-1.5 text-[#9c9590] mr-0.5">
+                <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">Filter</span>
               </div>
               <button type="button" className={chipClass(!gender)} onClick={() => navigateShop({ gender: null })}>
                 All
@@ -231,11 +267,11 @@ function ProductsContent() {
                 Men
               </button>
 
-              <div className="w-px h-5 bg-neutral-300/60 mx-1" />
+              <div className="w-px h-5 bg-[#e3ddd4] mx-0.5 hidden sm:block" aria-hidden />
 
-              <div className="flex items-center gap-1.5 text-neutral-500 mr-1">
-                <ArrowUpDown className="w-3.5 h-3.5" />
-                <span className="text-xs font-medium uppercase tracking-wider">Sort</span>
+              <div className="flex items-center gap-1.5 text-[#9c9590] mr-0.5 sm:ml-1">
+                <ArrowUpDown className="w-3.5 h-3.5" aria-hidden />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">Sort</span>
               </div>
               <button type="button" className={chipClass(!sort)} onClick={() => navigateShop({ sort: null })}>
                 Default
@@ -251,24 +287,23 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={() => router.push(pathname)}
-                  className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-[#2a2623] bg-[#f4ede8] border border-[#cdb8ac]/80 hover:bg-[#efe4de] transition-colors"
+                  className="ml-0.5 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-brand bg-white border-2 border-brand/40 hover:bg-brand-muted transition-colors"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3 h-3" aria-hidden />
                   Clear{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                 </button>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* ── Product grid ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {(isLoading || isFetching) ? (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isPending ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="space-y-3">
-                <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
+                <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-[#ebe8e4]" />
                 <div className="h-3 w-2/3 rounded-md skeleton-shimmer" />
                 <div className="h-3 w-1/2 rounded-md skeleton-shimmer" />
               </div>
@@ -280,7 +315,7 @@ function ProductsContent() {
               initial="hidden"
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.04 } }, hidden: {} }}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6"
+              className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6 transition-opacity duration-200 ${isFetching ? 'opacity-[0.94]' : ''}`}
             >
               {products.map((product, i) => (
                 <motion.div
@@ -312,7 +347,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f4ece6] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-[#e8e4df] bg-white text-[#6b6560] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-[#e8e4df] disabled:hover:text-[#6b6560] transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -339,8 +374,8 @@ function ProductsContent() {
                             onClick={() => setPage(pageNum)}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
-                                ? 'bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20'
-                                : 'text-neutral-600 hover:bg-[#f4ece6] hover:text-[#2a2623]'
+                                ? 'bg-[#ebe6e0] border border-[#d8d2cd] text-[#2a2623] shadow-sm'
+                                : 'text-[#6b6560] hover:bg-[#f3f1ee] hover:text-[#2a2623]'
                             }`}
                           >
                             {pageNum}
@@ -350,7 +385,7 @@ function ProductsContent() {
                     })()}
 
                     {knownTotalPages === 0 && canGoNext && (
-                      <span className="w-9 h-9 flex items-center justify-center text-sm text-neutral-400">…</span>
+                      <span className="w-9 h-9 flex items-center justify-center text-sm text-[#b8aea5]">…</span>
                     )}
                   </div>
 
@@ -358,7 +393,7 @@ function ProductsContent() {
                     type="button"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!canGoNext}
-                    className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f4ece6] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-neutral-200 disabled:hover:text-neutral-600 transition-all"
+                    className="p-2.5 rounded-xl border border-[#e8e4df] bg-white text-[#6b6560] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-[#e8e4df] disabled:hover:text-[#6b6560] transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -373,7 +408,7 @@ function ProductsContent() {
                     setPage(knownTotalPages > 0 ? Math.min(n, knownTotalPages) : n)
                   }}
                 >
-                  <label htmlFor="shop-page-jump" className="text-sm text-neutral-500 whitespace-nowrap">
+                  <label htmlFor="shop-page-jump" className="text-sm text-[#7a726b] whitespace-nowrap">
                     Go to page
                   </label>
                   <input
@@ -383,15 +418,21 @@ function ProductsContent() {
                     {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
-                    className="w-16 px-2 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-center text-sm focus:ring-2 focus:ring-[#d8c6bb] focus:border-[#c9ae9f]"
+                    className="w-16 px-2 py-2 rounded-lg border border-[#e8e4df] bg-white text-[#2a2623] text-center text-sm focus:ring-2 focus:ring-[#d8c6bb]/40 focus:border-[#d8d2cd]"
                   />
-                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#f4ece6] text-[#2a2623] hover:bg-[#eadfd7] transition-colors">
+                  <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-[#ebe6e0] text-[#2a2623] border border-[#d8d2cd] hover:bg-[#e4dcd4] transition-colors">
                     Go
                   </button>
                 </form>
 
-                <span className="text-sm text-neutral-500">
-                  Page {page}{knownTotalPages > 0 ? ` of ${knownTotalPages}` : ''}
+                <span className="text-sm text-[#7a726b]">
+                  {pagination?.indeterminate && hasMoreFromApi
+                    ? `Page ${page} · more results`
+                    : pagination?.indeterminate
+                      ? `Page ${page}`
+                      : knownTotalPages > 0
+                        ? `Page ${page} of ${knownTotalPages}`
+                        : `Page ${page}`}
                 </span>
               </div>
             )}
@@ -402,28 +443,25 @@ function ProductsContent() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-20 max-w-md mx-auto"
           >
-            <div className="relative w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-20 blur-xl" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
-                <ShoppingBag className="w-9 h-9 text-[#2a2623]" />
-              </div>
+            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-[#faf9f7] ring-1 ring-[#ebe8e4] flex items-center justify-center">
+              <ShoppingBag className="w-8 h-8 text-[#3d3030]" aria-hidden />
             </div>
-            <p className="font-bold text-neutral-900 text-lg mb-2">No products found</p>
-            <p className="text-neutral-500 mb-5">Try adjusting your search or filters.</p>
+            <p className="font-display font-bold text-[#2a2623] text-lg mb-2">No products found</p>
+            <p className="text-[#7a726b] mb-5 text-[15px]">Try adjusting your search or filters.</p>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={() => router.push(pathname)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold hover:from-[#1a1816] hover:to-[#7d4b3a] shadow-md shadow-[#2a2623]/20 transition-all active:scale-[0.97]"
+                className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm ring-1 ring-brand/25 transition-all active:scale-[0.98]"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden />
                 Clear all filters
               </button>
             )}
           </motion.div>
         )}
       </div>
-    </>
+    </div>
   )
 }
 

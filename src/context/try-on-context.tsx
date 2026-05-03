@@ -121,7 +121,7 @@ function TryOnBackgroundBanner() {
         <div className="mt-3 flex gap-2">
           <Link
             href="/try-on"
-            className="rounded-full bg-[#2a2623] px-3 py-1.5 text-xs font-semibold text-white"
+            className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover"
           >
             Open
           </Link>
@@ -144,7 +144,7 @@ function TryOnBackgroundBanner() {
         <p className="text-sm font-medium text-emerald-800">Try-on ready</p>
         <Link
           href="/try-on"
-          className="mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] px-4 py-2 text-xs font-semibold text-white"
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-hover"
         >
           View result
         </Link>

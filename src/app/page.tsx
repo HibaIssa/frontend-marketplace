@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInView } from 'framer-motion'
 import {
   ArrowUpRight,
@@ -13,11 +13,15 @@ import {
   Layers,
   GitCompare,
   Heart,
+  Lock,
+  Timer,
+  UserRound,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Palette tokens (kept inline for clarity — same set across the page)
@@ -50,6 +54,7 @@ function useProducts(limit = 8, offset = 0) {
       })
     },
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   })
 }
 
@@ -85,6 +90,7 @@ function useCatalogStats() {
       return { totalProducts, brandsLen, categoriesLen, onSaleTotal }
     },
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     retry: 1,
   })
 }
@@ -93,11 +99,7 @@ function formatPrice(p: Product) {
   const raw = typeof p.price_cents === 'string' ? parseInt(p.price_cents, 10) : p.price_cents
   const pc = Number.isFinite(raw as number) ? (raw as number) : 0
   if (pc <= 0) return null
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: p.currency || 'USD',
-    minimumFractionDigits: 0,
-  }).format(pc / 100)
+  return formatStoredPriceAsUsd(pc, p.currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function CountUp({ to, suffix = '', durationMs = 1400 }: { to: number; suffix?: string; durationMs?: number }) {
@@ -176,7 +178,7 @@ function SectionHead({
 function Hero() {
   return (
     <section className="relative bg-[#ece8e5]">
-      <motion.div
+          <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.1, ease: EASE_OUT }}
@@ -223,9 +225,9 @@ function Hero() {
         </div>
 
         {/* Bottom block — large editorial title */}
-        <motion.div
+          <motion.div
           initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.1, ease: EASE_OUT, delay: 0.2 }}
           className="absolute inset-x-0 bottom-0 px-5 sm:px-8 lg:px-12 pb-8 sm:pb-12 lg:pb-16"
         >
@@ -247,20 +249,20 @@ function Hero() {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2B2521] visited:text-[#2B2521] hover:bg-white/95 transition-colors shadow-[0_8px_28px_rgba(0,0,0,0.22)] border border-white/80"
             >
               Explore collection
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/search?mode=shop"
-              className="inline-flex items-center gap-2 rounded-full border border-white/80 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-white/10 transition-colors backdrop-blur-[2px]"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-white visited:text-white hover:bg-white/15 transition-colors backdrop-blur-[2px] [text-shadow:0_1px_8px_rgba(0,0,0,0.25)]"
             >
               Shop the look
             </Link>
           </div>
         </motion.div>
-      </motion.div>
+          </motion.div>
     </section>
   )
 }
@@ -271,19 +273,17 @@ function Hero() {
 
 function Categories() {
   const items = [
-    { label: 'Shirts', href: '/products?category=shirts', img: '/brand/tz-editorial-stool.png' },
-    { label: 'Trousers', href: '/products?category=bottoms', img: '/brand/tz-cat-trousers.png' },
-    { label: 'Suits', href: '/products?category=suits', img: '/brand/tz-cat-suits-women.png' },
-    { label: 'Knitwear', href: '/products?category=knitwear', img: '/brand/tz-cat-tops.png' },
-    { label: 'Outerwear', href: '/products?category=outerwear', img: '/brand/tz-cat-suits-men.png' },
-    { label: 'Dresses', href: '/products?category=dress', img: '/brand/tz-cat-women.png' },
+    { label: 'Dress', href: '/products?category=dress', img: '/brand/tz-cat-dresses.png' },
+    { label: 'Trousers', href: '/products?category=bottoms&q=trousers', img: '/brand/tz-cat-trousers.png' },
+    { label: 'Tops', href: '/products?category=tops', img: '/brand/tz-cat-tops.png' },
+    { label: 'Shoes', href: '/products?category=shoes', img: '/brand/tz-cat-shoes.png' },
   ]
 
   return (
     <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
-      <SectionHead eyebrow="Product categories" title="Shirts, trousers & tailoring" href="/products" />
+      <SectionHead eyebrow="Product categories" title="Dress, tops, trousers & shoes" href="/products" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {items.map((c, i) => (
           <motion.div
             key={c.label}
@@ -322,15 +322,15 @@ function Categories() {
 function AboutUs() {
   return (
     <section className="px-4 sm:px-6 lg:px-10 py-10 lg:py-20">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-100px' }}
         transition={{ duration: 0.95, ease: EASE_OUT }}
         className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center"
       >
         <div className="lg:col-span-6 relative aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5] overflow-hidden rounded-[14px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]">
-          <Image
+            <Image
             src="/brand/tz-editorial-couple.png"
             alt="TrendZone — about the studio"
             fill
@@ -363,18 +363,141 @@ function AboutUs() {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 rounded-full bg-[#2a2623] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-black transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-brand-hover transition-colors"
             >
               Shop the studio
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/search?mode=shop"
-              className="inline-flex items-center gap-2 rounded-full border border-[#d8d2cd] bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-brand bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand hover:bg-brand-muted transition-colors"
             >
               Discover the tools
             </Link>
           </div>
+        </div>
+    </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Virtual Try-On — full mockup section (standalone)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function VirtualTryOnShowcase() {
+  const highlights = [
+    { Icon: Sparkles, text: 'Get the perfect fit, every time.' },
+    { Icon: UserRound, text: 'Realistic AI try-on' },
+    { Icon: Timer, text: 'Instant results' },
+    { Icon: Lock, text: 'Secure & private' },
+  ]
+
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-12 lg:py-20 bg-[#ece8e5]">
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.85, ease: EASE_OUT }}
+      >
+        <Eyebrow>Virtual try-on</Eyebrow>
+        <div className="mt-3 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+          <div className="max-w-2xl">
+            <h2
+              className="font-display font-bold text-[#2a2623] tracking-[-0.03em] leading-[1.05]"
+              style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+            >
+              See how clothes look on you before you buy.
+            </h2>
+            <p className="mt-4 text-[14px] sm:text-[15px] font-medium leading-[1.7] text-[#4a4540]">
+              Upload a photo, pick a garment from the catalog, and preview a realistic composite — right in the browser.
+            </p>
+          </div>
+          <Link
+            href="/try-on"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-brand-hover transition-colors shadow-[0_12px_36px_-16px_rgba(61,48,48,0.33)]"
+          >
+            Open virtual try-on
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="mt-10 relative overflow-hidden rounded-[18px] bg-[#f5f3f2] ring-1 ring-[#d8d2cd] shadow-[0_24px_80px_-32px_rgba(42,38,35,0.35)]">
+          <Image
+            src="/brand/tz-home-virtual-tryon-showcase.png"
+            alt="Virtual Try-On interface: upload your photo, select a garment, and preview the AI try-on result"
+            width={1024}
+            height={562}
+            className="w-full h-auto block"
+            sizes="(max-width: 1400px) 100vw, 1320px"
+            priority={false}
+          />
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {highlights.map(({ Icon, text }) => (
+            <div
+              key={text}
+              className="flex items-start gap-3 rounded-xl bg-[#f5f3f2]/90 px-4 py-3.5 ring-1 ring-[#d8d2cd]/80"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#d8d2cd] text-[#2a2623]">
+                <Icon className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <p className="text-[13px] font-semibold leading-snug text-[#2a2623] pt-1">{text}</p>
+            </div>
+          ))}
+      </div>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Visual Search — full mockup section (standalone)
+   ────────────────────────────────────────────────────────────────────────── */
+
+function VisualSearchShowcase() {
+  return (
+    <section className="px-4 sm:px-6 lg:px-10 py-12 lg:py-20 bg-[#f5f3f2]">
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.85, ease: EASE_OUT }}
+      >
+        <Eyebrow>Visual search</Eyebrow>
+        <div className="mt-3 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+          <div className="max-w-2xl">
+            <h2
+              className="font-display font-bold text-[#2a2623] tracking-[-0.03em] leading-[1.05]"
+              style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+            >
+              Snap a look. Find the closest pieces in our catalog.
+            </h2>
+            <p className="mt-4 text-[14px] sm:text-[15px] font-medium leading-[1.7] text-[#4a4540]">
+              Match silhouettes, textures and colours from any photo — ideal for shop-the-look and in-store inspiration.
+            </p>
+          </div>
+          <Link
+            href="/search?mode=shop"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand ring-2 ring-brand hover:bg-brand-muted transition-colors"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Try visual search
+          </Link>
+        </div>
+
+        <div className="mt-10 relative overflow-hidden rounded-[18px] bg-[#ece8e5] ring-1 ring-[#d8d2cd] shadow-[0_24px_80px_-32px_rgba(42,38,35,0.3)]">
+          <Image
+            src="/brand/tz-home-visual-search-showcase.png"
+            alt="Visual Search interface: product detail, styled model with scan frame, and similar recommended pieces"
+            width={1024}
+            height={579}
+            className="w-full h-auto block"
+            sizes="(max-width: 1400px) 100vw, 1320px"
+            priority={false}
+          />
         </div>
       </motion.div>
     </section>
@@ -382,16 +505,16 @@ function AboutUs() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Services — clean four-card grid (Snap & Shop, Try-On, Shop the Look, Compare)
+   Services — clean four-card grid (Text search, Try-On, Shop the Look, Compare)
    ────────────────────────────────────────────────────────────────────────── */
 
 function Services() {
   const items = [
     {
-      title: 'Snap & Shop',
-      desc: 'Photograph any garment in-store or in the wild. Our visual search finds the closest matches across the catalog in seconds — no keywords required.',
-      img: '/brand/tz-service-photo-search-men.png',
-      href: '/search?mode=shop',
+      title: 'Text Search',
+      desc: 'Type brands, styles, colours or occasions — our catalog search understands natural language and brings back ranked matches in seconds.',
+      img: '/brand/tz-home-text-search-lifestyle.png',
+      href: '/search',
     },
     {
       title: 'Virtual Try-On',
@@ -408,21 +531,21 @@ function Services() {
     {
       title: 'Compare',
       desc: 'Stack pieces side by side — fabric, fit, price and reviews — so you can decide between two looks with confidence before you commit to one.',
-      img: '/brand/tz-editorial-couple.png',
+      img: '/brand/tz-home-compare-lifestyle.png',
       href: '/compare',
     },
   ]
 
   return (
     <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
-      <SectionHead eyebrow="Our services" title="Snap it. Try it. Compare it." />
+      <SectionHead eyebrow="Our services" title="Four ways to shop smarter" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {items.map((s, i) => (
-          <motion.div
+              <motion.div
             key={s.title}
             initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
+                whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.8, delay: i * 0.06, ease: EASE_OUT }}
             className="group rounded-[10px] ring-1 ring-[#d8d2cd] bg-white overflow-hidden"
@@ -444,7 +567,7 @@ function Services() {
                 <p className="mt-3 text-[14px] font-medium leading-[1.72] text-[#4a4540]">{s.desc}</p>
               </div>
             </Link>
-          </motion.div>
+              </motion.div>
         ))}
       </div>
     </section>
@@ -471,7 +594,7 @@ function Tools() {
           <Link
             key={t.label}
             href={t.href}
-            className="group flex items-center justify-center gap-2 rounded-full bg-white border border-[#d8d2cd] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+            className="group flex items-center justify-center gap-2 rounded-full bg-white border-2 border-brand px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand hover:bg-brand-muted transition-colors"
           >
             <t.icon className="h-3.5 w-3.5 text-[#b8aea5] group-hover:text-[#2a2623] transition-colors" />
             <span className="truncate">{t.label}</span>
@@ -486,33 +609,41 @@ function Tools() {
    Featured products — calm grid (uses existing API)
    ────────────────────────────────────────────────────────────────────────── */
 
-function ProductCard({ product, index }: { product: Product; index: number }) {
-  const img = product.image_cdn || product.image_url || ''
+function featuredProductImageSrc(p: Product): string {
+  return String(p.image_cdn || p.image_url || '').trim()
+}
+
+function FeaturedProductTile({
+  product,
+  index,
+  onImageFailed,
+}: {
+  product: Product
+  index: number
+  onImageFailed: (id: number) => void
+}) {
+  const img = featuredProductImageSrc(product)
   const price = formatPrice(product)
+  if (!img) return null
 
   return (
-    <motion.div
+      <motion.div
       initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
+        whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.7, delay: index * 0.04, ease: EASE_OUT }}
       className="group"
     >
       <Link href={`/products/${product.id}`} className="block">
         <div className="relative aspect-[3/4] overflow-hidden rounded-[10px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]">
-          {img ? (
-            <Image
-              src={img}
-              alt={product.title || 'Product image'}
-              fill
-              sizes="(max-width: 640px) 50vw, 25vw"
-              className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.04]"
-            />
-          ) : (
-            <div className="absolute inset-0 grid place-items-center text-[#b8aea5] text-xs uppercase tracking-[0.2em]">
-              No image
-            </div>
-          )}
+          <Image
+            src={img}
+            alt={product.title || 'Product image'}
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.04]"
+            onError={() => onImageFailed(product.id)}
+          />
         </div>
         <div className="mt-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -534,24 +665,47 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
           )}
         </div>
       </Link>
-    </motion.div>
+      </motion.div>
   )
 }
 
 function FeaturedProducts() {
-  const featured = useProducts(8, 0)
+  /** Extra rows so we can drop broken/missing images and still fill up to four slots. */
+  const featured = useProducts(32, 0)
   const list = featured.data ?? []
+  const [failedIds, setFailedIds] = useState(() => new Set<number>())
+
+  const markFailed = useCallback((id: number) => {
+    setFailedIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
+
+  const slots = useMemo(
+    () => list.filter((p) => featuredProductImageSrc(p) && !failedIds.has(p.id)).slice(0, 4),
+    [list, failedIds],
+  )
+
+  const loading = featured.isPending || list.length === 0
 
   return (
     <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
       <SectionHead eyebrow="Curated edit" title="Featured products" href="/products" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-7">
-        {list.length === 0
+        {loading
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="aspect-[3/4] rounded-[10px] bg-[#ece8e5] ring-1 ring-[#d8d2cd]" />
             ))
-          : list.slice(0, 4).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          : slots.map((p, i) => (
+              <FeaturedProductTile key={p.id} product={p} index={i} onImageFailed={markFailed} />
+            ))}
       </div>
+      {!loading && slots.length === 0 ? (
+        <p className="mt-6 text-center text-sm text-[#736b65]">No highlighted products available right now.</p>
+      ) : null}
     </section>
   )
 }
@@ -575,11 +729,11 @@ function Numbers() {
       <SectionHead eyebrow="By the numbers" title="A studio, in motion" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10 border-t border-[#d8d2cd] pt-8">
         {items.map((it, i) => (
-          <motion.div
+            <motion.div
             key={i}
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, delay: i * 0.06, ease: EASE_OUT }}
           >
             <p
@@ -591,8 +745,8 @@ function Numbers() {
             <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#736b65]">
               {it.label}
             </p>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
       </div>
     </section>
   )
@@ -616,20 +770,20 @@ function Closing() {
         <h2
           className="mt-4 font-display font-semibold text-[#c9c1ba] tracking-[-0.04em] leading-none select-none"
           style={{ fontSize: 'clamp(3.5rem, 14vw, 12rem)' }}
-        >
-          TRENDZONE
-        </h2>
+              >
+                TRENDZONE
+              </h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-[#2a2623] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-black transition-colors"
+            className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white hover:bg-brand-hover transition-colors"
           >
             Shop now
             <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
           <Link
             href="/sales"
-            className="inline-flex items-center gap-2 rounded-full border border-[#d8d2cd] bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2a2623] hover:bg-[#ece8e5] transition-colors"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-brand bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand hover:bg-brand-muted transition-colors"
           >
             Sale
           </Link>
@@ -650,6 +804,8 @@ export default function HomePage() {
       <Tools />
       <Categories />
       <AboutUs />
+      <VirtualTryOnShowcase />
+      <VisualSearchShowcase />
       <Services />
       <FeaturedProducts />
       <Numbers />

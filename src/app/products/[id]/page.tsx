@@ -11,13 +11,10 @@ import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { useAuthStore } from '@/store/auth'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd, storedAmountToUsdCents } from '@/lib/money/displayUsd'
 
-function formatPrice(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
+function formatPrice(storedCents: number, currency?: string | null) {
+  return formatStoredPriceAsUsd(storedCents, currency, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function parseProductPayload(res: { success?: boolean; data?: unknown; error?: { message?: string } }): Product {
@@ -53,14 +50,25 @@ function parseProductPayload(res: { success?: boolean; data?: unknown; error?: {
   } as Product
 }
 
-/** Only allow in-app return to Discover (avoid open redirects). */
-function safeDiscoverReturn(raw: string | null): string | null {
+/** In-app back targets from `?from=` (block open redirects). */
+function safeProductReturnFrom(raw: string | null): { href: string; label: string } | null {
   if (!raw) return null
   try {
-    const decoded = decodeURIComponent(raw)
-    if (!/^\/search(\?|$)/.test(decoded)) return null
-    if (decoded.includes('..')) return null
-    return decoded
+    const decoded = decodeURIComponent(raw.trim())
+    if (!decoded.startsWith('/') || decoded.includes('..')) return null
+
+    const pathOnly = decoded.split('?')[0] ?? ''
+
+    if (/^\/search(\?|$)/.test(decoded)) {
+      return { href: decoded, label: 'Back to Discover' }
+    }
+    if (pathOnly === '/compare') {
+      return { href: '/compare', label: 'Back to Compare' }
+    }
+    if (pathOnly === '/try-on') {
+      return { href: '/try-on', label: 'Back to Try on' }
+    }
+    return null
   } catch {
     return null
   }
@@ -69,9 +77,9 @@ function safeDiscoverReturn(raw: string | null): string | null {
 function ProductDetailContent() {
   const params = useParams()
   const searchParams = useSearchParams()
-  const discoverBack = safeDiscoverReturn(searchParams.get('from'))
-  const backHref = discoverBack ?? '/products'
-  const backLabel = discoverBack ? 'Back to Discover' : 'Back to shop'
+  const returnFrom = safeProductReturnFrom(searchParams.get('from'))
+  const backHref = returnFrom?.href ?? '/products'
+  const backLabel = returnFrom?.label ?? 'Back to shop'
 
   const id = params.id as string
   const numericId = id ? Number(id) : NaN
@@ -154,7 +162,11 @@ function ProductDetailContent() {
     product.image_url ||
     (product.images?.length ? product.images.find((i) => i.is_primary)?.url ?? product.images[0]?.url : null) ||
     'https://placehold.co/600x800/f5ede4/1a1a1a?text=No+Image'
-  const hasSale = product.sales_price_cents && product.sales_price_cents < product.price_cents
+  const hasSale =
+    !!product.sales_price_cents &&
+    storedAmountToUsdCents(product.sales_price_cents, product.currency) > 0 &&
+    storedAmountToUsdCents(product.sales_price_cents, product.currency) <
+      storedAmountToUsdCents(Number(product.price_cents) || 0, product.currency)
 
   const variantInfo = variantsData?.[String(product.id)]
   const showMinMax = variantInfo && variantInfo.minPriceCents !== variantInfo.maxPriceCents
@@ -184,7 +196,7 @@ function ProductDetailContent() {
             priority
           />
           {hasSale && (
-            <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-[#2a2623] text-white text-sm font-medium">
+            <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-brand text-white text-sm font-medium">
               Sale
             </span>
           )}
@@ -242,7 +254,7 @@ function ProductDetailContent() {
                 onClick={() => toggleFavorite.mutate()}
               >
                 <Heart
-                  className={`w-5 h-5 ${favorited ? 'fill-[#2a2623] text-[#2a2623]' : ''}`}
+                  className={`w-5 h-5 ${favorited ? 'fill-brand text-brand' : ''}`}
                 />
                 {favorited ? 'Saved' : 'Save'}
               </button>

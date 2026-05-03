@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import NextImage from 'next/image'
 import {
@@ -15,6 +15,7 @@ import {
   ScanSearch,
 } from 'lucide-react'
 import type { Product } from '@/types/product'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 function parseCentsField(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v)
@@ -111,6 +112,10 @@ export interface ShopTheLookStats {
   coverageRatio: number
 }
 
+/** Shop the Look — luxury editorial palette */
+const STL_TEXT = '#2B2521'
+const STL_SURFACE = '#F5F1EC'
+
 const CATEGORY_STYLES: Record<string, { icon: typeof Shirt; ring: string }> = {
   tops: { icon: Shirt, ring: 'ring-[#d8c6bb]' },
   bottoms: { icon: Shirt, ring: 'ring-slate-200' },
@@ -133,11 +138,7 @@ function formatProductPrice(product: Product): string | null {
   const cents =
     typeof product.price_cents === 'string' ? parseInt(String(product.price_cents), 10) : product.price_cents
   if (cents == null || !Number.isFinite(cents) || cents <= 0) return null
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
+  return formatStoredPriceAsUsd(cents, product.currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function isShoeDetectionGroup(group: DetectionGroup): boolean {
@@ -148,6 +149,34 @@ function isShoeDetectionGroup(group: DetectionGroup): boolean {
     /footwear|shoe|sneaker|boot|sandal|heel|pump|loafer|oxford|mule|slide|stiletto|wedge|flats?\b|clog|espadrilles?/.test(blob) ||
     /\bfoot\b/.test(cat)
   )
+}
+
+/** Headwear detections are often false positives on bare heads; we omit them from Shop this look. */
+function isHatDetectionGroup(group: DetectionGroup): boolean {
+  const cat = String(group.category || '').toLowerCase().replace(/_/g, ' ')
+  const lab = String(group.detection?.label || '').toLowerCase().replace(/_/g, ' ')
+  const blob = ` ${cat} ${lab} `
+  return (
+    /\bhats?\b/.test(blob) ||
+    /\bcaps?\b/.test(blob) ||
+    /\bbeanie\b/.test(blob) ||
+    /\bberet\b/.test(blob) ||
+    /\bfedora\b/.test(blob) ||
+    /\bheadwear\b/.test(blob) ||
+    /\bbucket hat\b/.test(blob) ||
+    /\bbaseball cap\b/.test(blob) ||
+    /\bsnapback\b/.test(blob) ||
+    /\bvisor\b/.test(blob) ||
+    /\btuque\b/.test(blob) ||
+    /\bsun hat\b/.test(blob) ||
+    /\bcowboy hat\b/.test(blob) ||
+    /\btrucker hat\b/.test(blob)
+  )
+}
+
+/** Remove hat/headwear rows after shoe merging (catalog does not sell hats). */
+export function excludeHatDetectionGroups(groups: DetectionGroup[]): DetectionGroup[] {
+  return groups.filter((g) => !isHatDetectionGroup(g))
 }
 
 function mergeShoeDetectionRun(list: DetectionGroup[]): DetectionGroup {
@@ -208,6 +237,11 @@ export function mergeConsecutiveShoeDetectionGroups(groups: DetectionGroup[]): D
   return out
 }
 
+/** Merge shoe rows, then drop hat/headwear detections for storefront display. */
+export function normalizeShopTheLookGroups(groups: DetectionGroup[]): DetectionGroup[] {
+  return excludeHatDetectionGroups(mergeConsecutiveShoeDetectionGroups(groups))
+}
+
 function detectionMetasWithBoxes(group: DetectionGroup): DetectionMeta[] {
   const list: DetectionMeta[] = []
   if (group.detection) list.push(group.detection)
@@ -234,6 +268,11 @@ function firstBoxMeta(group: DetectionGroup): DetectionMeta | null {
     }
   }
   return null
+}
+
+function topMatchProduct(group: DetectionGroup): Product | null {
+  const parsed = toProducts(Array.isArray(group.products) ? group.products : [])
+  return parsed.find((p) => p.id >= 1) ?? parsed[0] ?? null
 }
 
 const SHOP_THE_LOOK_INITIAL = 6
@@ -314,207 +353,300 @@ export function ShopTheLookResults({
     [returnPath],
   )
 
+  const floatingProduct =
+    selectedIdx !== null && selectedIdx >= 0 && selectedIdx < rows.length
+      ? topMatchProduct(rows[selectedIdx]!)
+      : null
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-7"
+      className="space-y-8 rounded-[24px] px-3 py-6 sm:px-5 sm:py-8"
+      style={{ backgroundColor: STL_SURFACE }}
     >
-      <div className="max-w-7xl mx-auto rounded-[28px] border border-[#e4d7cd] bg-gradient-to-br from-white via-[#f7f0eb] to-[#f3ece6] p-5 sm:p-6 shadow-[0_26px_70px_-42px_rgba(90,24,20,0.26)]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2a2623]/85">Style matching</p>
-            <h2 className="mt-1 font-display text-xl font-semibold text-slate-950">Shop this look by region</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Select a highlighted area on the outfit to focus one piece and open cleaner matching results.
-            </p>
+      <header className="mx-auto flex max-w-7xl flex-col gap-4 border-b border-[#e5ddd4] pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand shadow-sm">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+            AI styling
           </div>
-          <div className="flex items-center gap-2 text-xs sm:justify-end">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] px-3 py-1.5 font-semibold text-white shadow-sm animate-pulse">
-              <ScanSearch className="w-3.5 h-3.5" />
-              {rows.length} piece{rows.length !== 1 ? 's' : ''}
-            </span>
-            {shopTheLookStats?.totalDetections ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
-                {shopTheLookStats.coveredDetections}/{shopTheLookStats.totalDetections} detected
-              </span>
-            ) : null}
-          </div>
+          <h2
+            className="mt-3 font-display text-2xl font-bold tracking-[-0.03em] sm:text-3xl"
+            style={{ color: STL_TEXT }}
+          >
+            Shop this look
+          </h2>
+          <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-[#5c534c]">
+            Explore pieces mapped from your photo — tap highlights on the image or pick an item in the panel.
+          </p>
         </div>
-      </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/35 bg-white px-3.5 py-2 text-[12px] font-semibold text-brand shadow-sm transition-colors duration-[250ms] ease-out">
+            <ScanSearch className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+            {rows.length} piece{rows.length !== 1 ? 's' : ''}
+          </span>
+          {shopTheLookStats?.totalDetections ? (
+            <span className="rounded-full border border-[#e0d8cf] bg-white/90 px-3 py-2 text-[12px] font-medium text-[#6b5348]">
+              {shopTheLookStats.coveredDetections}/{shopTheLookStats.totalDetections} detected
+            </span>
+          ) : null}
+        </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-6 lg:grid-cols-[minmax(340px,430px)_minmax(0,1fr)]">
-        <aside className="space-y-4 lg:sticky lg:top-24 self-start">
-          <div className="rounded-3xl overflow-hidden border border-[#e2d4cb] bg-[#1d1412] shadow-[0_20px_42px_-20px_rgba(90,24,20,0.42)]">
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={outfitImageUrl}
-                alt="Outfit with detected pieces"
-                className={`w-full h-auto max-h-[76vh] object-contain object-top transition duration-500 ${
-                  selectedIdx !== null ? 'brightness-[0.92] saturate-[0.94] blur-[0.3px]' : ''
-                }`}
-                onLoad={(e) => {
-                  const el = e.currentTarget
-                  setImgNatural({ w: el.naturalWidth, h: el.naturalHeight })
-                }}
-              />
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] xl:gap-10">
+        {/* Main lifestyle image + interactive hotspots */}
+        <div className="relative min-w-0">
+          <div
+            className="relative w-full overflow-hidden rounded-[18px] shadow-[0_24px_60px_-28px_rgba(43,37,33,0.45),0_12px_28px_-18px_rgba(43,37,33,0.12)] ring-1 ring-black/[0.06]"
+            style={{ backgroundColor: '#ebe6df' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={outfitImageUrl}
+              alt="Outfit with AI-detected pieces highlighted"
+              className="w-full max-h-[min(88vh,920px)] object-contain object-center"
+              onLoad={(e) => {
+                const el = e.currentTarget
+                setImgNatural({ w: el.naturalWidth, h: el.naturalHeight })
+              }}
+            />
 
-              <motion.div
-                aria-hidden
-                initial={false}
-                animate={{ opacity: selectedIdx !== null ? 1 : 0 }}
-                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-                className="pointer-events-none absolute inset-0 bg-slate-950/8"
-              />
+            <div className="pointer-events-none absolute left-4 top-4 z-[5] flex flex-wrap gap-2">
+              <span className="rounded-full border border-black/15 bg-[#2b2521]/92 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_6px_20px_-8px_rgba(0,0,0,0.35)]">
+                AI detected items
+              </span>
+            </div>
 
-              {selectedIdx !== null && selectedCrop ? (
-                <motion.div
-                  key={`focus-region-${selectedIdx}`}
-                  aria-hidden
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-none absolute z-20 rounded-xl border border-[#d8c6bb] bg-[#99624E]/10 ring-1 ring-white/75 shadow-[0_10px_24px_-16px_rgba(90,24,20,0.48)]"
-                  style={{
-                    left: `${selectedCrop.left}%`,
-                    top: `${selectedCrop.top}%`,
-                    width: `${selectedCrop.width}%`,
-                    height: `${selectedCrop.height}%`,
-                  }}
-                />
-              ) : null}
-
-              {canDrawBoxes &&
-                rows.map((group, i) => {
-                  const meta = firstBoxMeta(group)
-                  const box = meta?.box
-                  if (!box) return null
+            {canDrawBoxes &&
+              rows.flatMap((group, rowIdx) => {
+                const metas = detectionMetasWithBoxes(group).filter((meta) => {
+                  const box = meta.box
+                  if (!box) return false
+                  return (
+                    [box.x1, box.y1, box.x2, box.y2].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+                    box.x2 > box.x1 &&
+                    box.y2 > box.y1
+                  )
+                })
+                return metas.map((meta, boxIdx) => {
+                  const box = meta.box!
                   const p = boxStylePercents(box, refW, refH)
-                  const isActive = selectedIdx === i || (selectedIdx === null && hoveredIdx === i)
-                  const isDimmed = selectedIdx !== null && selectedIdx !== i
-                  const text = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
+                  const isSelected = selectedIdx === rowIdx
+                  const label = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
                   return (
                     <button
-                      key={`hotspot-${i}-${group.detectionIndex ?? ''}`}
+                      key={`hotspot-${rowIdx}-${boxIdx}-${group.detectionIndex ?? ''}`}
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        focusDetection(i)
+                        focusDetection(rowIdx)
                       }}
-                      onMouseEnter={() => setHoveredIdx(i)}
-                      onMouseLeave={() => setHoveredIdx((cur) => (cur === i ? null : cur))}
-                      aria-label={`Select ${text}`}
-                      className={`absolute z-10 overflow-hidden rounded-xl border text-left transition-all duration-200 ${
-                        isDimmed ? 'opacity-30' : 'opacity-100'
-                      } ${
-                        isActive
-                          ? 'border-[#d8c6bb] shadow-[0_0_0_1px_rgba(216,198,187,0.85),0_14px_24px_-16px_rgba(90,24,20,0.72)]'
-                          : 'border-white/80 hover:border-[#d8c6bb]'
+                      onMouseEnter={() => setHoveredIdx(rowIdx)}
+                      onMouseLeave={() => setHoveredIdx((cur) => (cur === rowIdx ? null : cur))}
+                      aria-label={`Select ${label}`}
+                      aria-pressed={isSelected}
+                      className={`absolute box-border rounded-[12px] border-2 border-brand bg-transparent shadow-none transition-[transform,box-shadow,border-color] duration-[250ms] ease-out [will-change:transform] hover:z-[22] hover:scale-[1.03] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] ${
+                        isSelected
+                          ? 'z-[21] cursor-pointer scale-[1.035] hover:border-brand shadow-[0_0_0_3px_rgb(61_48_48/0.2),0_0_28px_rgb(61_48_48/0.28)]'
+                          : 'z-10 cursor-pointer hover:border-brand-hover'
                       }`}
                       style={{
                         left: `${p.left}%`,
                         top: `${p.top}%`,
-                        width: `${Math.max(p.width, 7)}%`,
-                        height: `${Math.max(p.height, 7)}%`,
+                        width: `${Math.max(p.width, 6)}%`,
+                        height: `${Math.max(p.height, 6)}%`,
                       }}
                     >
                       <span
-                        className={`absolute left-1.5 top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
-                          isActive ? 'bg-[#2a2623] text-white shadow-sm' : 'bg-white/92 text-slate-800'
+                        className={`pointer-events-none absolute left-2 top-2 inline-flex h-6 min-w-6 select-none items-center justify-center rounded-full px-1.5 text-[11px] font-bold shadow-sm transition-colors duration-[250ms] ease-out ${
+                          isSelected
+                            ? 'bg-brand text-white ring-2 ring-white/95'
+                            : 'bg-white text-[#2B2521] ring-2 ring-black/[0.06]'
+                        }`}
+                      >
+                        {rowIdx + 1}
+                      </span>
+                    </button>
+                  )
+                })
+              })}
+
+            <AnimatePresence>
+              {selectedIdx !== null &&
+              selectedCrop &&
+              floatingProduct &&
+              floatingProduct.id >= 1 ? (
+                <motion.div
+                  key={`stl-pop-${selectedIdx}-${floatingProduct.id}`}
+                  role="dialog"
+                  aria-label="Top match for selection"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="stl-product-pop absolute z-[35] w-[min(296px,calc(100%-1.75rem))]"
+                  style={{
+                    left: `${selectedCrop.left + selectedCrop.width / 2}%`,
+                    top: `${selectedCrop.top + selectedCrop.height}%`,
+                    transform: 'translate(-50%, 12px)',
+                    perspective: '1000px',
+                  }}
+                >
+                  <div className="[transform-style:preserve-3d]">
+                    <div
+                      className="overflow-hidden rounded-2xl border border-[#e8e4df] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] transition-[transform] duration-[250ms] ease-out hover:[transform:perspective(1000px)_rotateY(0deg)] motion-reduce:transition-none"
+                      style={{
+                        transform: 'perspective(1000px) rotateY(8deg)',
+                        transformOrigin: 'center center',
+                      }}
+                    >
+                      <div className="flex gap-3.5 p-3.5 sm:p-4">
+                        <div className="relative h-[76px] w-[60px] shrink-0 overflow-hidden rounded-xl bg-[#ece8e3] ring-1 ring-black/[0.04]">
+                          {floatingProduct.image_cdn || floatingProduct.image_url ? (
+                            <NextImage
+                              src={(floatingProduct.image_cdn || floatingProduct.image_url) as string}
+                              alt={floatingProduct.title}
+                              fill
+                              className="object-cover"
+                              sizes="60px"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          {floatingProduct.brand ? (
+                            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
+                              {floatingProduct.brand}
+                            </p>
+                          ) : null}
+                          <p className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-snug text-[#2B2521]">
+                            {floatingProduct.title}
+                          </p>
+                          {formatProductPrice(floatingProduct) ? (
+                            <p className="mt-1 text-[14px] font-semibold tabular-nums text-[#2B2521]">
+                              {formatProductPrice(floatingProduct)}
+                            </p>
+                          ) : null}
+                          <Link
+                            href={productHref(floatingProduct.id)}
+                            className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-brand px-4 py-2 text-[12px] font-semibold text-white shadow-md transition-all duration-[250ms] ease-out hover:bg-brand-hover hover:shadow-[0_10px_24px_-8px_rgb(61_48_48/0.45)] active:scale-[0.98]"
+                          >
+                            View item
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          <p className="mt-3 text-center text-[12px] text-[#6b5348] sm:text-left">
+            Drag isn't needed — click a framed region to preview our closest catalog match.
+          </p>
+        </div>
+
+        {/* Right: detected items panel */}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)]">
+          <div className="rounded-[18px] border border-[#e0d8cf] bg-white p-4 shadow-[0_16px_40px_-28px_rgba(43,37,33,0.2)]">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">Wardrobe map</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIdx(null)
+                  setHighlightedIdx(null)
+                }}
+                className="text-[12px] font-semibold text-brand underline-offset-4 transition-opacity duration-[250ms] ease-out hover:underline"
+              >
+                Show all
+              </button>
+            </div>
+            <p className="mt-1 font-display text-lg font-semibold text-[#2B2521]">AI detected items</p>
+            <p className="mt-1 text-[13px] leading-snug text-[#6b5348]">
+              Select a piece to spotlight its crop and scroll matches below.
+            </p>
+
+            <ul className="mt-4 flex max-h-[min(52vh,440px)] flex-col gap-2 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand/35">
+              {rows.map((group, i) => {
+                const label = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
+                const match = topMatchProduct(group)
+                const img = match?.image_cdn || match?.image_url || ''
+                const price = match ? formatProductPrice(match) : null
+                const active = selectedIdx === i
+                return (
+                  <li key={`panel-${i}-${group.detectionIndex ?? ''}`}>
+                    <button
+                      type="button"
+                      onClick={() => focusDetection(i)}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-[250ms] ease-out ${
+                        active
+                          ? 'border-brand bg-white shadow-[0_0_0_2px_rgb(61_48_48/0.2),0_12px_36px_-16px_rgb(61_48_48/0.35)]'
+                          : 'border-transparent bg-[#F5F1EC] hover:border-brand/35 hover:bg-white'
+                      }`}
+                    >
+                      <div className="relative h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-[#ebe6df] ring-1 ring-black/[0.05]">
+                        {img ? (
+                          <NextImage src={img} alt="" fill className="object-cover" sizes="44px" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-[10px] text-[#9c9088]">—</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-semibold text-[#2B2521]">{label}</p>
+                        <p className="truncate text-[12px] text-brand">Match preview</p>
+                        {price ? (
+                          <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-[#2B2521]">{price}</p>
+                        ) : (
+                          <p className="mt-0.5 text-[12px] text-[#9c9088]">Catalog match</p>
+                        )}
+                      </div>
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold transition-colors duration-[250ms] ease-out ${
+                          active ? 'bg-brand text-white' : 'bg-white text-brand ring-1 ring-brand/25'
                         }`}
                       >
                         {i + 1}
                       </span>
-                      <span
-                        className={`pointer-events-none absolute inset-0 ${
-                          isActive
-                            ? 'bg-[#2a2623]/20 ring-2 ring-[#d8c6bb]'
-                            : 'bg-slate-100/5 ring-1 ring-white/80 hover:bg-[#99624E]/16'
-                        }`}
-                      />
                     </button>
-                  )
-                })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_12px_30px_-26px_rgba(15,23,42,0.6)]">
-            <div className="flex gap-2 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedIdx(null)
-                  setHighlightedIdx(null)
-                }}
-                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
-                  selectedIdx === null
-                    ? 'border-[#d8c6bb] bg-[#f7f0eb] text-[#2a2623]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                All
-              </button>
-              {rows.map((group, i) => {
-                const text = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
-                const active = selectedIdx === i
-                return (
-                  <button
-                    key={`tag-${i}-${group.detectionIndex ?? ''}`}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      focusDetection(i)
-                    }}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
-                      active
-                        ? 'border-[#99624E] bg-white text-slate-900 ring-2 ring-[#eadfd7]'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {text}
-                  </button>
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           </div>
-
-          {selectedGroup ? (
-            <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.75)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Focused region</p>
-              <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                {formatDetectionLabel(String(selectedGroup.detection?.label || selectedGroup.category || 'Item'))}
-              </p>
-            </div>
-          ) : null}
         </aside>
+      </div>
 
-        <section className="space-y-4">
-          <div className="rounded-[22px] border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_18px_38px_-30px_rgba(15,23,42,0.65)]">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Product matches</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900 truncate">
-                  {selectedGroup
-                    ? formatDetectionLabel(String(selectedGroup.detection?.label || selectedGroup.category || 'Item'))
-                    : 'All detected pieces'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedIdx(null)
-                  setHighlightedIdx(null)
-                }}
-                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-              >
-                Reset
-              </button>
-            </div>
+      <section className="mx-auto max-w-7xl space-y-5 pt-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[15px] leading-snug text-[#5c534c]">
+              Curated matches for{' '}
+              <span className="font-semibold text-[#2B2521]">
+                {selectedGroup
+                  ? formatDetectionLabel(String(selectedGroup.detection?.label || selectedGroup.category || 'Item'))
+                  : 'every detected piece'}
+              </span>
+            </p>
+            <p className="mt-1 text-[13px] text-[#8a7f76]">
+              Similar silhouettes and textures from our catalog — refined per region.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedIdx(null)
+              setHighlightedIdx(null)
+            }}
+            className="inline-flex shrink-0 items-center self-start rounded-full border border-brand/40 bg-white px-4 py-2 text-[12px] font-semibold text-brand transition-[background-color,transform] duration-[250ms] ease-out hover:bg-[#efeae4] active:scale-[0.98]"
+          >
+            Clear selection
+          </button>
+        </div>
 
-          {displayIndices.map((i) => {
+        {displayIndices.map((i) => {
             const group = rows[i]
             const label = formatDetectionLabel(String(group.detection?.label || group.category || 'Item'))
             const catKeyRaw = String(group.category || 'default').toLowerCase()
@@ -553,36 +685,36 @@ export function ShopTheLookResults({
                   delay: i * 0.04,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className={`rounded-[22px] border bg-white p-4 sm:p-5 ${
+                className={`rounded-[18px] border bg-white p-4 sm:p-5 shadow-[0_6px_28px_-16px_rgba(42,38,35,0.12)] transition-[box-shadow,border-color] duration-[250ms] ease-out ${
                   highlighted
-                    ? 'border-[#d8c6bb] ring-1 ring-[#eadfd7] shadow-[0_0_0_1px_rgba(216,198,187,0.56),0_28px_54px_-34px_rgba(90,24,20,0.28)]'
+                    ? 'border-brand ring-2 ring-brand/22 shadow-[0_12px_40px_-18px_rgb(61_48_48/0.28)]'
                     : selected
-                    ? 'border-[#d8c6bb] ring-1 ring-[#eadfd7] shadow-[0_24px_44px_-34px_rgba(90,24,20,0.3)]'
-                    : 'border-slate-200 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.65)]'
+                      ? 'border-brand/45 shadow-[0_8px_32px_-14px_rgb(61_48_48/0.18)]'
+                      : 'border-[#e8e2da]'
                 }`}
               >
                 <div className="mb-4 flex items-start gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-700 ring-1 ${style.ring}`}>
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-[#faf9f7] text-[#2a2623] ring-1 ring-[#ebe8e4] ${style.ring}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-display text-base font-semibold text-slate-900 truncate">{label}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {unique.length} curated match{unique.length !== 1 ? 'es' : ''}
+                    <p className="font-display text-[15px] font-semibold text-[#2a2623] truncate">{label}</p>
+                    <p className="mt-0.5 text-[13px] text-[#8a847d]">
+                      {unique.length} match{unique.length !== 1 ? 'es' : ''}
                     </p>
                   </div>
                   <span
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
                       selected
-                        ? 'border-[#d8c6bb] bg-[#f7f0eb] text-[#2a2623]'
-                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                        ? 'border-[#d8d2cd] bg-[#ebe6e0] text-[#2a2623]'
+                        : 'border-[#e8e4df] bg-white text-[#6b6560]'
                     }`}
                   >
-                    From hotspot {i + 1}
+                    Region {i + 1}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
                   {visibleProducts.map((product) => {
                     const img = product.image_cdn || product.image_url || ''
                     const price = formatProductPrice(product)
@@ -627,7 +759,7 @@ export function ShopTheLookResults({
                           [sectionKey]: (prev[sectionKey] ?? SHOP_THE_LOOK_INITIAL) + SHOP_THE_LOOK_STEP,
                         }))
                       }
-                      className="inline-flex items-center gap-2 rounded-lg border border-[#d8c6bb] bg-white px-4 py-2 text-sm font-semibold text-[#2a2623] hover:bg-[#f7f0eb] transition-colors"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-brand/35 bg-white px-5 py-2.5 text-[13px] font-semibold text-brand hover:bg-brand-muted transition-colors"
                     >
                       <ChevronDown className="w-4 h-4" />
                       Show more
@@ -637,8 +769,7 @@ export function ShopTheLookResults({
               </motion.section>
             )
           })}
-        </section>
-      </div>
+      </section>
     </motion.div>
   )
 }

@@ -5,11 +5,11 @@ import { useId } from 'react'
 
 type LevelColor = 'green' | 'yellow' | 'red'
 
-/** Match Discover / search UI: blue primary, warm accent for caution states */
+/** Warm brown / beige arcs — matches brand compare studio (no orange or blue). */
 const GRADIENT_STOPS: Record<LevelColor, [string, string]> = {
-  green: ['#1e40af', '#2563eb'],
-  yellow: ['#d97706', '#ea580c'],
-  red: ['#e11d48', '#be185d'],
+  green: ['#5c4033', '#7d5a48'],
+  yellow: ['#8b6a54', '#a18066'],
+  red: ['#c4ab93', '#d9cbb9'],
 }
 
 export function ScoreRing({
@@ -30,11 +30,11 @@ export function ScoreRing({
   const offset = circ - (pct / 100) * circ
 
   const [c0, c1] = GRADIENT_STOPS[color]
-  const trackColor = color === 'green' ? '#f5f3ff' : color === 'yellow' ? '#fffbeb' : '#fff1f2'
+  const trackColor = color === 'green' ? '#ede8e2' : color === 'yellow' ? '#f2ebe4' : '#f5f0ea'
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative drop-shadow-[0_4px_14px_rgba(37,99,235,0.18)]" style={{ width: size, height: size }}>
+      <div className="relative drop-shadow-[0_4px_12px_rgba(92,64,51,0.22)]" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <defs>
             <linearGradient id={`sr-${gid}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -59,14 +59,14 @@ export function ScoreRing({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
-            className="text-xl font-bold tabular-nums tracking-tight text-neutral-900"
+            className="text-xl font-bold tabular-nums tracking-tight text-[#2a2623]"
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.45, duration: 0.35 }}
           >
             {score}
           </motion.span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400">score</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[#7a726b]">score</span>
         </div>
       </div>
       {label ? <span className="text-[10px] font-medium text-neutral-500 text-center max-w-[5.5rem] leading-tight">{label}</span> : null}

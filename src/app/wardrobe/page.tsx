@@ -16,6 +16,7 @@ import {
   patchBodyFromMetaForm,
   wardrobeMetaFormFromItem,
 } from '@/types/wardrobeItem'
+import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 type WardrobeItem = WardrobeItemDto
 
@@ -26,6 +27,7 @@ interface CompleteLookSuggestion {
   brand?: string
   category?: string
   price_cents?: number
+  currency?: string
   image_url?: string
   image_cdn?: string
   score?: number
@@ -246,15 +248,12 @@ export default function WardrobePage() {
     </div>
   )
 
-  const formatPrice = (cents: number, currency = 'USD') =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0 }).format(cents / 100)
-
   if (!isAuth) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md text-center">
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-15 blur-xl" />
+            <div className="absolute inset-0 rounded-2xl bg-brand opacity-15 blur-xl" />
             <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
               <Shirt className="w-9 h-9 text-[#2a2623]" />
             </div>
@@ -263,7 +262,7 @@ export default function WardrobePage() {
           <p className="text-neutral-500 mb-8">Upload your clothes, get style suggestions, and complete looks with AI.</p>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white font-semibold shadow-lg shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] active:scale-[0.97] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white font-semibold shadow-lg shadow-brand/20 hover:bg-brand-hover active:scale-[0.97] transition-all"
           >
             Sign in
           </a>
@@ -309,7 +308,7 @@ export default function WardrobePage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white shadow-md shadow-[#2a2623]/20">
+                <div className="p-2.5 rounded-xl bg-brand text-white shadow-md shadow-brand/20">
                   <Shirt className="w-5 h-5" />
                 </div>
                 <div>
@@ -332,7 +331,7 @@ export default function WardrobePage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={addMutation.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white font-semibold shadow-md shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] active:scale-[0.97] transition-all disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand text-white font-semibold shadow-md shadow-brand/20 hover:bg-brand-hover active:scale-[0.97] transition-all disabled:opacity-60"
                 >
                   {addMutation.isPending ? (
                     <>
@@ -381,7 +380,7 @@ export default function WardrobePage() {
             className="py-16 max-w-lg mx-auto text-center"
           >
             <div className="relative w-24 h-24 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#2a2623] to-[#99624E] opacity-15 blur-xl" />
+              <div className="absolute inset-0 rounded-3xl bg-brand opacity-15 blur-xl" />
               <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
                 <Shirt className="w-10 h-10 text-[#2a2623]" />
               </div>
@@ -392,7 +391,7 @@ export default function WardrobePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={addMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white font-semibold shadow-lg shadow-[#2a2623]/20 hover:from-[#1a1816] hover:to-[#7d4b3a] active:scale-[0.97] transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white font-semibold shadow-lg shadow-brand/20 hover:bg-brand-hover active:scale-[0.97] transition-all"
               >
                 <Upload className="w-4 h-4" />
                 Choose photo
@@ -400,7 +399,7 @@ export default function WardrobePage() {
               <button
                 onClick={() => cameraInputRef.current?.click()}
                 disabled={addMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#f4ece6] text-[#2a2623] font-semibold hover:bg-[#eadfd7] active:scale-[0.97] transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-brand bg-white text-brand font-semibold hover:bg-brand-muted active:scale-[0.97] transition-all"
               >
                 <Camera className="w-4 h-4" />
                 Take a photo
@@ -513,7 +512,7 @@ export default function WardrobePage() {
               {/* Modal header */}
               <div className="shrink-0 z-10 bg-white/90 backdrop-blur-md border-b border-neutral-100 px-6 py-4 flex items-center justify-between rounded-t-3xl">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-[#2a2623] to-[#99624E] text-white">
+                  <div className="p-2 rounded-xl bg-brand text-white">
                     <Wand2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -577,7 +576,10 @@ export default function WardrobePage() {
                         const cents = s.price_cents
                         const priceLabel =
                           typeof cents === 'number' && Number.isFinite(cents) && cents > 0
-                            ? formatPrice(Math.round(cents))
+                            ? formatStoredPriceAsUsd(Math.round(cents), s.currency, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              })
                             : '—'
                         return (
                       <motion.div
@@ -653,7 +655,7 @@ export default function WardrobePage() {
                               ),
                             )
                           }
-                          className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-2.5 rounded-full border border-[#d8c6bb] bg-white text-sm font-semibold text-[#2a2623] hover:bg-[#f7f0eb]"
+                          className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-2.5 rounded-full border-2 border-brand bg-white text-sm font-semibold text-brand hover:bg-brand-muted"
                         >
                           <ChevronDown className="w-4 h-4" />
                           Show more
@@ -725,7 +727,7 @@ export default function WardrobePage() {
                   type="button"
                   disabled={addMutation.isPending}
                   onClick={() => addMutation.mutate({ file: pendingUploadFile, meta: uploadMeta })}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-hover disabled:opacity-60"
                 >
                   {addMutation.isPending ? 'Uploading…' : 'Upload'}
                 </button>
@@ -784,7 +786,7 @@ export default function WardrobePage() {
                   type="button"
                   disabled={editMutation.isPending}
                   onClick={() => editMutation.mutate({ id: editingItem.id, meta: editMeta })}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#2a2623] to-[#99624E] text-white text-sm font-semibold disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-hover disabled:opacity-60"
                 >
                   {editMutation.isPending ? 'Saving…' : 'Save'}
                 </button>
