@@ -1,8 +1,9 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useCallback, useEffect, useMemo, memo } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query'
 import { getStablePagination } from '@/lib/shopPagination'
 import { compressImageForShopUpload } from '@/lib/image/compressImageForShopUpload'
 import { motion } from 'framer-motion'
@@ -12,25 +13,39 @@ import {
   Sparkles,
   Zap,
   ArrowRight,
+  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Camera,
   Upload,
   SlidersHorizontal,
+  Loader2,
 } from 'lucide-react'
 import { api, type ApiResponse } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { ProductCard } from '@/components/product/ProductCard'
 import { SearchBar } from '@/components/search/SearchBar'
 import { TextSearchProductCard } from '@/components/search/TextSearchProductCard'
+import { DiscoverHeroMasonry } from '@/components/search/DiscoverHeroMasonry'
 import {
-  ShopTheLookResults,
   normalizeShopTheLookGroups,
   type DetectionGroup,
   type ShopTheLookStats,
-} from '@/components/search/ShopTheLookResults'
+} from '@/lib/shopTheLookNormalize'
 import { useCompareStore } from '@/store/compare'
 import type { Product } from '@/types/product'
+import { mergeVendorFromHit } from '@/lib/vendorLogo'
+import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
+
+const ShopTheLookResultsPanel = dynamic(() => import('@/components/search/ShopTheLookResults'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center gap-3 py-16 min-h-[200px]" aria-busy>
+      <Loader2 className="h-9 w-9 animate-spin text-brand" aria-hidden />
+      <p className="text-sm text-neutral-500">Loading shop-the-look…</p>
+    </div>
+  ),
+})
 
 const TRYON_SHOP_SESSION_KEY = 'styleai_tryon_shop_payload'
 
@@ -46,12 +61,10 @@ type HydratedShopPayload = {
 const SearchProductGrid = memo(function SearchProductGrid({
   products,
   addToCompare,
-  inCompare,
   fromReturnPath,
 }: {
   products: Product[]
   addToCompare: (id: number) => void
-  inCompare: (id: number) => boolean
   fromReturnPath?: string
 }) {
   return (
@@ -64,7 +77,6 @@ const SearchProductGrid = memo(function SearchProductGrid({
             snappyMotion
             fromReturnPath={fromReturnPath}
             onAddToCompare={addToCompare}
-            inCompare={inCompare(product.id)}
           />
         </div>
       ))}
@@ -201,6 +213,7 @@ function toProducts(results: unknown[]): Product[] {
         image_cdn: (src.image_cdn ?? src.imageCdn ?? raw.image_cdn ?? null) as string | null,
         brand: (src.brand ?? raw.brand) as string | null,
         category: (src.category ?? raw.category) as string | null,
+        ...mergeVendorFromHit(src, raw),
       } as Product
     })
 }
@@ -231,6 +244,15 @@ function SearchContent() {
     return qs ? `/search?${qs}` : '/search'
   }, [searchParams])
 
+  useEffect(() => {
+    const y = readAndClearListingScrollY(discoverReturnPath)
+    if (y == null) return
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [discoverReturnPath])
+
   const goSearchPage = useCallback(
     (p: number) => {
       const next = new URLSearchParams(searchParams.toString())
@@ -256,7 +278,6 @@ function SearchContent() {
   )
 
   const addToCompare = useCompareStore((s) => s.add)
-  const inCompare = useCompareStore((s) => s.has)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
@@ -396,7 +417,7 @@ function SearchContent() {
       }
     },
     enabled: textSearchActive,
-    placeholderData: (previousData) => previousData,
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
     gcTime: 600_000,
     refetchOnWindowFocus: false,
@@ -427,13 +448,14 @@ function SearchContent() {
   const shopImageMeta = shopPayload?.shopImageMeta ?? hydratedShop?.shopImageMeta
   const shopTheLookStats = shopPayload?.shopTheLookStats ?? hydratedShop?.shopTheLookStats
 
-  /** Don’t replace the grid with skeletons while paginating — `placeholderData` keeps prior `data` during fetch. */
+  /** Don’t replace the grid with skeletons while loading — `keepPreviousData` keeps prior page during fetch. */
   const textSearchBlocking =
-    textSearchActive && !textSearchPaged.data && textSearchPaged.fetchStatus === 'fetching'
+    textSearchActive &&
+    !textSearchPaged.data &&
+    (textSearchPaged.isPending || textSearchPaged.isFetching)
 
-  const isLoadingState = textSearchActive
-    ? textSearchBlocking
-    : mode === 'shop' && !!imageFile && shopImageSearch.isPending
+  /** Shop image analysis only — text search uses inline loading so the hero strip stays put. */
+  const isLoadingState = mode === 'shop' && !!imageFile && shopImageSearch.isPending
 
   const searchFailed = textSearchActive
     ? textSearchPaged.isError
@@ -488,10 +510,89 @@ function SearchContent() {
   const shopHideHowItWorks =
     shopImageSearch.status !== 'idle' || Boolean(hydratedShop) || shopDetections.length > 0
 
+  const discoverLanding = mode === 'text' && !q.trim()
+  const discoverTextCompactRock = mode === 'text' && Boolean(q.trim())
+
   return (
-    <div className="min-h-screen bg-[#F9F8F6]">
+    <div className="min-h-screen bg-white">
+      {discoverLanding ? (
+        <motion.header
+          initial={{ clipPath: 'inset(0 0 100% 0)' }}
+          animate={{ clipPath: 'inset(0 0 0% 0)' }}
+          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          className="-mt-[72px] relative w-full discover-hero-premium-bg overflow-x-clip"
+        >
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-[72px] pb-[72px] sm:px-6 lg:px-10">
+            <div className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-col justify-center lg:col-span-6 lg:text-left"
+              >
+                <p className="mx-auto mb-2 inline-flex max-w-full items-center justify-center rounded-full border border-white/40 bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2B2521]/90 backdrop-blur-sm sm:px-3.5 sm:text-[10px] lg:mx-0">
+                  AI fashion discovery
+                </p>
+                <h1 className="font-display text-[clamp(1.95rem,4.9vw,3rem)] font-extrabold leading-[0.98] tracking-[-0.03em] text-white drop-shadow-[0_2px_16px_rgba(43,37,33,0.18)]">
+                  Discover
+                </h1>
+                <p className="mx-auto mt-2 max-w-lg text-[13px] leading-snug text-[#2B2521]/88 sm:mt-3 sm:text-[14px] lg:mx-0">
+                  Search naturally. Discover curated pieces. Build your look with AI.
+                </p>
+                <div className="mx-auto mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 lg:mx-0 lg:justify-start">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      document.querySelector<HTMLInputElement>('#discover-hero-search input')?.focus()
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-[#5c493a] px-5 py-2.5 text-[14px] font-semibold text-[#F8F3EE] shadow-[0_8px_24px_-10px_rgba(43,37,33,0.3)] transition hover:bg-[#4d3f35] active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[15px]"
+                  >
+                    Start discovering
+                  </button>
+                  <Link
+                    href="/search?mode=shop"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#2B2521]/22 bg-white/30 px-5 py-2.5 text-[14px] font-semibold text-[#2B2521] backdrop-blur-md transition hover:border-[#2B2521]/35 hover:bg-white/45 sm:px-6 sm:py-3 sm:text-[15px]"
+                  >
+                    Shop the look
+                    <ArrowUpRight className="h-4 w-4 opacity-80" aria-hidden />
+                  </Link>
+                </div>
+                <div className="mx-auto mt-3 w-full max-w-xl lg:mx-0 lg:max-w-none sm:mt-4">
+                  <SearchBar
+                    variant="discoverHero"
+                    rotatingPlaceholders={TRY_SEARCHING_TAGS}
+                    initialQuery={q}
+                    isLoading={textSearchActive && textSearchPaged.isFetching}
+                  />
+                </div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+                className="relative flex w-full shrink-0 flex-col items-center justify-center min-h-0 lg:col-span-6"
+              >
+                <div className="relative w-full max-w-[min(92vw,380px)] sm:max-w-[420px] lg:max-w-[460px] xl:max-w-[500px] max-h-[min(52vh,520px)] sm:max-h-[min(56vh,560px)] h-[min(52vh,520px)] sm:h-[min(56vh,560px)]">
+                  <DiscoverHeroMasonry
+                    className="h-full w-full min-h-0 max-h-full"
+                    variant="full"
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </motion.header>
+      ) : discoverTextCompactRock ? (
+        <div className="-mt-[72px] w-full discover-hero-premium-bg overflow-x-clip">
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-[72px] pb-[72px] sm:px-6 lg:px-10">
+            <div className="relative mx-auto w-full max-w-md py-1 sm:max-w-lg">
+              <DiscoverHeroMasonry className="h-full w-full min-h-0" variant="compact" />
+            </div>
+          </div>
+        </div>
+      ) : null}
       {mode === 'text' ? (
-        <header className="border-b border-[#ebe8e4] bg-[#F9F8F6]">
+        <header className="border-b border-[#ebe8e4] bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-5">
             {!q.trim() ? (
               <motion.section
@@ -501,7 +602,10 @@ function SearchContent() {
                 aria-labelledby="text-search-how-it-works-heading"
                 className="max-w-5xl mx-auto mb-6 p-6 rounded-2xl bg-gradient-to-r from-[#f7f0eb] via-[#f3ece6] to-[#f7f0eb] border border-[#eadfd7]"
               >
-                <p id="text-search-how-it-works-heading" className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center">
+                <p
+                  id="text-search-how-it-works-heading"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#2a2623] mb-4 text-center"
+                >
                   How it works
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -511,8 +615,8 @@ function SearchContent() {
                         <s.Icon className="w-4 h-4 text-[#2a2623]" aria-hidden />
               </div>
               <div>
-                        <p className="text-xs font-bold text-[#3d3030] mb-0.5">{s.step}</p>
-                        <p className="text-sm font-semibold text-[#2a2623]">{s.title}</p>
+                        <p className="text-xs font-semibold text-[#3d3030] mb-0.5">{s.step}</p>
+                        <p className="text-sm font-medium text-[#2a2623]">{s.title}</p>
                         <p className="text-xs text-[#7a726b] mt-0.5">{s.desc}</p>
               </div>
             </div>
@@ -526,44 +630,55 @@ function SearchContent() {
               transition={{ duration: 0.45, delay: 0.06 }}
               className="text-center max-w-3xl mx-auto"
             >
-              <h1 className="font-display text-[1.85rem] sm:text-[2.35rem] font-bold text-[#2a2623] tracking-[-0.02em]">
-                Text Search
-              </h1>
-              <p className="mt-3 text-[15px] sm:text-base text-[#7a726b] leading-relaxed px-2">
-                Find exactly what you&apos;re looking for using natural language.
-              </p>
-              <div className="mt-8 px-1">
-            <SearchBar
-                  variant="textSearch"
-                  placeholder='Try "white linen shirt for summer"'
-              initialQuery={q}
-              isLoading={textSearchActive && textSearchPaged.isFetching}
-            />
-              </div>
-              <div className="mt-5 flex flex-wrap justify-center gap-2.5 max-w-lg mx-auto">
-              {modeTabs.map((tab, i) => (
-                <motion.a
-                  key={tab.key}
-                  href={tab.href}
+              {q.trim() ? (
+                <>
+                  <h1 className="font-display text-[1.95rem] sm:text-[2.5rem] font-semibold text-[#2a2623] tracking-[-0.02em]">
+                    Discover
+                  </h1>
+                  <p className="mt-3 text-base sm:text-lg text-[#6b6560] leading-relaxed px-2 font-normal">
+                    Find exactly what you&apos;re looking for using natural language.
+                  </p>
+                </>
+              ) : null}
+              {!discoverLanding || q.trim() ? (
+                <div className={q.trim() ? 'mt-8 px-1' : 'mt-2 px-1 sm:mt-3'}>
+                  <SearchBar
+                    variant="textSearch"
+                    placeholder='Try "white linen shirt for summer"'
+                    initialQuery={q}
+                    isLoading={textSearchActive && textSearchPaged.isFetching}
+                  />
+                </div>
+              ) : null}
+              <div className={`flex flex-wrap justify-center gap-3 sm:gap-4 max-w-2xl mx-auto ${q.trim() ? 'mt-6' : 'mt-5'}`}>
+                {modeTabs.map((tab, i) => (
+                  <motion.div
+                    key={tab.key}
                     initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.08 + i * 0.04 }}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2.5 text-[13px] font-semibold border transition-all ${
-                    mode === tab.key
-                        ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623] shadow-sm'
-                        : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-[#d4cdc4] hover:text-[#2a2623]'
-                    }`}
                   >
-                    <tab.Icon className="w-4 h-4 shrink-0 opacity-80" aria-hidden />
-                    <span>{tab.label}</span>
-                  </motion.a>
+                    <Link
+                      href={tab.href}
+                      scroll={false}
+                      prefetch={true}
+                      className={`inline-flex items-center gap-2.5 rounded-full px-6 sm:px-8 py-3.5 sm:py-4 text-base sm:text-lg font-medium border transition-all ${
+                        mode === tab.key
+                          ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623] shadow-sm'
+                          : 'bg-white border-[#e8e4df] text-[#5c534c] hover:border-[#d4cdc4] hover:text-[#2a2623]'
+                      }`}
+                    >
+                      <tab.Icon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-85" aria-hidden />
+                      <span>{tab.label}</span>
+                    </Link>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>
           </div>
         </header>
       ) : (
-        <header className="border-b border-[#ebe8e4] bg-[#F9F8F6]">
+        <header className="border-b border-[#ebe8e4] bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-5">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -580,7 +695,7 @@ function SearchContent() {
                 >
                   <p
                     id="discover-how-it-works-heading"
-                    className="text-xs font-bold uppercase tracking-wider text-[#2a2623] mb-4 text-center"
+                    className="text-xs font-semibold uppercase tracking-wider text-[#2a2623] mb-4 text-center"
                   >
                     How it works
                   </p>
@@ -591,8 +706,8 @@ function SearchContent() {
                           <s.Icon className="w-4 h-4 text-[#2a2623]" aria-hidden />
                   </div>
                         <div>
-                          <p className="text-xs font-bold text-[#3d3030] mb-0.5">{s.step}</p>
-                          <p className="text-sm font-semibold text-[#2a2623]">{s.title}</p>
+                          <p className="text-xs font-semibold text-[#3d3030] mb-0.5">{s.step}</p>
+                          <p className="text-sm font-medium text-[#2a2623]">{s.title}</p>
                           <p className="text-xs text-[#7a726b] mt-0.5">{s.desc}</p>
                         </div>
                       </div>
@@ -607,13 +722,13 @@ function SearchContent() {
                 transition={{ duration: 0.45, delay: 0.06 }}
                 className="text-center max-w-3xl mx-auto"
               >
-                <h1 className="font-display text-[1.85rem] sm:text-[2.35rem] font-bold text-[#2a2623] tracking-[-0.02em]">
+                <h1 className="font-display text-[1.95rem] sm:text-[2.5rem] font-semibold text-[#2a2623] tracking-[-0.02em]">
                   Discover
                 </h1>
-                <p className="mt-3 text-[15px] sm:text-base text-[#7a726b] leading-relaxed px-2">
+                <p className="mt-3 text-base sm:text-lg text-[#6b6560] leading-relaxed px-2 font-normal">
                   Upload an outfit photo to shop the look, or switch to Text search for keywords.
                 </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-2.5">
+                <div className="mt-8 flex flex-wrap justify-center gap-3 sm:gap-4">
                   {modeTabs.map((tab, i) => (
                     <motion.a
                       key={tab.key}
@@ -622,17 +737,17 @@ function SearchContent() {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.08 + i * 0.04 }}
-                      className={`inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2.5 text-[13px] font-semibold border transition-all ${
+                      className={`inline-flex items-center gap-2.5 rounded-full px-6 sm:px-8 py-3.5 sm:py-4 text-base sm:text-lg font-medium border transition-all ${
                         mode === tab.key
                           ? 'bg-[#ebe6e0] border-[#d8d2cd] text-[#2a2623] shadow-sm'
-                          : 'bg-white border-[#e8e4df] text-[#6b6560] hover:border-[#d4cdc4] hover:text-[#2a2623]'
+                          : 'bg-white border-[#e8e4df] text-[#5c534c] hover:border-[#d4cdc4] hover:text-[#2a2623]'
                       }`}
                     >
-                      <tab.Icon className="w-4 h-4 shrink-0 opacity-80" aria-hidden />
+                      <tab.Icon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 opacity-85" aria-hidden />
                       <span>{tab.label}</span>
-                </motion.a>
-              ))}
-            </div>
+                    </motion.a>
+                  ))}
+                </div>
               </motion.div>
           </motion.div>
         </div>
@@ -738,64 +853,23 @@ function SearchContent() {
 
         <div className="min-h-[320px]">
           {isLoadingState ? (
-            mode === 'shop' ? (
-              <div className="grid lg:grid-cols-[320px_1fr] gap-8 lg:gap-12">
-                <div className="flex flex-col items-center">
-                  <div className="w-full max-w-[280px] aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
-                  <div className="h-6 w-32 rounded-full skeleton-shimmer mt-5" />
-                </div>
-                <div className="space-y-8">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl skeleton-shimmer" />
-                        <div className="space-y-1.5">
-                          <div className="h-4 w-28 rounded skeleton-shimmer" />
-                          <div className="h-2.5 w-20 rounded skeleton-shimmer" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {[0, 1, 2].map((j) => (
-                          <div key={j} className="rounded-2xl border border-neutral-200/60 overflow-hidden">
-                            <div className="aspect-[3/4] skeleton-shimmer" />
-                            <div className="p-3 space-y-2">
-                              <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
-                              <div className="h-3 w-3/4 rounded skeleton-shimmer" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="rounded-[18px] border border-[#ebe8e4] bg-white overflow-hidden shadow-sm">
-                    <div className="aspect-square skeleton-shimmer" />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 w-[85%] rounded skeleton-shimmer" />
-                      <div className="h-2.5 w-1/2 rounded skeleton-shimmer" />
-                      <div className="h-4 w-1/3 rounded skeleton-shimmer mt-2" />
-                      <div className="flex gap-1.5 mt-3">
-                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
-                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
-                        <div className="h-[18px] w-[18px] rounded-full skeleton-shimmer" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
+            <div className="flex flex-col items-center justify-center gap-4 py-14 min-h-[220px]">
+              <Loader2 className="h-10 w-10 animate-spin text-brand" aria-hidden />
+              <p className="text-sm text-neutral-600">Analyzing your outfit…</p>
+            </div>
           ) : mode === 'shop' && shopDetections.length > 0 && imagePreviewUrl ? (
-            <ShopTheLookResults
+            <ShopTheLookResultsPanel
               groups={shopDetections}
               outfitImageUrl={imagePreviewUrl}
               imageMeta={shopImageMeta}
               shopTheLookStats={shopTheLookStats}
               returnPath={discoverReturnPath}
             />
+          ) : textSearchBlocking ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-14 min-h-[200px]">
+              <Loader2 className="h-10 w-10 animate-spin text-brand" aria-hidden />
+              <p className="text-sm text-neutral-600">Searching the catalog…</p>
+            </div>
           ) : products.length > 0 ? (
             <>
                   {textSearchActive ? (
@@ -889,7 +963,6 @@ function SearchContent() {
               <SearchProductGrid
                 products={products}
                 addToCompare={addToCompare}
-                inCompare={inCompare}
                 fromReturnPath={discoverReturnPath}
               />
                 </>
@@ -1049,7 +1122,13 @@ function SearchContent() {
                   <p className="font-semibold text-neutral-800 mb-1">No matching items found</p>
                   <p className="text-sm text-neutral-500">Try a clearer full-outfit photo or switch to text search.</p>
                 </motion.div>
-              ) : q && mode === 'text' ? (
+              ) : q &&
+                mode === 'text' &&
+                textSearchPaged.isFetched &&
+                !textSearchPaged.isPending &&
+                !textSearchPaged.isFetching &&
+                products.length === 0 &&
+                !textSearchPaged.isError ? (
                 <div className="text-center max-w-md mx-auto">
                   <div className="w-16 h-16 rounded-2xl bg-neutral-100 text-neutral-400 flex items-center justify-center mx-auto mb-5">
                     <Search className="w-8 h-8" />
@@ -1058,34 +1137,26 @@ function SearchContent() {
                   <p className="text-neutral-500">Try different keywords or browse by category.</p>
                 </div>
               ) : mode === 'text' && !q ? (
-                <div className="max-w-5xl mx-auto text-center py-4">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="relative w-20 h-20 mx-auto mb-6"
-                    >
-                    <div className="absolute inset-0 rounded-2xl bg-brand opacity-20 blur-xl animate-pulse" />
-                    <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f4ece6] to-[#ede0d7] flex items-center justify-center">
-                      <Search className="w-9 h-9 text-[#2a2623]" />
-                      </div>
-                    </motion.div>
+                <div className="max-w-5xl mx-auto py-4">
+                  <div className="text-center">
                     <motion.h2
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
+                      transition={{ delay: 0.35, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                       className="font-display text-xl sm:text-2xl font-bold text-neutral-900 mb-2"
                     >
                       What are you looking for?
                     </motion.h2>
                     <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.18 }}
-                    className="text-neutral-500 max-w-md mx-auto text-[15px]"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.48, duration: 0.4 }}
+                      className="text-neutral-500 max-w-md mx-auto text-[15px]"
                     >
-                    Use the search bar above to describe styles, brands, or occasions — then browse ranked matches from the catalog.
+                      Use the search bar above to describe styles, brands, or occasions — then browse ranked matches from
+                      the catalog.
                     </motion.p>
+                  </div>
                 </div>
               ) : null}
             </motion.div>

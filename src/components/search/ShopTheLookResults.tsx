@@ -15,102 +15,17 @@ import {
   ScanSearch,
 } from 'lucide-react'
 import type { Product } from '@/types/product'
+import { saveListingScrollY } from '@/lib/navigation/listingScrollRestore'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
+import {
+  shopDetectionHitsToProducts,
+  type DetectionBox,
+  type DetectionMeta,
+  type DetectionGroup,
+  type ShopTheLookStats,
+} from '@/lib/shopTheLookNormalize'
 
-function parseCentsField(v: unknown): number | null {
-  if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v)
-  if (typeof v === 'string') {
-    const n = parseInt(v, 10)
-    if (Number.isFinite(n)) return n
-  }
-  return null
-}
-
-function priceCentsFromRecord(raw: Record<string, unknown>): number {
-  const nested =
-    raw.product && typeof raw.product === 'object' ? (raw.product as Record<string, unknown>) : null
-  for (const o of [raw, nested].filter(Boolean) as Record<string, unknown>[]) {
-    const pc = parseCentsField(o.price_cents)
-    if (pc !== null && pc > 0) return pc
-    const pcCamel = parseCentsField(o.priceCents)
-    if (pcCamel !== null && pcCamel > 0) return pcCamel
-    const p = o.price ?? o.price_usd ?? o.priceUsd ?? o.min_price ?? o.minPrice
-    if (typeof p === 'string') {
-      const n = parseFloat(p)
-      if (!Number.isFinite(n)) continue
-      if (n >= 1000 && Number.isInteger(n)) return Math.round(n)
-      return Math.round(n * 100)
-    }
-    if (typeof p === 'number' && Number.isFinite(p)) {
-      if (p >= 1000 && Number.isInteger(p)) return Math.round(p)
-      return Math.round(p * 100)
-    }
-  }
-  return 0
-}
-
-function toProducts(results: unknown[]): Product[] {
-  return results
-    .filter((r): r is Record<string, unknown> => {
-      if (!r || typeof r !== 'object') return false
-      const o = r as Record<string, unknown>
-      if ('id' in o || 'product_id' in o || 'productId' in o) return true
-      const src = o._source
-      return Boolean(src && typeof src === 'object' && ('product_id' in src || 'id' in src))
-    })
-    .map((r) => {
-      const raw = r as Record<string, unknown>
-      const nested =
-        raw._source && typeof raw._source === 'object' ? (raw._source as Record<string, unknown>) : null
-      const src = nested ?? raw
-      const idRaw = src.id ?? src.product_id ?? src.productId ?? raw.id ?? raw.product_id ?? raw.productId ?? 0
-      const id = typeof idRaw === 'number' && Number.isFinite(idRaw) ? idRaw : Number(String(idRaw).replace(/\D/g, '') || 0)
-      const saleRaw = src.sales_price_cents ?? src.salesPriceCents ?? raw.sales_price_cents ?? raw.salesPriceCents ?? raw.sale_price
-      const sales_price_cents = parseCentsField(saleRaw)
-      return {
-        id: Number.isFinite(id) && id >= 1 ? id : 0,
-        title: String(src.title ?? src.name ?? raw.title ?? raw.name ?? ''),
-        price_cents: priceCentsFromRecord(src),
-        sales_price_cents: sales_price_cents ?? null,
-        image_url: (src.image_url ?? src.imageUrl ?? src.image_cdn ?? src.imageCdn ?? raw.image_url ?? raw.imageUrl ?? null) as string | null,
-        image_cdn: (src.image_cdn ?? src.imageCdn ?? raw.image_cdn ?? null) as string | null,
-        brand: (src.brand ?? raw.brand) as string | null,
-        category: (src.category ?? raw.category) as string | null,
-      } as Product
-    })
-}
-
-export interface DetectionBox {
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-}
-
-export interface DetectionMeta {
-  label?: string
-  confidence?: number
-  box?: DetectionBox
-  area_ratio?: number
-  style?: { occasion?: string; aesthetic?: string; formality?: number }
-}
-
-export interface DetectionGroup {
-  detection?: DetectionMeta
-  category?: string
-  products: Product[]
-  count?: number
-  detectionIndex?: number
-  /** Extra YOLO regions merged into this row (e.g. two shoe detections → one panel). */
-  secondaryDetections?: DetectionMeta[]
-}
-
-export interface ShopTheLookStats {
-  totalDetections: number
-  coveredDetections: number
-  emptyDetections: number
-  coverageRatio: number
-}
+export type { DetectionBox, DetectionMeta, DetectionGroup, ShopTheLookStats }
 
 /** Shop the Look — luxury editorial palette */
 const STL_TEXT = '#2B2521'
@@ -139,6 +54,36 @@ function formatProductPrice(product: Product): string | null {
     typeof product.price_cents === 'string' ? parseInt(String(product.price_cents), 10) : product.price_cents
   if (cents == null || !Number.isFinite(cents) || cents <= 0) return null
   return formatStoredPriceAsUsd(cents, product.currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function formatSalePrice(product: Product): string | null {
+  const raw = product.sales_price_cents
+  const cents = typeof raw === 'string' ? parseInt(String(raw), 10) : raw
+  if (cents == null || !Number.isFinite(cents) || cents <= 0) return null
+  return formatStoredPriceAsUsd(cents, product.currency, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function isProductOnSale(product: Product): boolean {
+  const saleRaw = product.sales_price_cents
+  const sale = typeof saleRaw === 'string' ? parseInt(String(saleRaw), 10) : saleRaw
+  const baseRaw = product.price_cents
+  const base = typeof baseRaw === 'string' ? parseInt(String(baseRaw), 10) : baseRaw
+  return (
+    sale != null &&
+    base != null &&
+    Number.isFinite(sale) &&
+    Number.isFinite(base) &&
+    sale > 0 &&
+    base > 0 &&
+    sale < base
+  )
+}
+
+function productMetaLine(product: Product): string | null {
+  const parts = [product.category, product.color, product.size].filter(
+    (x): x is string => typeof x === 'string' && x.trim().length > 0,
+  )
+  return parts.length ? parts.join(' · ') : null
 }
 
 function isShoeDetectionGroup(group: DetectionGroup): boolean {
@@ -184,7 +129,7 @@ function mergeShoeDetectionRun(list: DetectionGroup[]): DetectionGroup {
   const seen = new Set<number>()
   const products: Product[] = []
   for (const g of list) {
-    for (const p of toProducts(Array.isArray(g.products) ? g.products : [])) {
+    for (const p of shopDetectionHitsToProducts(Array.isArray(g.products) ? g.products : [])) {
       if (p.id >= 1 && !seen.has(p.id)) {
         seen.add(p.id)
         products.push(p)
@@ -271,12 +216,45 @@ function firstBoxMeta(group: DetectionGroup): DetectionMeta | null {
 }
 
 function topMatchProduct(group: DetectionGroup): Product | null {
-  const parsed = toProducts(Array.isArray(group.products) ? group.products : [])
+  const parsed = shopDetectionHitsToProducts(Array.isArray(group.products) ? group.products : [])
   return parsed.find((p) => p.id >= 1) ?? parsed[0] ?? null
 }
 
-const SHOP_THE_LOOK_INITIAL = 6
-const SHOP_THE_LOOK_STEP = 6
+/** Matches Tailwind `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5` */
+function gridColumnsForViewportWidth(width: number): number {
+  if (width >= 1280) return 5
+  if (width >= 1024) return 4
+  if (width >= 640) return 3
+  return 2
+}
+
+/**
+ * While “Show more” still applies, only show full rows so the grid never looks empty mid-row.
+ * On the last chunk (`requested >= total`), allow a short final row.
+ */
+function snapVisibleToFullRows(requested: number, cols: number, total: number): number {
+  const cap = Math.min(Math.max(0, requested), total)
+  if (cap === 0) return 0
+  if (cap >= total) return total
+  const complete = Math.floor(cap / cols) * cols
+  if (complete > 0) return complete
+  return Math.min(cols, total)
+}
+
+function useShopTheLookGridColumns(): number {
+  const [cols, setCols] = useState(2)
+  useEffect(() => {
+    const sync = () => setCols(gridColumnsForViewportWidth(window.innerWidth))
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
+  }, [])
+  return cols
+}
+
+/** Multiples of common column counts after snapping (5→10, 4→8, …) */
+const SHOP_THE_LOOK_INITIAL = 10
+const SHOP_THE_LOOK_STEP = 10
 
 export function ShopTheLookResults({
   groups,
@@ -298,9 +276,9 @@ export function ShopTheLookResults({
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [highlightedIdx, setHighlightedIdx] = useState<number | null>(null)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
+  const gridCols = useShopTheLookGridColumns()
 
   const rows = groups.filter((g) => g.products && g.products.length > 0)
-  if (rows.length === 0) return null
 
   useEffect(() => {
     setSelectedIdx(null)
@@ -314,6 +292,8 @@ export function ShopTheLookResults({
     const id = window.setTimeout(() => setHighlightedIdx((cur) => (cur === highlightedIdx ? null : cur)), 950)
     return () => window.clearTimeout(id)
   }, [highlightedIdx])
+
+  if (rows.length === 0) return null
 
   const refW = imgNatural?.w ?? imageMeta?.width ?? 0
   const refH = imgNatural?.h ?? imageMeta?.height ?? 0
@@ -347,11 +327,18 @@ export function ShopTheLookResults({
 
   const productHref = useCallback(
     (id: number) =>
-      returnPath && returnPath.startsWith('/search')
+      returnPath &&
+      (returnPath.startsWith('/search') ||
+        returnPath.startsWith('/products') ||
+        returnPath.startsWith('/sales'))
         ? `/products/${id}?from=${encodeURIComponent(returnPath)}`
         : `/products/${id}`,
     [returnPath],
   )
+
+  const saveScrollBeforeProduct = useCallback(() => {
+    saveListingScrollY(returnPath, typeof window !== 'undefined' ? window.scrollY : 0)
+  }, [returnPath])
 
   const floatingProduct =
     selectedIdx !== null && selectedIdx >= 0 && selectedIdx < rows.length
@@ -363,7 +350,7 @@ export function ShopTheLookResults({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-8 rounded-[24px] px-3 py-6 sm:px-5 sm:py-8"
+      className="space-y-6 rounded-[24px] px-3 py-6 sm:px-5 sm:py-8"
       style={{ backgroundColor: STL_SURFACE }}
     >
       <header className="mx-auto flex max-w-7xl flex-col gap-4 border-b border-[#e5ddd4] pb-6 sm:flex-row sm:items-end sm:justify-between">
@@ -397,21 +384,22 @@ export function ShopTheLookResults({
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] xl:gap-10">
         {/* Main lifestyle image + interactive hotspots */}
-        <div className="relative min-w-0">
+        <div className="relative min-w-0 lg:flex lg:min-h-0 lg:flex-col lg:h-full">
           <div
-            className="relative w-full overflow-hidden rounded-[18px] shadow-[0_24px_60px_-28px_rgba(43,37,33,0.45),0_12px_28px_-18px_rgba(43,37,33,0.12)] ring-1 ring-black/[0.06]"
+            className="relative flex w-full flex-col overflow-hidden rounded-[18px] shadow-[0_24px_60px_-28px_rgba(43,37,33,0.45),0_12px_28px_-18px_rgba(43,37,33,0.12)] ring-1 ring-black/[0.06] lg:min-h-0 lg:flex-1"
             style={{ backgroundColor: '#ebe6df' }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={outfitImageUrl}
-              alt="Outfit with AI-detected pieces highlighted"
-              className="w-full max-h-[min(88vh,920px)] object-contain object-center"
-              onLoad={(e) => {
-                const el = e.currentTarget
-                setImgNatural({ w: el.naturalWidth, h: el.naturalHeight })
-              }}
-            />
+            <div className="relative shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={outfitImageUrl}
+                alt="Outfit with AI-detected pieces highlighted"
+                className="w-full max-h-[min(88vh,920px)] object-contain object-center"
+                onLoad={(e) => {
+                  const el = e.currentTarget
+                  setImgNatural({ w: el.naturalWidth, h: el.naturalHeight })
+                }}
+              />
 
             <div className="pointer-events-none absolute left-4 top-4 z-[5] flex flex-wrap gap-2">
               <span className="rounded-full border border-black/15 bg-[#2b2521]/92 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_6px_20px_-8px_rgba(0,0,0,0.35)]">
@@ -503,7 +491,12 @@ export function ShopTheLookResults({
                       }}
                     >
                       <div className="flex gap-3.5 p-3.5 sm:p-4">
-                        <div className="relative h-[76px] w-[60px] shrink-0 overflow-hidden rounded-xl bg-[#ece8e3] ring-1 ring-black/[0.04]">
+                        <Link
+                          href={productHref(floatingProduct.id)}
+                          onClick={saveScrollBeforeProduct}
+                          className="relative block h-[76px] w-[60px] shrink-0 overflow-hidden rounded-xl bg-[#ece8e3] ring-1 ring-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                          aria-label={`Open product: ${floatingProduct.title}`}
+                        >
                           {floatingProduct.image_cdn || floatingProduct.image_url ? (
                             <NextImage
                               src={(floatingProduct.image_cdn || floatingProduct.image_url) as string}
@@ -513,27 +506,44 @@ export function ShopTheLookResults({
                               sizes="60px"
                             />
                           ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1 pt-0.5">
+                        </Link>
+                        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0.5">
                           {floatingProduct.brand ? (
-                            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
+                            <Link
+                              href={productHref(floatingProduct.id)}
+                              onClick={saveScrollBeforeProduct}
+                              className="truncate text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-brand underline-offset-2 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                            >
                               {floatingProduct.brand}
-                            </p>
-                          ) : null}
-                          <p className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-snug text-[#2B2521]">
-                            {floatingProduct.title}
-                          </p>
-                          {formatProductPrice(floatingProduct) ? (
-                            <p className="mt-1 text-[14px] font-semibold tabular-nums text-[#2B2521]">
-                              {formatProductPrice(floatingProduct)}
-                            </p>
+                            </Link>
                           ) : null}
                           <Link
                             href={productHref(floatingProduct.id)}
-                            className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-brand px-4 py-2 text-[12px] font-semibold text-white shadow-md transition-all duration-[250ms] ease-out hover:bg-brand-hover hover:shadow-[0_10px_24px_-8px_rgb(61_48_48/0.45)] active:scale-[0.98]"
+                            onClick={saveScrollBeforeProduct}
+                            className="line-clamp-3 text-left text-[13px] font-semibold leading-snug text-[#2B2521] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
                           >
-                            View item
+                            {floatingProduct.title}
                           </Link>
+                          {productMetaLine(floatingProduct) ? (
+                            <p className="line-clamp-2 text-[11px] leading-snug text-[#6b6560]">
+                              {productMetaLine(floatingProduct)}
+                            </p>
+                          ) : null}
+                          {(() => {
+                            const list = formatProductPrice(floatingProduct)
+                            const saleStr = formatSalePrice(floatingProduct)
+                            if (isProductOnSale(floatingProduct) && saleStr && list) {
+                              return (
+                                <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
+                                  <span className="text-[14px] font-semibold tabular-nums text-brand">{saleStr}</span>
+                                  <span className="text-[12px] font-medium tabular-nums text-[#9c9590] line-through">{list}</span>
+                                </div>
+                              )
+                            }
+                            return list ? (
+                              <p className="mt-auto pt-1 text-[14px] font-semibold tabular-nums text-[#2B2521]">{list}</p>
+                            ) : null
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -541,15 +551,19 @@ export function ShopTheLookResults({
                 </motion.div>
               ) : null}
             </AnimatePresence>
+            </div>
+
+            {/* When the wardrobe panel is taller than the photo, extend the frame color so dead stripes aren’t raw page beige */}
+            <div className="hidden min-h-0 flex-1 bg-[#ebe6df] lg:block" aria-hidden />
           </div>
 
-          <p className="mt-3 text-center text-[12px] text-[#6b5348] sm:text-left">
+          <p className="mt-3 shrink-0 text-center text-[12px] text-[#6b5348] sm:text-left">
             Drag isn't needed — click a framed region to preview our closest catalog match.
           </p>
         </div>
 
         {/* Right: detected items panel */}
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)]">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start">
           <div className="rounded-[18px] border border-[#e0d8cf] bg-white p-4 shadow-[0_16px_40px_-28px_rgba(43,37,33,0.2)]">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">Wardrobe map</p>
@@ -652,7 +666,7 @@ export function ShopTheLookResults({
             const catKeyRaw = String(group.category || 'default').toLowerCase()
             const style = CATEGORY_STYLES[catKeyRaw] || CATEGORY_STYLES.default
             const Icon = style.icon
-            const parsed = toProducts(group.products as unknown[])
+            const parsed = shopDetectionHitsToProducts(group.products as unknown[])
             const seen = new Set<number>()
             const unique = parsed.filter((p) => {
               if (seen.has(p.id)) return false
@@ -662,8 +676,9 @@ export function ShopTheLookResults({
             if (unique.length === 0) return null
 
             const sectionKey = `stl-${group.detectionIndex ?? i}-${i}`
-            const visibleCap = visibleByKey[sectionKey] ?? SHOP_THE_LOOK_INITIAL
-            const visibleProducts = unique.slice(0, visibleCap)
+            const requestedCap = visibleByKey[sectionKey] ?? SHOP_THE_LOOK_INITIAL
+            const visibleCount = snapVisibleToFullRows(requestedCap, gridCols, unique.length)
+            const visibleProducts = unique.slice(0, visibleCount)
             const hasMore = unique.length > visibleProducts.length
             const selected = selectedIdx === i
             const highlighted = highlightedIdx === i
@@ -714,17 +729,25 @@ export function ShopTheLookResults({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
+                <div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
                   {visibleProducts.map((product) => {
                     const img = product.image_cdn || product.image_url || ''
-                    const price = formatProductPrice(product)
+                    const listPrice = formatProductPrice(product)
+                    const salePrice = formatSalePrice(product)
+                    const onSale = isProductOnSale(product)
+                    const meta = productMetaLine(product)
+                    const href = productHref(product.id)
                     return (
-                      <Link
+                      <div
                         key={product.id}
-                        href={productHref(product.id)}
-                        className="group overflow-hidden rounded-2xl border border-[#eadfd7] bg-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-[#d8c6bb] hover:shadow-[0_20px_36px_-20px_rgba(90,24,20,0.25)]"
+                        className="group flex w-full flex-col overflow-hidden rounded-2xl border border-[#eadfd7] bg-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-[#d8c6bb] hover:shadow-[0_20px_36px_-20px_rgba(90,24,20,0.25)]"
                       >
-                        <div className="relative aspect-[3/4] bg-slate-100/90">
+                        <Link
+                          href={href}
+                          onClick={saveScrollBeforeProduct}
+                          className="relative block aspect-[3/4] shrink-0 bg-slate-100/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+                          aria-label={product.title}
+                        >
                           {img ? (
                             <NextImage
                               src={img}
@@ -734,17 +757,41 @@ export function ShopTheLookResults({
                               sizes="(max-width: 1024px) 45vw, 220px"
                             />
                           ) : null}
-                        </div>
-                        <div className="p-3">
+                        </Link>
+                        <div className="flex min-h-0 flex-col gap-1 p-3 sm:p-3.5">
                           {product.brand ? (
-                            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2a2623]">
+                            <Link
+                              href={href}
+                              onClick={saveScrollBeforeProduct}
+                              className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-brand underline-offset-2 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                            >
                               {product.brand}
-                            </p>
+                            </Link>
                           ) : null}
-                          <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-800">{product.title}</p>
-                          {price ? <p className="mt-1.5 text-xs font-semibold text-slate-900">{price}</p> : null}
+                          <Link
+                            href={href}
+                            onClick={saveScrollBeforeProduct}
+                            className="line-clamp-3 text-left text-[12px] font-medium leading-snug text-[#1e293b] sm:text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                          >
+                            {product.title}
+                          </Link>
+                          {meta ? (
+                            <p className="line-clamp-2 text-[10px] leading-snug text-[#64748b] sm:text-[11px]">{meta}</p>
+                          ) : null}
+                          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1">
+                            {onSale && salePrice ? (
+                              <>
+                                <span className="text-[13px] font-semibold tabular-nums text-brand">{salePrice}</span>
+                                {listPrice ? (
+                                  <span className="text-[11px] font-medium tabular-nums text-[#94a3b8] line-through">{listPrice}</span>
+                                ) : null}
+                              </>
+                            ) : listPrice ? (
+                              <span className="text-[13px] font-semibold tabular-nums text-[#0f172a]">{listPrice}</span>
+                            ) : null}
+                          </div>
                         </div>
-                      </Link>
+                      </div>
                     )
                   })}
                 </div>
@@ -773,3 +820,5 @@ export function ShopTheLookResults({
     </motion.div>
   )
 }
+
+export default ShopTheLookResults

@@ -66,6 +66,8 @@ export interface VendorStats extends Vendor {
 export interface OverviewKPIs {
   total_vendors: number
   total_products: number
+  /** Distinct category values in the product aggregate (includes a synthetic “(uncategorized)” bucket). */
+  unique_categories: number
   available_products: number
   unavailable_products: number
   products_seen_today: number

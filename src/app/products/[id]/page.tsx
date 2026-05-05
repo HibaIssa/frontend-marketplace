@@ -12,9 +12,65 @@ import { endpoints } from '@/lib/api/endpoints'
 import { useAuthStore } from '@/store/auth'
 import type { Product } from '@/types/product'
 import { formatStoredPriceAsUsd, storedAmountToUsdCents } from '@/lib/money/displayUsd'
+import { extractVendorFieldsFromRecords } from '@/lib/vendorLogo'
+import { VendorSourceBadge } from '@/components/product/VendorSourceBadge'
 
 function formatPrice(storedCents: number, currency?: string | null) {
   return formatStoredPriceAsUsd(storedCents, currency, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function pickHttpUrl(...candidates: unknown[]): string | null {
+  for (const c of candidates) {
+    if (typeof c !== 'string') continue
+    const u = c.trim()
+    if (u && /^https?:\/\//i.test(u)) return u
+  }
+  return null
+}
+
+/** Same product page on the retailer’s site (Bolden is discovery-only). */
+function retailerProductListingUrl(product: Product): string | null {
+  const row = product as Product & Record<string, unknown>
+  return pickHttpUrl(
+    product.product_url,
+    product.parent_product_url,
+    row.listing_url,
+    row.source_url,
+    row.product_link,
+  )
+}
+
+function retailerHostnameHint(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '')
+  } catch {
+    return 'retailer'
+  }
+}
+
+function ProductBrandEyebrow({ product }: { product: Product }) {
+  if (product.brand) {
+    const buyUrl = retailerProductListingUrl(product)
+    if (buyUrl) {
+      const host = retailerHostnameHint(buyUrl)
+      return (
+        <a
+          href={buyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block text-sm text-neutral-400 uppercase tracking-wider underline-offset-4 hover:text-neutral-700 hover:underline transition-colors"
+          title={`Open this product on ${host} to purchase`}
+        >
+          {product.brand}
+        </a>
+      )
+    }
+    return <p className="text-sm text-neutral-400 uppercase tracking-wider">{product.brand}</p>
+  }
+  if (product.category) {
+    return <p className="text-sm text-neutral-400 uppercase tracking-wider">{product.category}</p>
+  }
+  return null
 }
 
 function parseProductPayload(res: { success?: boolean; data?: unknown; error?: { message?: string } }): Product {
@@ -33,8 +89,9 @@ function parseProductPayload(res: { success?: boolean; data?: unknown; error?: {
   if (!Number.isFinite(pid)) {
     throw new Error('Invalid product')
   }
-  return {
+  const merged = {
     ...p,
+    ...extractVendorFieldsFromRecords(p, {}),
     id: pid,
     title: String(p.title ?? p.name ?? ''),
     price_cents: Number(p.price_cents) || 0,
@@ -47,7 +104,16 @@ function parseProductPayload(res: { success?: boolean; data?: unknown; error?: {
     description: (p.description as string) ?? null,
     color: (p.color as string) ?? null,
     size: (p.size as string) ?? null,
-  } as Product
+    parent_product_url:
+      typeof p.parent_product_url === 'string'
+        ? p.parent_product_url
+        : typeof p.parentProductUrl === 'string'
+          ? p.parentProductUrl
+          : null,
+  } as Product & Record<string, unknown>
+  const listing = pickHttpUrl(p.product_url, p.productUrl, merged.product_url)
+  if (listing) merged.product_url = listing
+  return merged as Product
 }
 
 /** In-app back targets from `?from=` (block open redirects). */
@@ -62,6 +128,12 @@ function safeProductReturnFrom(raw: string | null): { href: string; label: strin
     if (/^\/search(\?|$)/.test(decoded)) {
       return { href: decoded, label: 'Back to Discover' }
     }
+    if (/^\/products(\?|$)/.test(decoded)) {
+      return { href: decoded, label: 'Back to catalog' }
+    }
+    if (/^\/sales(\?|$)/.test(decoded)) {
+      return { href: decoded, label: 'Back to sale' }
+    }
     if (pathOnly === '/compare') {
       return { href: '/compare', label: 'Back to Compare' }
     }
@@ -72,6 +144,18 @@ function safeProductReturnFrom(raw: string | null): { href: string; label: strin
   } catch {
     return null
   }
+}
+
+function ProductBackLink({ href, label, className = 'mb-8' }: { href: string; label: string; className?: string }) {
+  const base =
+    'inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors font-medium hover:underline'
+  /** Client-side navigation keeps React Query cache + listing UI; `scroll={false}` pairs with listing scroll restore. */
+  return (
+    <Link href={href} scroll={false} prefetch={true} className={`${base} ${className}`}>
+      <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden />
+      {label}
+    </Link>
+  )
 }
 
 function ProductDetailContent() {
@@ -149,9 +233,7 @@ function ProductDetailContent() {
       <div className="max-w-7xl mx-auto px-4 py-10 text-center">
         <p className="text-neutral-800 font-medium mb-2">Could not load this product</p>
         <p className="text-neutral-600 text-sm mb-6">{(error as Error)?.message ?? 'It may have been removed or the link is invalid.'}</p>
-        <Link href={backHref} className="text-neutral-800 font-medium hover:underline">
-          ← {backLabel}
-        </Link>
+        <ProductBackLink href={backHref} label={backLabel} className="mb-2" />
       </div>
     )
   }
@@ -173,13 +255,7 @@ function ProductDetailContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <Link
-        href={backHref}
-        className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-800 mb-8 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {backLabel}
-      </Link>
+      <ProductBackLink href={backHref} label={backLabel} />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -195,6 +271,7 @@ function ProductDetailContent() {
             sizes="(max-width: 1024px) 100vw, 50vw"
             priority
           />
+          <VendorSourceBadge product={product} variant="detail" />
           {hasSale && (
             <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-brand text-white text-sm font-medium">
               Sale
@@ -203,7 +280,7 @@ function ProductDetailContent() {
         </div>
 
         <div>
-          <p className="text-sm text-neutral-400 uppercase tracking-wider">{product.brand || product.category}</p>
+          <ProductBrandEyebrow product={product} />
           <h1 className="font-display text-3xl font-bold text-neutral-800 mt-2">{product.title}</h1>
           {product.color && (
             <p className="text-neutral-600 mt-2">Color: {product.color}</p>

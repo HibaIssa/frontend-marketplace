@@ -135,7 +135,7 @@ function LoginFormInner() {
     >
       <div className="bg-white rounded-3xl shadow-elevated border border-neutral-200 p-8">
         <h1 className="font-display text-2xl font-bold text-neutral-800 text-center">Welcome back</h1>
-        <p className="text-neutral-500 text-center mt-2">Sign in to your TrendZone account</p>
+        <p className="text-neutral-500 text-center mt-2">Sign in to your Bolden account</p>
         {lastActivityLabel && (
           <p className="text-center text-xs text-neutral-400 mt-2">
             Last activity on this browser: {lastActivityLabel}

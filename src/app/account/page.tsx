@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { User } from 'lucide-react'
+import { Eye, EyeOff, User } from 'lucide-react'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { mapApiUser } from '@/lib/auth/mapUser'
@@ -14,6 +14,7 @@ export default function AccountPage() {
   const { user: storeUser, setUser, isAuthenticated } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const profile = useQuery({
     queryKey: ['auth-me'],
@@ -59,6 +60,15 @@ export default function AccountPage() {
     },
   })
 
+  const passwordChecks = {
+    minLength: password.length >= 8,
+    hasLetter: /[A-Za-z]/.test(password),
+    hasNumber: /\d/.test(password),
+  }
+
+  const isPasswordDirty = password.length > 0
+  const canResetForm = profile.data ? email !== profile.data.email || isPasswordDirty : false
+
   if (!isAuthenticated()) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -75,7 +85,7 @@ export default function AccountPage() {
   return (
     <div className="max-w-lg mx-auto px-4 py-10">
       <h1 className="font-display text-3xl font-bold text-neutral-800 mb-2">Account</h1>
-      <p className="text-sm text-neutral-600 mb-8">Update email or password (PATCH /api/auth/me).</p>
+      <p className="text-sm text-neutral-600 mb-8">Update your email and password settings.</p>
 
       {profile.isLoading ? (
         <p className="text-neutral-500">Loading profile…</p>
@@ -95,15 +105,32 @@ export default function AccountPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">New password</label>
-            <input
-              type="password"
-              className="input-field"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Leave blank to keep current"
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-neutral-500 mt-1">Min 8 characters if changing.</p>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="input-field pr-12"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Leave blank to keep current"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">Leave empty to keep current password.</p>
+            {isPasswordDirty && (
+              <div className="mt-2 text-xs space-y-1">
+                <p className={passwordChecks.minLength ? 'text-emerald-700' : 'text-neutral-500'}>- At least 8 characters</p>
+                <p className={passwordChecks.hasLetter ? 'text-emerald-700' : 'text-neutral-500'}>- Contains a letter</p>
+                <p className={passwordChecks.hasNumber ? 'text-emerald-700' : 'text-neutral-500'}>- Contains a number</p>
+              </div>
+            )}
           </div>
           {profile.data && (
             <p className="text-xs text-neutral-500">
@@ -112,6 +139,23 @@ export default function AccountPage() {
               {profile.data.is_admin && ' · admin'}
             </p>
           )}
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/forgot-password" className="text-xs text-neutral-700 hover:text-neutral-900 hover:underline">
+              Forgot password?
+            </Link>
+            <button
+              type="button"
+              disabled={!canResetForm || save.isPending}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => {
+                if (profile.data) setEmail(profile.data.email)
+                setPassword('')
+                setShowPassword(false)
+              }}
+            >
+              Discard changes
+            </button>
+          </div>
           {save.isError && <p className="text-sm text-neutral-900">{(save.error as Error).message}</p>}
           {save.isSuccess && <p className="text-sm text-green-700">Saved.</p>}
           <button type="submit" className="btn-primary" disabled={save.isPending}>

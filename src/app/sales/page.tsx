@@ -1,41 +1,25 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState, useCallback } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
-import { api } from '@/lib/api/client'
-import { endpoints } from '@/lib/api/endpoints'
 import { getStablePagination } from '@/lib/shopPagination'
 import { ProductCard } from '@/components/product/ProductCard'
 import { SaleHero } from '@/components/sales/SaleHero'
-import { useCompareStore } from '@/store/compare'
-import { useAuthStore } from '@/store/auth'
-import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
+import { extractVendorFieldsFromRecords } from '@/lib/vendorLogo'
+import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
+import {
+  SALES_LISTING_LIMIT,
+  SALES_LISTING_STALE_MS,
+  fetchSalesListingPage,
+  salesListingQueryKey,
+} from '@/lib/queries/salesListing'
 
-function chipClass(active: boolean) {
-  return `shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
-    active
-      ? 'bg-brand text-white shadow-md shadow-brand/20'
-      : 'bg-white text-[#5c5752] border border-[#ebe8e4] hover:border-[#d8c6bb] hover:text-[#2a2623] hover:bg-[#f9f7f2]'
-  }`
-}
-
-const FILTER_PILL =
-  'inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#ebe8e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#2a2623] shadow-sm ring-1 ring-transparent hover:bg-[#f9f7f2] hover:ring-[#ebe8e4]/80 transition-colors'
-
-const SALE_CATEGORY_TABS = [
-  { label: 'All', value: '' },
-  { label: 'Dresses', value: 'dress' },
-  { label: 'Tops', value: 'top' },
-  { label: 'Jackets', value: 'jacket' },
-  { label: 'Pants', value: 'pant' },
-  { label: 'Shoes', value: 'shoe' },
-  { label: 'Accessories', value: 'accessor' },
-] as const
+const SALES_CACHE_KEY = 'sales-page-cache-v1'
 
 function normalizeProduct(raw: Record<string, unknown>): Product {
   const id = Number(raw.id)
@@ -52,6 +36,7 @@ function normalizeProduct(raw: Record<string, unknown>): Product {
     currency: (raw.currency as string) || 'USD',
     image_url: (raw.image_url as string) ?? null,
     image_cdn: (raw.image_cdn as string) ?? null,
+    ...extractVendorFieldsFromRecords(raw, {}),
   }
 }
 
@@ -59,10 +44,22 @@ function SalesContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const queryClient = useQueryClient()
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
-  const limit = 24
+  const limit = SALES_LISTING_LIMIT
+
+  const salesReturnPath = useMemo(() => {
+    const qs = searchParams.toString()
+    return qs ? `${pathname}?${qs}` : pathname
+  }, [pathname, searchParams])
+
+  useEffect(() => {
+    const y = readAndClearListingScrollY(salesReturnPath)
+    if (y == null) return
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [salesReturnPath])
 
   const setPageParams = (patch: Record<string, string | null | undefined>) => {
     const p = new URLSearchParams(searchParams.toString())
@@ -74,41 +71,48 @@ function SalesContent() {
     router.push(qs ? `${pathname}?${qs}` : pathname)
   }
 
-  const addToCompare = useCompareStore((s) => s.add)
-  const inCompare = useCompareStore((s) => s.has)
+  const queryKey = salesListingQueryKey(page)
 
-  const [wardrobeAddedIds, setWardrobeAddedIds] = useState<Set<number>>(() => new Set())
-  const addToWardrobeMutation = useMutation({
-    mutationFn: (product: Product) => addCatalogProductToWardrobe(product),
-    onSuccess: (_, product) => {
-      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
-      setWardrobeAddedIds((prev) => new Set(prev).add(product.id))
-    },
-  })
-
-  const handleAddToWardrobe = useCallback(
-    (product: Product) => {
-      if (!isAuthenticated()) {
-        const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
-        router.push(`/login?${qs.toString()}`)
-        return
-      }
-      addToWardrobeMutation.mutate(product)
-    },
-    [addToWardrobeMutation, isAuthenticated, pathname, router, searchParams],
-  )
-
-  const queryKey = ['products', 'sales', page, limit] as const
-
-  const { data, isPending, isFetching } = useQuery({
+  const { data, isPending, isFetching, isPlaceholderData } = useQuery({
     queryKey,
     queryFn: async () => {
-      const params: Record<string, string | number> = { page, limit }
-      return api.get<unknown[]>(endpoints.products.sales, params)
+      const res = await fetchSalesListingPage(page)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(
+          SALES_CACHE_KEY,
+          JSON.stringify({
+            at: Date.now(),
+            page,
+            limit,
+            data: res,
+          }),
+        )
+      }
+      return res
+    },
+    initialData: () => {
+      if (typeof window === 'undefined') return undefined
+      try {
+        const raw = sessionStorage.getItem(SALES_CACHE_KEY)
+        if (!raw) return undefined
+        const parsed = JSON.parse(raw) as {
+          at?: number
+          page?: number
+          limit?: number
+          data?: Awaited<ReturnType<typeof api.get<unknown[]>>>
+        }
+        if (!parsed?.data || parsed.page !== page || parsed.limit !== limit) return undefined
+        if (!parsed.at || Date.now() - parsed.at > SALES_LISTING_STALE_MS) return undefined
+        return parsed.data
+      } catch {
+        return undefined
+      }
     },
     placeholderData: keepPreviousData,
-    staleTime: 90_000,
+    staleTime: SALES_LISTING_STALE_MS,
     gcTime: 600_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const rawList: unknown[] = Array.isArray(data?.data) ? data.data : []
@@ -168,7 +172,7 @@ function SalesContent() {
           </Link>
         </div>
 
-        {isPending ? (
+        {isPending && !isPlaceholderData ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="space-y-3">
@@ -192,26 +196,12 @@ function SalesContent() {
                   <motion.div
                     key={product.id}
                     variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                    className="relative"
                   >
-                    {pct != null && pct > 0 ? (
-                      <span className="absolute top-2 right-2 z-[5] rounded-full bg-brand text-white text-[10px] font-bold px-2 py-0.5 shadow-md">
-                        −{pct}%
-                      </span>
-                    ) : null}
                     <ProductCard
                       product={product}
                       index={i}
-                      onAddToCompare={addToCompare}
-                      inCompare={inCompare(product.id)}
-                      onAddToWardrobe={handleAddToWardrobe}
-                      wardrobeStatus={
-                        addToWardrobeMutation.isPending && addToWardrobeMutation.variables?.id === product.id
-                          ? 'loading'
-                          : wardrobeAddedIds.has(product.id)
-                            ? 'added'
-                            : 'idle'
-                      }
+                      fromReturnPath={salesReturnPath}
+                      saleDiscountPercent={pct != null && pct > 0 ? pct : null}
                     />
                   </motion.div>
                 )
@@ -339,42 +329,6 @@ function SalesContent() {
         )}
       </div>
 
-      <section className="border-t border-[#ebe8e4]/80 bg-[#f2ebe4]/40 py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h3 className="font-display text-lg font-bold text-[#2a2623]">More ways to shop</h3>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                href: '/products',
-                title: 'Shop by price',
-                desc: 'Browse the full catalog and sort by what fits your budget.',
-              },
-              {
-                href: '/search',
-                title: 'Editor picks',
-                desc: 'Discover styles tailored to your taste with smart search.',
-              },
-              {
-                href: '/products',
-                title: 'Under $50',
-                desc: 'Great finds at gentler price points — updated regularly.',
-              },
-            ].map((card) => (
-              <Link
-                key={card.title}
-                href={card.href}
-                className="group flex flex-col rounded-2xl border border-[#ebe8e4] bg-white p-5 shadow-[0_12px_36px_-28px_rgba(42,38,35,0.22)] transition-all hover:border-[#d8c6bb] hover:shadow-[0_16px_40px_-28px_rgba(42,38,35,0.28)]"
-              >
-                <span className="font-semibold text-[#2a2623] group-hover:text-brand">{card.title}</span>
-                <span className="mt-2 text-sm leading-relaxed text-[#7a726b]">{card.desc}</span>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand">
-                  Explore <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

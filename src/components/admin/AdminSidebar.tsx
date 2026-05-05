@@ -17,8 +17,10 @@ import {
   Package,
   TrendingUp,
   Clock,
+  X,
 } from 'lucide-react'
 import { useAdminBasePath } from '@/components/admin/AdminBasePathContext'
+import { BoldenLogoMark, boldenWordmarkClassName } from '@/components/brand/BoldenLogoMark'
 
 type NavItem = {
   segment: '' | 'moderation' | 'canonicals' | 'jobs' | 'reco' | 'system' | 'console'
@@ -68,24 +70,43 @@ const SECTIONS: { section: string; items: NavItem[] }[] = [
 const ICON_BG_IDLE = 'bg-[#f1e8e2] text-[#0a0a0a] ring-1 ring-[#0a0a0a]/12'
 const ICON_BG_ACTIVE = 'bg-[#0a0a0a] text-[#ffffff] ring-1 ring-[#0a0a0a]'
 
-export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) {
+export function AdminSidebar({
+  brandLabel = 'Admin',
+  onDismiss,
+}: {
+  brandLabel?: string
+  /** Collapse mobile drawer (nav tap or close button); backdrop uses shell */
+  onDismiss?: () => void
+}) {
   const pathname = usePathname()
   const base = useAdminBasePath()
   const adminCatalogOnly = brandLabel === 'Admin'
 
   return (
-    <aside className="w-[220px] min-w-[220px] h-full shrink-0 flex flex-col overflow-y-auto border-r border-[#0a0a0a]/10 bg-[#ffffff]/95 backdrop-blur-sm">
-      <div className="px-4 py-5 border-b border-[#0a0a0a]/10">
+    <aside
+      className={clsx(
+        'flex h-full w-[min(88vw,260px)] shrink-0 flex-col overflow-y-auto border-r border-[#0a0a0a]/10 bg-[#ffffff]/98 shadow-[4px_0_32px_rgba(10,10,10,0.08)] backdrop-blur-sm md:w-[220px] md:min-w-[220px] md:max-w-[220px] md:shadow-none',
+      )}
+    >
+      <div className="border-b border-[#0a0a0a]/10 px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#0a0a0a] flex items-center justify-center shadow-md shadow-[#0a0a0a]/20">
-            <span className="text-[#ffffff] text-[11px] font-display font-bold tracking-tight">TZ</span>
-          </div>
-          <div>
-            <p className="text-sm font-display font-semibold tz-burgundy leading-none">TrendZone</p>
-            <p className="text-[10px] text-[#0a0a0a]/65 mt-1 font-medium">
+          <BoldenLogoMark tone="default" className="h-9 w-9 shrink-0 ring-1 ring-[#0a0a0a]/10" />
+          <div className="min-w-0 flex-1">
+            <p className={clsx('text-sm tz-burgundy', boldenWordmarkClassName)}>Bolden</p>
+            <p className="mt-1 text-[10px] font-medium text-[#0a0a0a]/65">
               {brandLabel === 'Business' ? 'Business · internal' : 'Admin · internal'}
             </p>
           </div>
+          {onDismiss ? (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#0a0a0a]/70 ring-1 ring-[#0a0a0a]/12 hover:bg-[#f1e8e2] md:hidden"
+              aria-label="Close navigation"
+              onClick={onDismiss}
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -105,6 +126,7 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
                   <Link
                     key={href}
                     href={href}
+                    onClick={() => onDismiss?.()}
                     className={clsx(
                       'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
                       active
@@ -141,6 +163,7 @@ export function AdminSidebar({ brandLabel = 'Admin' }: { brandLabel?: string }) 
               <Link
                 key={href}
                 href={href}
+                onClick={() => onDismiss?.()}
                 className={clsx(
                   'flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-sm transition-colors',
                   active

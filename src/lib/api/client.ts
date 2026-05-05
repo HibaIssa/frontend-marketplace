@@ -37,8 +37,18 @@ async function apiFetch(input: string | URL, init?: RequestInit): Promise<Respon
 
 export type ApiResponse<T> = {
   success: boolean
+  /** Some list/search handlers expose hit count at the root alongside `data`. */
+  total?: number
   data?: T
-  meta?: { total?: number; total_results?: number; page?: number; limit?: number; pages?: number }
+  meta?: {
+    total?: number
+    total_results?: number
+    open_search_total_estimate?: number
+    total_above_threshold?: number
+    page?: number
+    limit?: number
+    pages?: number
+  }
   pagination?: { page?: number; limit?: number; total?: number; pages?: number; has_more?: boolean }
   error?: { message: string; code?: string; details?: unknown }
   /** Some endpoints (e.g. POST /search/multi-image) return top-level fields */

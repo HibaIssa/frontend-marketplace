@@ -7,8 +7,8 @@ import { TryOnHeroComparison } from '@/components/try-on/TryOnHeroComparison'
 import { TryOnStepper } from '@/components/try-on/TryOnStepper'
 
 /** Demo imagery: before = original look, after = styled / try-on result */
-const TRYON_HERO_BEFORE = '/brand/tryon-hero-before.png'
-const TRYON_HERO_AFTER = '/brand/tryon-hero-after.png'
+const TRYON_HERO_BEFORE = '/brand/tryon-hero-before.jpg'
+const TRYON_HERO_AFTER = '/brand/tryon-hero-after.jpg'
 
 export function TryOnMarketingHero({
   signInSlot,

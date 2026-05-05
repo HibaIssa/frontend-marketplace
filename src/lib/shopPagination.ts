@@ -19,9 +19,27 @@ export function getStablePagination<T>(
 ): StablePagination | null {
   if (!payload || payload.success === false) return null
 
+  const root = payload as Record<string, unknown>
+  const topLevelTotal = typeof root.total === 'number' && Number.isFinite(root.total) ? root.total : undefined
+
   const pag = payload.pagination
-  const totalItemsRaw = payload.meta?.total ?? pag?.total
-  const pagesRaw = payload.meta?.pages ?? pag?.pages
+  const meta = payload.meta as
+    | {
+        total?: number
+        total_results?: number
+        open_search_total_estimate?: number
+        total_above_threshold?: number
+        pages?: number
+      }
+    | undefined
+  const totalItemsRaw =
+    meta?.total ??
+    meta?.total_results ??
+    meta?.open_search_total_estimate ??
+    meta?.total_above_threshold ??
+    pag?.total ??
+    topLevelTotal
+  const pagesRaw = meta?.pages ?? pag?.pages
   const hasMore = pag?.has_more === true
 
   if (typeof pagesRaw === 'number' && Number.isFinite(pagesRaw) && pagesRaw >= 1) {

@@ -5,8 +5,8 @@ import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function TryOnHeroComparison({
-  beforeSrc = '/brand/tz-home-virtual-tryon-showcase.png',
-  afterSrc = '/brand/tz-service-tryon-mirror.png',
+  beforeSrc = '/brand/tz-home-virtual-tryon-showcase.jpg',
+  afterSrc = '/brand/tz-service-tryon-mirror.jpg',
   className = '',
   overlayBottomRight,
   fillVertical = false,

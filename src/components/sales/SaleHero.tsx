@@ -18,7 +18,7 @@ export function SaleHero() {
         className="relative isolate min-h-[100svh] w-full overflow-hidden"
       >
         <Image
-          src="/brand/sale-hero.png"
+          src="/brand/sale-hero.jpg"
           alt="Sale campaign — curated styles"
           fill
           priority

@@ -2,16 +2,11 @@ const fs = require('fs')
 const path = require('path')
 
 /**
- * In the monorepo, Supabase keys often live only in the repo-root `.env`.
- * Merge them into `process.env` for this Next app when unset (does not override
- * `apps/marketplace/.env.local` — Next applies local env after this file runs;
- * values set here may be overwritten by Next's env loader depending on version).
- *
- * Next applies `.env*` before evaluating `next.config.js` for `next dev` / `build`,
- * so marketplace `.env.local` wins. We only fill missing keys from root `.env`.
+ * Optional merge from repo-root `.env` when keys are unset (useful when cloning
+ * next to a backend repo). Does not override `.env.local`.
  */
-;(function mergeMonorepoRootEnv() {
-  const rootEnv = path.join(__dirname, '..', '..', '.env')
+;(function mergeOptionalRootEnv() {
+  const rootEnv = path.join(__dirname, '.env')
   if (!fs.existsSync(rootEnv)) return
 
   const lines = fs.readFileSync(rootEnv, 'utf8').split(/\r?\n/)
@@ -47,9 +42,13 @@ const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow a second dev server (e.g. port 3010) without clobbering `.next` — avoids webpack "reading 'call'" / chunk 404s.
   distDir: process.env.NEXT_DIST_DIR || '.next',
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
+  },
   images: {
+    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'https', hostname: '**', pathname: '/**' },
       { protocol: 'http', hostname: '**', pathname: '/**' },
