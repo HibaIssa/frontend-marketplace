@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
 import { storedAmountToUsdCents } from '@/lib/money/displayUsd'
+import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
 
 function asProductArray(input: unknown): Product[] {
   if (!Array.isArray(input)) return []
@@ -62,19 +63,28 @@ function ProductsContent() {
   const sort = searchParams.get('sort') ?? ''
   const category = searchParams.get('category') ?? ''
 
-  const [page, setPage] = useState(1)
+  const pageFromUrl = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const [page, setPage] = useState(pageFromUrl)
   const [pageJump, setPageJump] = useState('')
   const [searchDraft, setSearchDraft] = useState(q)
   const limit = 24
   const addToCompare = useCompareStore((s) => s.add)
-  const inCompare = useCompareStore((s) => s.has)
 
   const [wardrobeAddedIds, setWardrobeAddedIds] = useState<Set<number>>(() => new Set())
   const addToWardrobeMutation = useMutation({
     mutationFn: (product: Product) => addCatalogProductToWardrobe(product),
-    onSuccess: (_, product) => {
-      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onMutate: (product) => {
       setWardrobeAddedIds((prev) => new Set(prev).add(product.id))
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    },
+    onError: (_err, product) => {
+      setWardrobeAddedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(product.id)
+        return next
+      })
     },
   })
 
@@ -91,7 +101,23 @@ function ProductsContent() {
   )
 
   useEffect(() => { setSearchDraft(q) }, [q])
-  useEffect(() => { setPage(1); setPageJump('') }, [q, gender, sort, category])
+  useEffect(() => {
+    setPage(pageFromUrl)
+  }, [pageFromUrl])
+
+  const catalogReturnPath = useMemo(() => {
+    const qs = searchParams.toString()
+    return qs ? `${pathname}?${qs}` : pathname
+  }, [pathname, searchParams])
+
+  useEffect(() => {
+    const y = readAndClearListingScrollY(catalogReturnPath)
+    if (y == null) return
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: y, behavior: 'instant' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [catalogReturnPath])
 
   const navigateShop = (patch: Record<string, string | null | undefined>) => {
     const p = new URLSearchParams(searchParams.toString())
@@ -99,9 +125,23 @@ function ProductsContent() {
       if (v === undefined || v === null || v === '') p.delete(k)
       else p.set(k, v)
     }
+    if (!('page' in patch)) p.delete('page')
     const qs = p.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname)
   }
+
+  const setPageInUrl = useCallback(
+    (next: number) => {
+      const n = Math.max(1, next)
+      setPage(n)
+      const p = new URLSearchParams(searchParams.toString())
+      if (n <= 1) p.delete('page')
+      else p.set('page', String(n))
+      const qs = p.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams],
+  )
 
   const hasActiveFilters = !!q.trim() || !!gender || !!sort || !!category
 
@@ -161,22 +201,37 @@ function ProductsContent() {
   }, [data, limit, page, rawProducts.length])
 
   const hasMoreFromApi = data?.pagination?.has_more === true
+  const itemsDeliveredThisRequest = rawProducts.length
+  const itemsAccountedFor = (page - 1) * limit + itemsDeliveredThisRequest
+  const hasMoreByTotal =
+    Boolean(pagination) &&
+    !pagination!.indeterminate &&
+    typeof pagination!.totalItems === 'number' &&
+    pagination!.totalItems > itemsAccountedFor
 
   const knownTotalPages = pagination?.totalPages ?? 0
-  /** Rely on API `has_more` or a known page count — a full last page must not imply another page exists. */
-  const canGoNext = hasMoreFromApi || (knownTotalPages > 1 && page < knownTotalPages)
+  /** `has_more`, known page count, or catalog total greater than rows returned for this page (e.g. search total 24, first payload 4). */
+  const canGoNext =
+    hasMoreFromApi ||
+    hasMoreByTotal ||
+    (knownTotalPages > 1 && page < knownTotalPages)
+
+  /** When API total > rows but `ceil(total/limit)` is 1 (chunked responses), still show at least `page + 1` in the pager. */
+  const pagerTotalPages =
+    knownTotalPages > 1 ? knownTotalPages : canGoNext ? Math.max(knownTotalPages, page + 1) : Math.max(knownTotalPages, 1)
 
   useEffect(() => {
-    if (knownTotalPages > 0 && page > knownTotalPages) setPage(knownTotalPages)
-  }, [knownTotalPages, page])
+    if (pagerTotalPages > 0 && page > pagerTotalPages) setPageInUrl(pagerTotalPages)
+  }, [pagerTotalPages, page, setPageInUrl])
 
   useEffect(() => { setPageJump(String(page)) }, [page])
 
   const showPaginationControls =
     rawProducts.length > 0 &&
     (page > 1 ||
-      (pagination?.totalPages ?? 0) > 1 ||
+      pagerTotalPages > 1 ||
       hasMoreFromApi ||
+      hasMoreByTotal ||
       rawProducts.length >= limit)
 
   const onSearchSubmit = (e: React.FormEvent) => {
@@ -192,7 +247,7 @@ function ProductsContent() {
         {/* Full-bleed under fixed navbar; gradient keeps title + search readable on the left */}
         <div className="relative min-h-[300px] sm:min-h-[360px] lg:min-h-[400px]">
           <Image
-            src="/brand/shop-hero.png"
+            src="/brand/shop-hero.jpg"
             alt=""
             fill
             priority
@@ -325,14 +380,14 @@ function ProductsContent() {
                   <ProductCard
                     product={product}
                     index={i}
+                    fromReturnPath={catalogReturnPath}
                     onAddToCompare={addToCompare}
-                    inCompare={inCompare(product.id)}
                     onAddToWardrobe={handleAddToWardrobe}
                     wardrobeStatus={
-                      addToWardrobeMutation.isPending && addToWardrobeMutation.variables?.id === product.id
-                        ? 'loading'
-                        : wardrobeAddedIds.has(product.id)
-                          ? 'added'
+                      wardrobeAddedIds.has(product.id)
+                        ? 'added'
+                        : addToWardrobeMutation.isPending && addToWardrobeMutation.variables?.id === product.id
+                          ? 'loading'
                           : 'idle'
                     }
                   />
@@ -345,7 +400,7 @@ function ProductsContent() {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setPageInUrl(page - 1)}
                     disabled={page <= 1}
                     className="p-2.5 rounded-xl border border-[#e8e4df] bg-white text-[#6b6560] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-[#e8e4df] disabled:hover:text-[#6b6560] transition-all"
                   >
@@ -354,7 +409,7 @@ function ProductsContent() {
 
                   <div className="flex items-center gap-1 px-2">
                     {(() => {
-                      const tp = knownTotalPages > 0 ? knownTotalPages : page + (canGoNext ? 1 : 0)
+                      const tp = pagerTotalPages
                       const windowSize = Math.min(tp, 7)
                       return Array.from({ length: windowSize }).map((_, i) => {
                         let pageNum: number
@@ -371,7 +426,7 @@ function ProductsContent() {
                           <button
                             key={pageNum}
                             type="button"
-                            onClick={() => setPage(pageNum)}
+                            onClick={() => setPageInUrl(pageNum)}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
                                 ? 'bg-[#ebe6e0] border border-[#d8d2cd] text-[#2a2623] shadow-sm'
@@ -384,14 +439,14 @@ function ProductsContent() {
                       })
                     })()}
 
-                    {knownTotalPages === 0 && canGoNext && (
+                    {pagerTotalPages <= 1 && canGoNext && (
                       <span className="w-9 h-9 flex items-center justify-center text-sm text-[#b8aea5]">…</span>
                     )}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setPage((p) => p + 1)}
+                    onClick={() => setPageInUrl(page + 1)}
                     disabled={!canGoNext}
                     className="p-2.5 rounded-xl border border-[#e8e4df] bg-white text-[#6b6560] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] hover:text-[#2a2623] disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-[#e8e4df] disabled:hover:text-[#6b6560] transition-all"
                   >
@@ -405,7 +460,7 @@ function ProductsContent() {
                     e.preventDefault()
                     const n = parseInt(pageJump, 10)
                     if (!Number.isFinite(n) || n < 1) return
-                    setPage(knownTotalPages > 0 ? Math.min(n, knownTotalPages) : n)
+                    setPageInUrl(pagerTotalPages > 0 ? Math.min(n, pagerTotalPages) : n)
                   }}
                 >
                   <label htmlFor="shop-page-jump" className="text-sm text-[#7a726b] whitespace-nowrap">
@@ -415,7 +470,7 @@ function ProductsContent() {
                     id="shop-page-jump"
                     type="number"
                     min={1}
-                    {...(knownTotalPages > 0 ? { max: knownTotalPages } : {})}
+                    {...(pagerTotalPages > 0 ? { max: pagerTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
                     className="w-16 px-2 py-2 rounded-lg border border-[#e8e4df] bg-white text-[#2a2623] text-center text-sm focus:ring-2 focus:ring-[#d8c6bb]/40 focus:border-[#d8d2cd]"
@@ -430,8 +485,8 @@ function ProductsContent() {
                     ? `Page ${page} · more results`
                     : pagination?.indeterminate
                       ? `Page ${page}`
-                      : knownTotalPages > 0
-                        ? `Page ${page} of ${knownTotalPages}`
+                      : pagerTotalPages > 0
+                        ? `Page ${page} of ${pagerTotalPages}`
                         : `Page ${page}`}
                 </span>
               </div>

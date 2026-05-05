@@ -36,11 +36,16 @@ type ProductAggregateRow = {
 const DAY_MS = 24 * 60 * 60 * 1000
 const BATCH_SIZE = 1000
 const AGGREGATE_CACHE_TTL_MS = 60_000
+const SUPABASE_AGGREGATE_MAX_DURATION_MS = 20_000
+const SUPABASE_AGGREGATE_MAX_ROWS = 25_000
+const ADMIN_QUERY_TIMEOUT_MS = 12_000
 
 /** GET /products clamps `limit` to 100 — requesting more makes `rows.length < limit` and stops after page 1. */
 const BACKEND_PRODUCT_PAGE_SIZE = 100
-/** Default max pages when crawling GET /products for aggregates (~120k rows). Override with CATALOG_AGGREGATE_BACKEND_MAX_PAGES. */
-const DEFAULT_BACKEND_AGGREGATE_MAX_PAGES = 1200
+/** Default max pages when crawling GET /products for aggregates. Kept bounded to avoid hanging admin pages. */
+const DEFAULT_BACKEND_AGGREGATE_MAX_PAGES = 120
+/** Hard time budget for backend aggregate crawling so admin pages render instead of loading forever. */
+const BACKEND_AGGREGATE_MAX_DURATION_MS = 20_000
 
 /**
  * If Supabase returns fewer product rows than this, we also crawl GET /products and keep the larger set.
@@ -80,6 +85,31 @@ let aggregateCache: {
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-359201620993.asia-southeast1.run.app').replace(/\/+$/, '')
+
+const EMPTY_KPIS: OverviewKPIs = {
+  total_vendors: 0,
+  total_products: 0,
+  unique_categories: 0,
+  available_products: 0,
+  unavailable_products: 0,
+  products_seen_today: 0,
+  missing_category: 0,
+  missing_color: 0,
+  missing_size: 0,
+  missing_image_url: 0,
+  missing_image_urls: 0,
+  missing_variant_id: 0,
+  missing_parent_url: 0,
+  with_sale_price: 0,
+  updated_last_24h: 0,
+}
+
+function withAdminTimeout<T>(promise: Promise<T>, fallback: T, ms = ADMIN_QUERY_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
 
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -278,7 +308,9 @@ async function fetchAllProductsFromBackend(maxPages = getBackendAggregateMaxPage
   const limit = BACKEND_PRODUCT_PAGE_SIZE
   const out: BackendProductRow[] = []
   const cap = Math.max(1, maxPages)
+  const startedAt = Date.now()
   for (let page = 1; page <= cap; page += 1) {
+    if (Date.now() - startedAt > BACKEND_AGGREGATE_MAX_DURATION_MS) break
     const payload = await backendGet('/products', { page, limit })
     const rows = extractArray<BackendProductRow>(payload)
     if (rows.length === 0) break
@@ -313,8 +345,11 @@ async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
   aggregateCache.inFlight = (async () => {
     const rows: ProductAggregateRow[] = []
     let from = 0
+    const startedAt = Date.now()
 
     while (true) {
+      if (Date.now() - startedAt > SUPABASE_AGGREGATE_MAX_DURATION_MS) break
+      if (rows.length >= SUPABASE_AGGREGATE_MAX_ROWS) break
       const to = from + BATCH_SIZE - 1
       const { data, error } = await sb
         .from('products')
@@ -403,6 +438,7 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
   let missingVariantId = 0
   let missingParentUrl = 0
   let withSalePrice = 0
+  const categoryLabels = new Set<string>()
 
   for (const row of rows) {
     if (row.availability === true) available++
@@ -416,6 +452,8 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
     if (isBlank(row.parent_product_url)) missingParentUrl++
     if ((row.sales_price_cents ?? 0) > 0) withSalePrice++
 
+    categoryLabels.add(isBlank(row.category) ? '(uncategorized)' : String(row.category).trim())
+
     if (row.last_seen) {
       const ageMs = now - new Date(row.last_seen).getTime()
       if (ageMs <= DAY_MS) {
@@ -428,6 +466,7 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
   return {
     total_vendors: totalVendors,
     total_products: rows.length,
+    unique_categories: categoryLabels.size,
     available_products: available,
     unavailable_products: unavailable,
     products_seen_today: seenToday,
@@ -505,6 +544,7 @@ async function fetchVendorStatsFallback(): Promise<VendorStats[]> {
   ])
 
   const vendorMap = new Map<number, VendorStats>()
+  const healthyCounts = new Map<number, number>()
 
   if (!vendorsRes.error) {
     for (const vendor of ((vendorsRes.data ?? []) as Array<{ id: number | string; name: string; url: string; ship_to_lebanon: boolean }>)) {
@@ -571,6 +611,15 @@ async function fetchVendorStatsFallback(): Promise<VendorStats[]> {
         stats.latest_last_seen = row.last_seen
       }
     }
+
+    const isHealthy =
+      !!row.image_url &&
+      !isBlank(row.category) &&
+      !!row.last_seen &&
+      new Date(row.last_seen).getTime() >= sevenDaysAgo
+    if (isHealthy) {
+      healthyCounts.set(vendorId, (healthyCounts.get(vendorId) ?? 0) + 1)
+    }
   }
 
   for (const stats of vendorMap.values()) {
@@ -578,19 +627,7 @@ async function fetchVendorStatsFallback(): Promise<VendorStats[]> {
       stats.health_score = 0
       continue
     }
-
-    let healthyProducts = 0
-    const vendorRows = rows.filter((row) => Number(row.vendor_id) === stats.id)
-    for (const row of vendorRows) {
-      const isHealthy =
-        !!row.image_url &&
-        !isBlank(row.category) &&
-        !!row.last_seen &&
-        new Date(row.last_seen).getTime() >= sevenDaysAgo
-
-      if (isHealthy) healthyProducts += 1
-    }
-
+    const healthyProducts = healthyCounts.get(stats.id) ?? 0
     stats.health_score = Math.round((healthyProducts / stats.total_products) * 100)
   }
 
@@ -624,19 +661,19 @@ async function fetchFreshnessStatsFallback(): Promise<FreshnessStats> {
 }
 
 export async function fetchOverviewKPIs(): Promise<OverviewKPIs> {
-  return fetchOverviewKPIsFallback()
+  return withAdminTimeout(fetchOverviewKPIsFallback(), EMPTY_KPIS)
 }
 
 export async function fetchCategoryCounts(): Promise<CategoryCount[]> {
-  return fetchCategoryCountsFallback()
+  return withAdminTimeout(fetchCategoryCountsFallback(), [])
 }
 
 export async function fetchVendorProductCounts(): Promise<VendorProductCount[]> {
-  return fetchVendorProductCountsFallback()
+  return withAdminTimeout(fetchVendorProductCountsFallback(), [])
 }
 
 export async function fetchVendorStats(): Promise<VendorStats[]> {
-  return fetchVendorStatsFallback()
+  return withAdminTimeout(fetchVendorStatsFallback(), [])
 }
 
 export async function fetchProducts(
@@ -946,7 +983,7 @@ async function fetchRecentPriceChangesFallback(limit = 50) {
 }
 
 export async function fetchRecentPriceChanges(limit = 50) {
-  return fetchRecentPriceChangesFallback(limit)
+  return withAdminTimeout(fetchRecentPriceChangesFallback(limit), [])
 }
 
 async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSaleProduct[]> {
@@ -1041,14 +1078,20 @@ export async function fetchDailyPriceVolume(): Promise<DailyScrapeStat[]> {
 }
 
 export async function fetchCurrentSaleProducts(limit = 20): Promise<CurrentSaleProduct[]> {
-  return fetchCurrentSaleProductsFallback(limit)
+  return withAdminTimeout(fetchCurrentSaleProductsFallback(limit), [])
 }
 
 export async function fetchFreshnessStats(): Promise<FreshnessStats> {
-  return fetchFreshnessStatsFallback()
+  return withAdminTimeout(fetchFreshnessStatsFallback(), {
+    fresh_count: 0,
+    recent_count: 0,
+    aging_count: 0,
+    stale_count: 0,
+  })
 }
 
 export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
+  return withAdminTimeout((async () => {
   const [vendorsRes, rows] = await Promise.all([
     sb.from('vendors').select('id, name'),
     fetchProductAggregateRows(),
@@ -1112,14 +1155,18 @@ export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
 
   out.sort((a, b) => b.product_count - a.product_count)
   return out
+  })(), [])
 }
 
 export async function fetchDistinctCategories(): Promise<string[]> {
-  const rows = await fetchProductAggregateRows()
-  return Array.from(new Set(rows.map((row) => row.category).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b))
+  return withAdminTimeout((async () => {
+    const rows = await fetchProductAggregateRows()
+    return Array.from(new Set(rows.map((row) => row.category).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b))
+  })(), [])
 }
 
 export async function fetchDistinctVendors(): Promise<Array<{ id: number; name: string }>> {
+  return withAdminTimeout((async () => {
   const byId = new Map<number, string>()
 
   const { data, error } = await sb
@@ -1144,4 +1191,5 @@ export async function fetchDistinctVendors(): Promise<Array<{ id: number; name: 
   const out = Array.from(byId.entries()).map(([id, name]) => ({ id, name }))
   out.sort((a, b) => a.name.localeCompare(b.name))
   return out
+  })(), [])
 }

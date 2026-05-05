@@ -7,12 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInView } from 'framer-motion'
 import {
   ArrowUpRight,
-  Search,
-  Sparkles,
-  Shirt,
-  Layers,
   GitCompare,
   Heart,
+  Layers,
+  Search,
+  Shirt,
+  Sparkles,
   Lock,
   Timer,
   UserRound,
@@ -21,6 +21,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { Product } from '@/types/product'
+import type { OverviewKPIs } from '@/types/catalog-admin'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -63,29 +64,83 @@ type FacetsResponse = {
   brands?: FacetBucket[]
   categories?: FacetBucket[]
   styles?: FacetBucket[]
+  /** From `GET /products/facets` — catalog-wide hit total when exposed by the API */
+  totalProductCount?: number
 }
 
+function paginationTotal(payload: unknown): number {
+  const p = payload as {
+    pagination?: { total?: number }
+    meta?: { total?: number; total_results?: number }
+    total?: number
+  }
+  const n =
+    p.pagination?.total ??
+    p.meta?.total ??
+    p.meta?.total_results ??
+    (typeof p.total === 'number' ? p.total : undefined)
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : 0
+}
+
+function sumFacetBuckets(b?: FacetBucket[]): number {
+  if (!Array.isArray(b)) return 0
+  return b.reduce((s, x) => s + (Number(x.count ?? x.doc_count ?? 0) || 0), 0)
+}
+
+/**
+ * Prefer admin-aligned KPIs from `/api/catalog/overview` when non-zero.
+ * If the DB aggregate is empty or unreachable (local dev, timeout), fall back to the public product API
+ * so “Products in catalog” matches what shoppers can actually query.
+ */
 function useCatalogStats() {
   return useQuery({
     queryKey: ['home-stats'],
     queryFn: async () => {
-      const [facetsRes, salesRes] = await Promise.allSettled([
+      const [overviewRes, facetsRes, listRes] = await Promise.allSettled([
+        fetch('/api/catalog/overview', { cache: 'no-store' }).then(async (r) => {
+          if (!r.ok) return null
+          const body = (await r.json()) as OverviewKPIs | { error?: string }
+          if (body && typeof body === 'object' && 'error' in body && !('total_products' in body)) return null
+          return body as OverviewKPIs
+        }),
         api.get<FacetsResponse>(endpoints.products.facets),
-        api.get<Product[]>(endpoints.products.sales, { limit: 1, page: 1 }),
+        api.get<unknown>(endpoints.products.list, { limit: 1, page: 1 }),
       ])
+
+      const kpis = overviewRes.status === 'fulfilled' ? overviewRes.value : null
       const facets = facetsRes.status === 'fulfilled' ? facetsRes.value?.data : undefined
-      const sales = salesRes.status === 'fulfilled' ? salesRes.value : undefined
+      const listPayload = listRes.status === 'fulfilled' ? listRes.value : undefined
 
-      const sumBuckets = (b?: FacetBucket[]) =>
-        Array.isArray(b)
-          ? b.reduce((s, x) => s + (Number(x.count ?? x.doc_count ?? 0) || 0), 0)
-          : 0
+      const facetListTotal = typeof facets?.totalProductCount === 'number' ? facets.totalProductCount : 0
+      const listTotal = paginationTotal(listPayload)
 
-      const totalProducts = Math.max(sumBuckets(facets?.categories), sumBuckets(facets?.brands))
-      const brandsLen = Array.isArray(facets?.brands) ? facets!.brands!.length : 0
-      const categoriesLen = Array.isArray(facets?.categories) ? facets!.categories!.length : 0
-      const onSaleTotal =
-        Number((sales as { pagination?: { total?: number }; meta?: { total?: number } } | undefined)?.pagination?.total ?? (sales as { meta?: { total?: number } } | undefined)?.meta?.total ?? 0) || 0
+      /** `/products/sales` is often slow — only request it when KPIs don’t already include sale counts. */
+      let salesTotal = 0
+      const ovSale = kpis?.with_sale_price ?? 0
+      if (ovSale <= 0) {
+        const salesRes = await api.get<unknown>(endpoints.products.sales, { limit: 1, page: 1 }).catch(() => null)
+        salesTotal = salesRes ? paginationTotal(salesRes) : 0
+      }
+      const sumCategories = sumFacetBuckets(facets?.categories)
+      const sumBrands = sumFacetBuckets(facets?.brands)
+      const sumFallback = Math.max(sumCategories, sumBrands)
+
+      const ovProducts = kpis?.total_products ?? 0
+      const ovVendors = kpis?.total_vendors ?? 0
+      const ovCats = kpis?.unique_categories ?? 0
+
+      const totalProducts =
+        ovProducts > 0
+          ? ovProducts
+          : Math.max(facetListTotal, listTotal, sumFallback)
+
+      const brandsLen =
+        ovVendors > 0 ? ovVendors : Array.isArray(facets?.brands) ? facets.brands.length : 0
+
+      const categoriesLen =
+        ovCats > 0 ? ovCats : Array.isArray(facets?.categories) ? facets.categories.length : 0
+
+      const onSaleTotal = ovSale > 0 ? ovSale : salesTotal
 
       return { totalProducts, brandsLen, categoriesLen, onSaleTotal }
     },
@@ -172,97 +227,99 @@ function SectionHead({
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Hero — ONE large editorial image card
+   Hero — edge-to-edge photo: fills width + viewport band below nav (no side letterboxing).
+   object-cover scales to cover the frame; focal point biased slightly up for family shots.
    ────────────────────────────────────────────────────────────────────────── */
+
+const HERO_IMAGE = '/brand/hero-family-hq.png'
+
+const heroShortcuts = [
+  { href: '/search?mode=shop', label: 'Shop the look', Icon: Sparkles },
+  { href: '/search', label: 'Text search', Icon: Search },
+  { href: '/wardrobe', label: 'Wardrobe', Icon: Shirt },
+  { href: '/try-on', label: 'Try-on', Icon: Layers },
+  { href: '/compare', label: 'Compare', Icon: GitCompare },
+  { href: '/sales', label: 'Sale', Icon: Heart },
+] as const
 
 function Hero() {
   return (
-    <section className="relative bg-[#ece8e5]">
-          <motion.div
+    <section className="relative w-full bg-[#ece8e5]">
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 1.1, ease: EASE_OUT }}
-        /*
-          Full-bleed hero. The image is 1024×819 (ratio 1.25:1 / 5:4).
-          We size the container to match that natural ratio so the entire
-          family is visible — nothing is cropped. On most desktop
-          viewports this makes the hero taller than the fold, which is
-          exactly what was asked: very big, whole picture visible.
-        */
-        className="relative w-full overflow-hidden aspect-[1024/819] min-h-screen bg-[#ece8e5]"
+        transition={{ duration: 1.05, ease: EASE_OUT }}
+        className="relative w-full"
       >
-        <Image
-          src="/brand/tz-hero-family-wide.png"
-          alt="TrendZone family editorial — the new season for everyone"
-          fill
-          priority
-          sizes="100vw"
-          /*
-            object-contain guarantees the whole family is visible at every
-            viewport size. The page background already matches the image's
-            beige backdrop, so any letterbox bars blend invisibly.
-          */
-          className="object-contain object-center"
-        />
+        <div className="relative min-h-[100svh] w-full overflow-hidden outline-none ring-0">
+          <Image
+            src={HERO_IMAGE}
+            alt="Bolden family editorial — the new season for everyone"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-top outline-none focus:outline-none"
+          />
 
-        {/* Pulse overlay — kept very subtle so the family is fully visible */}
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0.08 }}
-          animate={{ opacity: [0.08, 0.16, 0.08] }}
-          transition={{ duration: 8, ease: 'easeInOut', repeat: Infinity }}
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(42,38,35,0.22)_0%,rgba(42,38,35,0)_30%,rgba(42,38,35,0)_60%,rgba(42,38,35,0.55)_100%)]"
-        />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(42,38,35,0.28)_0%,rgba(42,38,35,0.06)_42%,rgba(42,38,35,0.18)_72%,rgba(42,38,35,0.52)_100%)]"
+          />
 
-        {/* Top eyebrow + season tag — pushed below the floating navbar */}
-        <div className="absolute inset-x-0 top-[72px] sm:top-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between text-white">
-          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
-            TrendZone Studio
-          </p>
-          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
-            Season 2026 · Pre-Fall
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: EASE_OUT, delay: 0.12 }}
+            className="absolute inset-0 flex items-end justify-start px-5 pb-10 pt-[76px] sm:px-10 sm:pb-12 lg:px-[48px]"
+          >
+            <div className="max-w-[min(32rem,92vw)] text-left">
+              <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.32em] text-white/90 drop-shadow-[0_2px_16px_rgba(0,0,0,0.35)]">
+                The studio lookbook
+              </p>
+              <h1
+                className="mt-3 font-display font-bold leading-[0.98] tracking-[-0.04em] text-white drop-shadow-[0_4px_32px_rgba(0,0,0,0.45)] [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]"
+                style={{ fontSize: 'clamp(2.35rem, 6.2vw, 5rem)' }}
+              >
+                Where style meets confidence
+              </h1>
+              <p className="mt-4 max-w-2xl text-[14px] sm:text-[15px] font-medium leading-[1.7] text-white/95 drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]">
+                From refined shirts and trousers to tailoring you can live in - explore the edit, shop the look, try
+                pieces on virtually, and compare what you love.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-2 rounded-full bg-white/95 px-6 py-3 text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-[#2a2623] ring-1 ring-white/60 shadow-[0_8px_28px_-12px_rgba(42,38,35,0.35)] hover:bg-white transition-colors"
+                >
+                  Explore collection
+                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </Link>
+                <Link
+                  href="/search?mode=shop"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/95 bg-transparent px-6 py-3 text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-white hover:bg-white/10 transition-colors"
+                >
+                  Shop the look
+                </Link>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Bottom block — large editorial title */}
-          <motion.div
-          initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.1, ease: EASE_OUT, delay: 0.2 }}
-          className="absolute inset-x-0 bottom-0 px-5 sm:px-8 lg:px-12 pb-8 sm:pb-12 lg:pb-16"
-        >
-          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.34em] text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]">
-            The family lookbook
-          </p>
-          <h1
-            className="mt-3 font-display font-bold text-white tracking-[-0.03em] leading-[0.9] drop-shadow-[0_4px_22px_rgba(0,0,0,0.55)]"
-            style={{ fontSize: 'clamp(3.15rem, 9.5vw, 9.25rem)' }}
-          >
-            Dressed together,
-            <br />
-            <span className="font-semibold italic tracking-[-0.02em] opacity-95">in quiet luxury.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-[14px] sm:text-[15px] font-medium leading-[1.65] text-white/92 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">
-            From refined shirts and trousers to tailoring you can live in — explore the edit, shop the look,
-            try pieces on virtually, and compare what you love.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link
-              href="/products"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2B2521] visited:text-[#2B2521] hover:bg-white/95 transition-colors shadow-[0_8px_28px_rgba(0,0,0,0.22)] border border-white/80"
-            >
-              Explore collection
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/search?mode=shop"
-              className="inline-flex items-center gap-2 rounded-full border-2 border-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-white visited:text-white hover:bg-white/15 transition-colors backdrop-blur-[2px] [text-shadow:0_1px_8px_rgba(0,0,0,0.25)]"
-            >
-              Shop the look
-            </Link>
+        <div className="relative w-full border-t border-[#e5ded8]/90 bg-[#f3f0ed] px-5 py-5 sm:px-10 lg:px-[48px]">
+          <div className="flex w-full flex-wrap gap-2.5 sm:gap-3">
+            {heroShortcuts.map(({ href, label, Icon }) => (
+              <Link
+                key={href + label}
+                href={href}
+                className="inline-flex flex-1 min-w-[150px] items-center justify-center gap-2 rounded-full border border-[#2a2623]/85 bg-[#f3f0ed] px-4 py-2.5 text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2a2623] hover:bg-white hover:border-[#2a2623] transition-colors"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+                {label}
+              </Link>
+            ))}
           </div>
-        </motion.div>
-          </motion.div>
+        </div>
+      </motion.div>
     </section>
   )
 }
@@ -273,10 +330,10 @@ function Hero() {
 
 function Categories() {
   const items = [
-    { label: 'Dress', href: '/products?category=dress', img: '/brand/tz-cat-dresses.png' },
-    { label: 'Trousers', href: '/products?category=bottoms&q=trousers', img: '/brand/tz-cat-trousers.png' },
+    { label: 'Dress', href: '/products?category=dress', img: '/brand/tz-cat-dresses.jpg' },
+    { label: 'Trousers', href: '/products?category=bottoms&q=trousers', img: '/brand/tz-cat-trousers.jpg' },
     { label: 'Tops', href: '/products?category=tops', img: '/brand/tz-cat-tops.png' },
-    { label: 'Shoes', href: '/products?category=shoes', img: '/brand/tz-cat-shoes.png' },
+    { label: 'Shoes', href: '/products?category=shoes', img: '/brand/tz-cat-shoes.jpg' },
   ]
 
   return (
@@ -321,7 +378,7 @@ function Categories() {
 
 function AboutUs() {
   return (
-    <section className="px-4 sm:px-6 lg:px-10 py-10 lg:py-20">
+    <section id="about" className="px-4 sm:px-6 lg:px-10 py-10 lg:py-20">
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -331,8 +388,8 @@ function AboutUs() {
       >
         <div className="lg:col-span-6 relative aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5] overflow-hidden rounded-[14px] ring-1 ring-[#d8d2cd] bg-[#ece8e5]">
             <Image
-            src="/brand/tz-editorial-couple.png"
-            alt="TrendZone — about the studio"
+            src="/brand/tz-editorial-couple.jpg"
+            alt="Bolden — about the studio"
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover transition-transform duration-[1400ms] ease-out hover:scale-[1.03]"
@@ -346,11 +403,11 @@ function AboutUs() {
           >
             The house of
             <br />
-            <span className="italic font-semibold">TrendZone.</span>
+            <span className="italic font-semibold">Bolden.</span>
           </h2>
           <div className="mt-7 grid sm:grid-cols-2 gap-6 sm:gap-8 text-[14px] sm:text-[15px] font-medium leading-[1.72] text-[#3d3935]">
             <p>
-              TrendZone is a modern fashion marketplace built around discovery. We bring together
+              Bolden is a modern fashion marketplace built around discovery. We bring together
               considered designers, AI-assisted search, virtual try-on and shop-the-look tools so
               every shopper finds pieces that genuinely belong in their wardrobe.
             </p>
@@ -425,7 +482,7 @@ function VirtualTryOnShowcase() {
 
         <div className="mt-10 relative overflow-hidden rounded-[18px] bg-[#f5f3f2] ring-1 ring-[#d8d2cd] shadow-[0_24px_80px_-32px_rgba(42,38,35,0.35)]">
           <Image
-            src="/brand/tz-home-virtual-tryon-showcase.png"
+            src="/brand/tz-home-virtual-tryon-showcase.jpg"
             alt="Virtual Try-On interface: upload your photo, select a garment, and preview the AI try-on result"
             width={1024}
             height={562}
@@ -490,7 +547,7 @@ function VisualSearchShowcase() {
 
         <div className="mt-10 relative overflow-hidden rounded-[18px] bg-[#ece8e5] ring-1 ring-[#d8d2cd] shadow-[0_24px_80px_-32px_rgba(42,38,35,0.3)]">
           <Image
-            src="/brand/tz-home-visual-search-showcase.png"
+            src="/brand/tz-home-visual-search-showcase.jpg"
             alt="Visual Search interface: product detail, styled model with scan frame, and similar recommended pieces"
             width={1024}
             height={579}
@@ -513,19 +570,19 @@ function Services() {
     {
       title: 'Text Search',
       desc: 'Type brands, styles, colours or occasions — our catalog search understands natural language and brings back ranked matches in seconds.',
-      img: '/brand/tz-home-text-search-lifestyle.png',
+      img: '/brand/tz-home-text-search-lifestyle.jpg',
       href: '/search',
     },
     {
       title: 'Virtual Try-On',
       desc: 'Step in front of the mirror — change the size, the colour, the silhouette. See exactly how a piece falls on you before you commit, from any device.',
-      img: '/brand/tz-service-tryon-mirror.png',
+      img: '/brand/tz-service-tryon-mirror.jpg',
       href: '/try-on',
     },
     {
       title: 'Shop the Look',
       desc: 'Capture an outfit you love and we will rebuild it head-to-toe from our edits. Tops, bottoms, shoes, accessories — completed for you, in your style.',
-      img: '/brand/tz-service-shop-the-look.png',
+      img: '/brand/tz-service-shop-the-look.jpg',
       href: '/search?mode=shop',
     },
     {
@@ -568,37 +625,6 @@ function Services() {
               </div>
             </Link>
               </motion.div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Tools — preserved features as low-key chips (Shop the look, Search, Wardrobe…)
-   ────────────────────────────────────────────────────────────────────────── */
-
-function Tools() {
-  const tools = [
-    { href: '/search?mode=shop', label: 'Shop the look', icon: Sparkles },
-    { href: '/search', label: 'Text search', icon: Search },
-    { href: '/wardrobe', label: 'Wardrobe', icon: Shirt },
-    { href: '/try-on', label: 'Try-on', icon: Layers },
-    { href: '/compare', label: 'Compare', icon: GitCompare },
-    { href: '/sales', label: 'Sale', icon: Heart },
-  ]
-  return (
-    <section className="px-4 sm:px-6 lg:px-10 py-8">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {tools.map((t) => (
-          <Link
-            key={t.label}
-            href={t.href}
-            className="group flex items-center justify-center gap-2 rounded-full bg-white border-2 border-brand px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand hover:bg-brand-muted transition-colors"
-          >
-            <t.icon className="h-3.5 w-3.5 text-[#b8aea5] group-hover:text-[#2a2623] transition-colors" />
-            <span className="truncate">{t.label}</span>
-          </Link>
         ))}
       </div>
     </section>
@@ -766,12 +792,12 @@ function Closing() {
         transition={{ duration: 0.9, ease: EASE_OUT }}
         className="text-center"
       >
-        <Eyebrow>TrendZone</Eyebrow>
+        <Eyebrow>Bolden</Eyebrow>
         <h2
           className="mt-4 font-display font-semibold text-[#c9c1ba] tracking-[-0.04em] leading-none select-none"
           style={{ fontSize: 'clamp(3.5rem, 14vw, 12rem)' }}
               >
-                TRENDZONE
+                BOLDEN
               </h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
           <Link
@@ -801,7 +827,6 @@ export default function HomePage() {
   return (
     <div className="overflow-x-hidden bg-[#f5f3f2]">
       <Hero />
-      <Tools />
       <Categories />
       <AboutUs />
       <VirtualTryOnShowcase />

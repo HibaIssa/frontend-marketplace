@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import clsx from 'clsx'
+import { BoldenLogoMark, boldenWordmarkClassName } from '@/components/brand/BoldenLogoMark'
 
 export function Footer() {
   return (
@@ -10,15 +12,27 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="inline-flex items-center gap-2.5 font-display text-lg font-bold tracking-tight tz-burgundy"
+              className={clsx(
+                'inline-flex items-center gap-2.5 text-lg text-ink rounded-lg',
+                boldenWordmarkClassName,
+                'outline-none [-webkit-tap-highlight-color:transparent]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2521]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+              )}
             >
-              TrendZone
+              <BoldenLogoMark tone="default" compact />
+              Bolden
             </Link>
-            <p className="mt-4 text-sm text-[#0a0a0a]/65 leading-relaxed max-w-xs">
+            <p className="mt-2 text-small font-medium text-muted leading-snug max-w-xs font-sans">
+              Where style meets confidence.
+            </p>
+            <p className="mt-4 text-body text-muted/90 leading-relaxed max-w-xs font-sans">
               Fashion discovery powered by AI: search, compare, wardrobe, and try-on in one seamless experience.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/#about" className="px-3 py-1.5 rounded-full text-[12px] font-semibold tz-burgundy bg-[#e5eeff] ring-1 ring-black/10 hover:bg-[#c7d7fe] transition-colors">
+              <Link
+                href="/#about"
+                className="px-3 py-1.5 rounded-full text-small font-semibold tracking-[0.04em] text-ink bg-page ring-1 ring-ink/12 hover:bg-[#ebe6df] transition-colors font-sans"
+              >
                 About us
               </Link>
             </div>
@@ -26,28 +40,60 @@ export function Footer() {
 
           <div>
             <h4 className="tz-eyebrow mb-4">Shop</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/products" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">All products</Link></li>
-              <li><Link href="/search" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Discover</Link></li>
-              <li><Link href="/sales" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Sale</Link></li>
-              <li><Link href="/favorites" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Favorites</Link></li>
+            <ul className="space-y-2.5 text-body font-sans">
+              <li>
+                <Link href="/products" className="text-muted hover:text-ink transition-colors">
+                  All products
+                </Link>
+              </li>
+              <li>
+                <Link href="/search" className="text-muted hover:text-ink transition-colors">
+                  Discover
+                </Link>
+              </li>
+              <li>
+                <Link href="/sales" className="text-muted hover:text-ink transition-colors">
+                  Sale
+                </Link>
+              </li>
+              <li>
+                <Link href="/favorites" className="text-muted hover:text-ink transition-colors">
+                  Favorites
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h4 className="tz-eyebrow mb-4">Tools</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/search?mode=shop" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Shop the look</Link></li>
-              <li><Link href="/wardrobe" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Wardrobe</Link></li>
-              <li><Link href="/try-on" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Virtual try-on</Link></li>
-              <li><Link href="/compare" className="text-[#0a0a0a]/75 hover:text-[#0a0a0a] transition-colors">Compare</Link></li>
+            <ul className="space-y-2.5 text-body font-sans">
+              <li>
+                <Link href="/search?mode=shop" className="text-muted hover:text-ink transition-colors">
+                  Shop the look
+                </Link>
+              </li>
+              <li>
+                <Link href="/wardrobe" className="text-muted hover:text-ink transition-colors">
+                  Wardrobe
+                </Link>
+              </li>
+              <li>
+                <Link href="/try-on" className="text-muted hover:text-ink transition-colors">
+                  Virtual try-on
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare" className="text-muted hover:text-ink transition-colors">
+                  Compare
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-black/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#0a0a0a]/65">
-          <p>&copy; {new Date().getFullYear()} TrendZone. All rights reserved.</p>
-          <p className="font-semibold tz-burgundy">We don&apos;t follow trends — we create them.</p>
+        <div className="mt-12 pt-8 border-t border-black/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-small font-sans text-muted">
+          <p>&copy; {new Date().getFullYear()} Bolden. All rights reserved.</p>
+          <p className="font-semibold text-ink">Where style meets confidence.</p>
         </div>
       </div>
     </footer>

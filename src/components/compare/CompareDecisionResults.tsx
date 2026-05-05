@@ -341,10 +341,10 @@ export function CompareDecisionResults({
               </span>
                         {itemOverall != null ? (
                           <div
-                            className="absolute bottom-2 right-2 z-10 rounded-full bg-black/40 p-1 shadow-lg ring-1 ring-white/25 backdrop-blur-[3px]"
+                            className="absolute bottom-2 right-2 z-10 rounded-full bg-black/40 p-0.5 shadow-md ring-1 ring-white/25 backdrop-blur-[3px]"
                             aria-label={`Score ${itemOverall}`}
                           >
-                            <ScoreRing score={itemOverall} color={ringCol} size={52} label="" />
+                            <ScoreRing score={itemOverall} color={ringCol} size={38} label="" />
                           </div>
                         ) : null}
                       </div>
@@ -731,7 +731,7 @@ export function CompareDecisionResults({
                     </span>
                     {overall != null ? (
                       <div className="absolute bottom-1 right-1 z-10 rounded-full bg-black/40 p-0.5 shadow-md ring-1 ring-white/30 backdrop-blur-[2px]">
-                        <ScoreRing score={overall} color={ringColor} size={44} label="" />
+                        <ScoreRing score={overall} color={ringColor} size={34} label="" />
                       </div>
                     ) : null}
                     </Link>

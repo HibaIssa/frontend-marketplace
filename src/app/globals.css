@@ -3,9 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  /**
+   * Font stacks: `--font-display` and `--font-sans` are injected on `<html>` by `next/font`
+   * (see `src/app/layout.tsx`). Do not override them here.
+   */
   :root {
-    --font-display: 'Inter', system-ui, sans-serif;
-    --font-sans: 'Inter', system-ui, sans-serif;
+    /* Luxury editorial text (use in CSS and `text-ink` / `text-muted` in Tailwind) */
+    --color-text-primary: #2b2521;
+    --color-text-muted: #6f6258;
+    --color-accent: #7a4e3a;
+    --color-page-bg: #f5f1ec;
 
     /* Editorial neutral palette (stone / oat / espresso) */
     --tz-page-lime: #e7e2de;
@@ -16,10 +23,10 @@
     --tz-pink-400: #57504a;
     --tz-cream: #ffffff;
     --tz-cream-2: #fffef6;
-    --tz-burgundy: #0a0a0a;
-    --tz-burgundy-strong: #000000;
-    --tz-burgundy-soft: #9e938b;
-    --tz-ink: #0a0a0a;
+    --tz-burgundy: #2b2521;
+    --tz-burgundy-strong: #1a1614;
+    --tz-burgundy-soft: #6f6258;
+    --tz-ink: #2b2521;
     /* Matches Tailwind `brand` — primary buttons site-wide */
     --tz-brand: #3d3030;
     --tz-brand-hover: #504545;
@@ -37,25 +44,71 @@
   }
 
   body {
-    @apply antialiased;
+    @apply antialiased font-sans text-base;
+    color: var(--color-text-primary);
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    line-height: 1.5;
+    background-color: var(--color-page-bg);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  h1 {
+    font-size: clamp(56px, 7vw, 96px);
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: clamp(40px, 5vw, 64px);
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: clamp(1.75rem, 2.2vw, 2.25rem);
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    color: var(--color-text-primary);
+  }
+
+  a,
+  a:visited {
+    color: inherit;
+    text-decoration: none;
   }
 
   ::selection {
     background: rgba(158, 147, 139, 0.24);
-    color: var(--tz-burgundy);
+    color: var(--color-text-primary);
   }
 }
 
 @layer components {
   /* Full-page wash — class name kept for back-compat */
   .tz-pink-bg {
-    background-color: #ece8e4;
+    background-color: var(--color-page-bg);
     background-image:
-      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(191, 179, 170, 0.2) 0%, transparent 55%),
-      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(118, 105, 97, 0.12) 0%, transparent 52%),
+      radial-gradient(ellipse 120% 85% at 0% -25%, rgba(191, 179, 170, 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 75% at 100% 5%, rgba(118, 105, 97, 0.1) 0%, transparent 52%),
       radial-gradient(ellipse 95% 70% at 50% 105%, rgba(189, 177, 168, 0.1) 0%, transparent 50%),
-      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(154, 143, 135, 0.12) 0%, transparent 46%);
+      radial-gradient(ellipse 80% 55% at 90% 90%, rgba(154, 143, 135, 0.1) 0%, transparent 46%);
     background-attachment: fixed;
   }
 
@@ -78,9 +131,9 @@
   }
 
   .tz-headline {
-    color: var(--tz-burgundy);
-    font-family: var(--font-sans), system-ui, sans-serif;
-    font-weight: 900;
+    color: var(--color-text-primary);
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 600;
     line-height: 1.05;
     letter-spacing: -0.03em;
     font-size: clamp(1.75rem, 4vw, 3rem);
@@ -88,12 +141,12 @@
   }
   .tz-headline em {
     font-style: normal;
-    font-weight: 800;
+    font-weight: 600;
     text-transform: none;
-    color: var(--tz-burgundy-soft);
+    color: var(--color-text-muted);
     margin-right: 0.25em;
     letter-spacing: -0.02em;
-    font-family: var(--font-sans), system-ui, sans-serif;
+    font-family: var(--font-display), Georgia, serif;
   }
   .tz-headline-xl {
     font-size: clamp(2.25rem, 7vw, 4.25rem);
@@ -101,39 +154,59 @@
   }
 
   .tz-eyebrow {
-    color: var(--tz-burgundy);
-    font-size: 0.7rem;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    color: var(--color-text-primary);
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
   .tz-link {
-    color: var(--tz-burgundy);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-size: 0.78rem;
-    border-bottom: 1px solid currentColor;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-size: 14px;
+    border-bottom: 1px solid var(--color-accent);
     padding-bottom: 2px;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
   }
   .tz-link:hover {
-    color: var(--tz-burgundy-strong);
+    color: var(--color-accent);
   }
 
   /* Brand utilities omitted from @apply — Tailwind can fail to resolve nested theme colors here (500 + blank FOUC page). */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           text-white shadow-md active:scale-[0.98] transition-all duration-300;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-sans font-semibold
+           tracking-[0.04em] text-white shadow-md active:scale-[0.98] transition-all duration-300;
+    font-size: 14px;
+    line-height: 1.35;
     background-color: var(--tz-brand);
     box-shadow: 0 4px 6px -1px rgb(61 48 48 / 0.1), 0 0 0 1px rgb(61 48 48 / 0.22);
   }
   .btn-primary:hover {
     background-color: var(--tz-brand-hover);
     box-shadow: 0 10px 15px -3px rgb(61 48 48 / 0.14), 0 0 0 1px rgb(61 48 48 / 0.3);
+  }
+
+  /* Keep contrast consistent: dark brand buttons should always have light text. */
+  a[class*='bg-brand']:not([class*='bg-brand-muted']),
+  button[class*='bg-brand']:not([class*='bg-brand-muted']) {
+    color: #f8f3ee;
+  }
+  a[class*='bg-brand']:not([class*='bg-brand-muted']):visited {
+    color: #f8f3ee;
+  }
+  a[class*='bg-white'],
+  button[class*='bg-white'] {
+    color: var(--tz-brand);
+  }
+  a[class*='bg-white']:visited {
+    color: var(--tz-brand);
   }
   .btn-primary:focus-visible {
     outline: 2px solid transparent;
@@ -142,8 +215,10 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           border-2 active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-sans font-semibold
+           tracking-[0.04em] border-2 active:scale-[0.98] transition-all duration-200;
+    font-size: 14px;
+    line-height: 1.35;
     background-color: var(--tz-brand-muted);
     color: var(--tz-brand);
     border-color: var(--tz-brand);
@@ -160,21 +235,27 @@
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-medium text-sm
-           text-neutral-700 hover:bg-white/60 hover:text-neutral-900
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-sans font-medium
+           tracking-[0.04em] text-neutral-700 hover:bg-white/60 hover:text-neutral-900
            transition-all duration-200;
+    font-size: 14px;
+    line-height: 1.35;
   }
 
   .btn-on-dark {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white text-neutral-950 shadow-lg shadow-black/10 hover:bg-[#f4ece6]
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-sans font-semibold
+           tracking-[0.04em] bg-white text-neutral-950 shadow-lg shadow-black/10 hover:bg-[#f4ece6]
            active:scale-[0.98] transition-all duration-200;
+    font-size: 14px;
+    line-height: 1.35;
   }
 
   .btn-on-dark-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm
-           bg-white/15 text-white border-2 border-white/35 backdrop-blur-md
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-sans font-semibold
+           tracking-[0.04em] bg-white/15 text-white border-2 border-white/35 backdrop-blur-md
            hover:bg-white/25 hover:border-white/50 transition-all duration-200 active:scale-[0.98];
+    font-size: 14px;
+    line-height: 1.35;
   }
 
   .card-hover {
@@ -216,17 +297,40 @@
 
   .text-gradient-accent {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(90deg, var(--tz-burgundy) 0%, var(--tz-burgundy-soft) 100%);
+    background-image: linear-gradient(90deg, var(--color-text-primary) 0%, var(--color-text-muted) 100%);
   }
 
   .heading-display {
-    @apply font-display font-bold tracking-tight;
-    color: var(--tz-burgundy);
+    @apply font-display font-semibold tracking-tight;
+    color: var(--color-text-primary);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
   }
 
+  /** Section labels — Inter/Manrope caps */
   .section-eyebrow {
-    color: var(--tz-burgundy);
-    @apply text-xs font-semibold uppercase tracking-[0.15em];
+    font-family: var(--font-sans), system-ui, sans-serif;
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /** Product titles — sans semibold */
+  .product-title-ui {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-text-primary);
+  }
+
+  /** Prices — sans bold */
+  .product-price-ui {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--color-text-primary);
   }
 
   .section-divider {
@@ -262,10 +366,16 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-black/10 bg-white
-           text-neutral-800 placeholder-neutral-400
+    @apply w-full px-4 py-3 rounded-xl border border-black/10 bg-white font-sans
            focus:outline-none focus:ring-2 focus:ring-black/15 focus:border-neutral-950
            transition-all duration-200;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+  }
+  .input-field::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.75;
   }
 
   .scrollbar-none {
@@ -337,4 +447,117 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Discover hero — alternating column marquees (stacked stills) */
+@keyframes discover-hero-marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes discover-hero-marquee-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.discover-hero-marquee-up {
+  animation: discover-hero-marquee-up var(--discover-marquee-duration, 34s) linear infinite;
+}
+.discover-hero-marquee-down {
+  animation: discover-hero-marquee-down var(--discover-marquee-duration, 34s) linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-hero-marquee-up,
+  .discover-hero-marquee-down {
+    animation: none;
+    transform: translateY(0);
+  }
+}
+
+/* Discover premium hero — soft gradient + light fabric grain (replaces heavy rock strip) */
+.discover-hero-premium-bg {
+  position: relative;
+  background: linear-gradient(135deg, #efe6dc 0%, #cdbbaa 100%);
+}
+.discover-hero-premium-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='nf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23nf)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+@keyframes discover-hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .discover-hero-float-card {
+    animation: discover-hero-float 7s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-hero-float-card {
+    animation: none;
+  }
+}
+
+/* Discover landing — warm beige “cut stone”: rigid facets + coarse grain (hero strip only) */
+.discover-hero-rock-bg {
+  position: relative;
+  background: linear-gradient(165deg, #e0d2c4 0%, #c9b6a2 32%, #ae9a86 68%, #958472 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(62, 48, 38, 0.22);
+}
+.discover-hero-rock-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.38;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Hard chisel lines + plate breaks (rigid, not soft grey haze) */
+.discover-hero-rock-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  pointer-events: none;
+  background-image: linear-gradient(105deg, rgba(255, 255, 255, 0.14) 0%, transparent 42%),
+    linear-gradient(-18deg, transparent 55%, rgba(62, 48, 38, 0.12) 55%, rgba(62, 48, 38, 0.12) 56%, transparent 56%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(62, 48, 38, 0.07),
+      rgba(62, 48, 38, 0.07) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 252, 248, 0.12),
+      rgba(255, 252, 248, 0.12) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      -72deg,
+      transparent,
+      transparent 10px,
+      rgba(62, 48, 38, 0.045) 10px,
+      rgba(62, 48, 38, 0.045) 11px
+    );
 }

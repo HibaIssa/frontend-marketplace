@@ -6,9 +6,24 @@ export interface ProductGalleryImage {
   is_primary?: boolean
 }
 
+/** Retailer / scrape source when the API exposes it */
+export interface ProductVendorSource {
+  name?: string | null
+  url?: string | null
+  logo_url?: string | null
+}
+
 export interface Product {
   id: number
   vendor_id?: number
+  /** Nested vendor row from catalog / search joins */
+  vendor?: ProductVendorSource | null
+  vendor_name?: string | null
+  vendor_logo_url?: string | null
+  /** Listing URL on the source site — used for favicon fallback when logo is missing */
+  product_url?: string | null
+  /** Canonical PDP on retailer site when variant-specific `product_url` is absent */
+  parent_product_url?: string | null
   title: string
   brand?: string | null
   category?: string | null

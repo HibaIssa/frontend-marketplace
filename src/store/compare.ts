@@ -55,6 +55,7 @@ export const useCompareStore = create<CompareState>()(
           }
         }),
       clear: () => set({ productIds: [] }),
+      /** Prefer `useCompareStore(s => s.productIds.includes(id))` in components — this fn’s ref is stable, so `select(s => s.has)` will not re-render on id changes. */
       has: (id) => {
         const n = normalizeCompareProductId(id)
         return n != null && get().productIds.includes(n)
@@ -63,10 +64,21 @@ export const useCompareStore = create<CompareState>()(
     {
       name: 'compare-products',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ productIds: state.productIds }),
       merge: (persisted, current) => {
-        const p = persisted as Partial<CompareState> | undefined
+        const p = persisted as Partial<Pick<CompareState, 'productIds'>> | undefined
         const merged = { ...current, ...p } as CompareState
-        merged.productIds = normalizeCompareProductIdList(p?.productIds ?? current.productIds)
+        const fromDisk = normalizeCompareProductIdList(p?.productIds)
+        const fromMem = normalizeCompareProductIdList(current.productIds)
+        const seen = new Set<number>()
+        const union: number[] = []
+        for (const id of [...fromDisk, ...fromMem]) {
+          if (seen.has(id)) continue
+          seen.add(id)
+          union.push(id)
+          if (union.length >= 5) break
+        }
+        merged.productIds = union
         return merged
       },
     }

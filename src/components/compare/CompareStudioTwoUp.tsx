@@ -30,9 +30,12 @@ import { ScoreRing, scoreToLevelColor } from '@/components/compare/ScoreRing'
 
 const PLACEHOLDER = 'https://placehold.co/112x140/f5f5f5/a3a3a3?text=No+image'
 
-const BRAND_FILL = '#3d3030'
-const BRAND_STROKE = '#3d3030'
-const ALT_FILL = '#2a2623'
+/** Series A — warm beige (lighter); series B — charcoal so A/B read clearly at a glance */
+const SERIES_A_FILL = '#e8d9cf'
+const SERIES_A_STROKE = '#a67c52'
+const SERIES_A_SOLID = '#c9a88e'
+const SERIES_B_FILL = '#3d3030'
+const SERIES_B_STROKE = '#2a2623'
 
 function galleryUrls(p: Product | undefined): string[] {
   if (!p) return []
@@ -132,10 +135,10 @@ function StudioProductCard({
           ) : null}
           {itemOverall != null ? (
             <div
-              className="absolute bottom-3 right-3 z-10 rounded-full bg-black/35 p-1 shadow-lg ring-1 ring-white/30 backdrop-blur-[3px]"
+              className="absolute bottom-3 right-3 z-10 rounded-full bg-black/35 p-0.5 shadow-md ring-1 ring-white/30 backdrop-blur-[3px]"
               aria-label={`Score ${itemOverall}`}
             >
-              <ScoreRing score={itemOverall} color={ringCol} size={48} label="" />
+              <ScoreRing score={itemOverall} color={ringCol} size={38} label="" />
             </div>
           ) : null}
         </div>
@@ -200,68 +203,117 @@ export function CompareStudioTwoUp({
 
       {insightPair.hasScores ? (
         <div className="rounded-[22px] border border-[#ebe8e4] bg-[#faf9f7]/80 p-4 sm:p-5 shadow-inner">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9c9590] mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9c9590] mb-1">
             Score shapes
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="h-[220px] min-h-[200px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 shadow-sm">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="72%" data={insightPair.radar}>
-                  <PolarGrid stroke="#ebe8e4" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b6560', fontSize: 9 }} />
-                  <Radar
-                    name={`${productLetter(ids, a)}`}
-                    dataKey="A"
-                    stroke={BRAND_STROKE}
-                    fill={BRAND_FILL}
-                    fillOpacity={0.35}
-                  />
-                  <Radar name={`${productLetter(ids, b)}`} dataKey="B" stroke={ALT_FILL} fill={ALT_FILL} fillOpacity={0.22} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={chartTooltipStyle} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+          <p className="text-[11px] text-[#7a726b] mb-4 max-w-3xl">
+            Same five signals everywhere: value, quality, style, risk, and overall — beige traces{' '}
+            <span className="font-semibold text-[#a67c52]">{productLetter(ids, a)}</span>, dark traces{' '}
+            <span className="font-semibold text-[#2a2623]">{productLetter(ids, b)}</span>.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-4">
+            <figure className="flex flex-col gap-2 min-w-0">
+              <figcaption className="px-0.5">
+                <span className="block text-[12px] font-semibold text-[#3d3632]">Multi-axis radar</span>
+                <span className="block mt-1 text-[10px] text-[#8a8078] leading-snug">
+                  One polygon per option — distance from center shows strength on each dimension (0–100).
+                </span>
+              </figcaption>
+              <div className="h-[210px] min-h-[180px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 pt-3 shadow-sm">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="72%" data={insightPair.radar}>
+                    <PolarGrid stroke="#ebe8e4" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b6560', fontSize: 9 }} />
+                    <Radar
+                      name={`${productLetter(ids, a)}`}
+                      dataKey="A"
+                      stroke={SERIES_A_STROKE}
+                      fill={SERIES_A_FILL}
+                      fillOpacity={0.55}
+                    />
+                    <Radar
+                      name={`${productLetter(ids, b)}`}
+                      dataKey="B"
+                      stroke={SERIES_B_STROKE}
+                      fill={SERIES_B_FILL}
+                      fillOpacity={0.28}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </figure>
 
-            <div className="h-[220px] min-h-[200px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 shadow-sm">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart layout="vertical" data={insightPair.rows} margin={{ left: 4, right: 8, top: 8, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ebe4" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#9c9590' }} />
-                  <YAxis type="category" dataKey="name" width={52} tick={{ fontSize: 10, fill: '#5c5752' }} />
-                  <Tooltip contentStyle={chartTooltipStyle} />
-                  <Bar dataKey="A" name={`${productLetter(ids, a)}`} fill={BRAND_FILL} radius={[0, 6, 6, 0]} barSize={10} />
-                  <Bar dataKey="B" name={`${productLetter(ids, b)}`} fill={ALT_FILL} radius={[0, 6, 6, 0]} barSize={10} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <figure className="flex flex-col gap-2 min-w-0">
+              <figcaption className="px-0.5">
+                <span className="block text-[12px] font-semibold text-[#3d3632]">Bars by metric</span>
+                <span className="block mt-1 text-[10px] text-[#8a8078] leading-snug">
+                  Side-by-side bars for each score — easy to see who leads on value, style, risk, etc.
+                </span>
+              </figcaption>
+              <div className="h-[210px] min-h-[180px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 pt-3 shadow-sm">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart layout="vertical" data={insightPair.rows} margin={{ left: 4, right: 8, top: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0ebe4" />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#9c9590' }} />
+                    <YAxis type="category" dataKey="name" width={52} tick={{ fontSize: 10, fill: '#5c5752' }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar
+                      dataKey="A"
+                      name={`${productLetter(ids, a)}`}
+                      fill={SERIES_A_SOLID}
+                      radius={[0, 6, 6, 0]}
+                      barSize={10}
+                    />
+                    <Bar
+                      dataKey="B"
+                      name={`${productLetter(ids, b)}`}
+                      fill={SERIES_B_FILL}
+                      radius={[0, 6, 6, 0]}
+                      barSize={10}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </figure>
 
-            <div className="h-[220px] min-h-[200px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 shadow-sm">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={insightPair.lineTrend} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ebe4" />
-                  <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#9c9590' }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#9c9590' }} width={32} />
-                  <Tooltip contentStyle={chartTooltipStyle} />
-                  <Line
-                    type="monotone"
-                    dataKey="A"
-                    name={`${productLetter(ids, a)}`}
-                    stroke={BRAND_STROKE}
-                    strokeWidth={2}
-                    dot={{ fill: BRAND_FILL, r: 3 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="B"
-                    name={`${productLetter(ids, b)}`}
-                    stroke={ALT_FILL}
-                    strokeWidth={2}
-                    dot={{ fill: ALT_FILL, r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <figure className="flex flex-col gap-2 min-w-0">
+              <figcaption className="px-0.5">
+                <span className="block text-[12px] font-semibold text-[#3d3632]">Trend across dimensions</span>
+                <span className="block mt-1 text-[10px] text-[#8a8078] leading-snug">
+                  Metrics in order (1–5) — follow each line to spot peaks and trade-offs between options.
+                </span>
+              </figcaption>
+              <div className="h-[210px] min-h-[180px] rounded-2xl bg-white ring-1 ring-[#ebe8e4] p-2 pt-3 shadow-sm">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={insightPair.lineTrend} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0ebe4" />
+                    <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#9c9590' }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#9c9590' }} width={32} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="A"
+                      name={`${productLetter(ids, a)}`}
+                      stroke={SERIES_A_STROKE}
+                      strokeWidth={2.5}
+                      dot={{ fill: SERIES_A_SOLID, stroke: SERIES_A_STROKE, strokeWidth: 1, r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="B"
+                      name={`${productLetter(ids, b)}`}
+                      stroke={SERIES_B_STROKE}
+                      strokeWidth={2.5}
+                      dot={{ fill: SERIES_B_FILL, stroke: SERIES_B_STROKE, strokeWidth: 1, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </figure>
           </div>
         </div>
       ) : null}

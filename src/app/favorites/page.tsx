@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import { api } from '@/lib/api/client'
@@ -38,9 +39,9 @@ export default function FavoritesPage() {
         <Heart className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
         <h2 className="font-display text-2xl font-bold text-neutral-800 mb-2">Sign in to view favorites</h2>
         <p className="text-neutral-500 mb-6">Save your favorite items when you're signed in.</p>
-        <a href="/login" className="btn-primary">
+        <Link href="/login" prefetch={true} className="btn-primary">
           Sign in
-        </a>
+        </Link>
       </div>
     )
   }
