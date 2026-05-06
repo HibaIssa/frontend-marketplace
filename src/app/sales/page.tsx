@@ -99,7 +99,7 @@ function SalesContent() {
           at?: number
           page?: number
           limit?: number
-          data?: Awaited<ReturnType<typeof api.get<unknown[]>>>
+          data?: Awaited<ReturnType<typeof fetchSalesListingPage>>
         }
         if (!parsed?.data || parsed.page !== page || parsed.limit !== limit) return undefined
         if (!parsed.at || Date.now() - parsed.at > SALES_LISTING_STALE_MS) return undefined
