@@ -40,6 +40,31 @@ function normalizeProduct(raw: Record<string, unknown>): Product {
   }
 }
 
+function isLikelyFashionProduct(product: Product): boolean {
+  const hay = `${product.title ?? ''} ${product.category ?? ''} ${product.brand ?? ''}`.toLowerCase()
+  const blockedPhrases = [
+    'memory card',
+    'micro line',
+    'usb',
+    'charger',
+    'cable',
+    'speaker',
+    'speakers',
+    'headphone',
+    'headphones',
+    'earphone',
+    'earphones',
+    'controller',
+    'keyboard',
+    'mouse',
+    'phone case',
+    'iron man',
+    'superman',
+    'marvel',
+  ]
+  return !blockedPhrases.some((term) => hay.includes(term))
+}
+
 function SalesContent() {
   const router = useRouter()
   const pathname = usePathname()
@@ -121,7 +146,8 @@ function SalesContent() {
       rawList
         .filter((r): r is Record<string, unknown> => r != null && typeof r === 'object')
         .map(normalizeProduct)
-        .filter((p) => p.id >= 1),
+        .filter((p) => p.id >= 1)
+        .filter(isLikelyFashionProduct),
     [rawList],
   )
 

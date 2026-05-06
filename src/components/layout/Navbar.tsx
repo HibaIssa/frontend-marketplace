@@ -26,7 +26,6 @@ const navLinks: NavLink[] = [
 /** Past this scroll offset: frosted “glass” bar, stronger blur, shorter header height. */
 const SCROLL_COMPACT_PX = 1
 
-const HERO_OVERLAY_PATHS = new Set<string>([])
 /** Editorial home: white type on dark imagery */
 const DARK_HERO_PATHS = new Set(['/'])
 /** Light hero (beige) — transparent nav over hero; dark type (not frosted strip). */
@@ -60,7 +59,6 @@ export function Navbar() {
   /** Text Discover (`/search`, not Shop the look) — transparent nav over rock hero (full or compact strip). */
   const isSearchDiscoverLanding = false
 
-  const hasHeroOverlay = true
   const isDarkHeroTop = DARK_HERO_PATHS.has(normalized)
   const isLightTransparentHeroTop =
     LIGHT_TRANSPARENT_HERO_PATHS.has(normalized) || isSearchDiscoverLanding
@@ -78,6 +76,7 @@ export function Navbar() {
 
   const { isAuthenticated, logout, user } = useAuthStore()
   const canSeeAdmin = mounted && isAuthenticated() && !!user?.is_admin
+  const canSeeBusinessDashboard = mounted && isAuthenticated() && user?.user_type === 'business'
 
   useEffect(() => setMounted(true), [])
 
@@ -187,6 +186,7 @@ export function Navbar() {
     : !glassMode && isHome
       ? 'lightSurface'
       : 'default'
+  const isHomeHero = isHome && !glassMode
 
   /** Drop browser default blue focus ring on the home link; keep a subtle brand ring for keyboard users */
   const homeLogoLinkClass = clsx(
@@ -263,7 +263,9 @@ export function Navbar() {
           <BoldenLogoMark
             tone={logoTone}
             compact={compact && !isSearchDiscoverLanding}
-            className={clsx(compact && !isSearchDiscoverLanding && 'mt-0.5')}
+            className={clsx(
+              compact && !isSearchDiscoverLanding ? 'mt-0.5 h-7 w-7' : 'h-9 w-9 sm:h-10 sm:w-10',
+            )}
           />
           <span className="flex flex-col gap-0.5 min-w-0 text-left">
             <span
@@ -272,12 +274,12 @@ export function Navbar() {
                 'text-nav leading-tight',
                 isSearchDiscoverLanding && scrolled
                   ? 'text-[#F8F3EE]'
-                  : isHome
+                  : isHomeHero
                     ? '!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.25)]'
                   : glassMode
                     ? 'text-neutral-900'
                     : wordmarkHeroColors,
-                compact && !isSearchDiscoverLanding ? 'text-[13px] sm:text-[14px]' : 'text-[15px] sm:text-[16px]',
+                compact && !isSearchDiscoverLanding ? 'text-[13px] sm:text-[14px]' : 'text-[24px] sm:text-[28px]',
               )}
             >
               Bolden
@@ -302,7 +304,7 @@ export function Navbar() {
                 onFocus={() => warmSalesPrefetch(link.href)}
                 className={clsx(
                   discoverCls ??
-                    (normalized === '/'
+                    (isHomeHero
                       ? active
                         ? navLinkHeroActive
                         : navLinkHeroIdle
@@ -325,7 +327,7 @@ export function Navbar() {
               href="/admin"
               className={clsx(
                 navLinkDiscover(adminActive) ??
-                  (normalized === '/'
+                  (isHomeHero
                     ? adminActive
                       ? navLinkHeroActive
                       : navLinkHeroIdle
@@ -342,6 +344,28 @@ export function Navbar() {
               <Shield className={compact && !isSearchDiscoverLanding ? 'w-3 h-3' : 'w-3.5 h-3.5'} /> Admin
             </Link>
           )}
+          {canSeeBusinessDashboard && (
+            <Link
+              href="/dashboard"
+              className={clsx(
+                navLinkDiscover(adminActive) ??
+                  (isHomeHero
+                    ? adminActive
+                      ? navLinkHeroActive
+                      : navLinkHeroIdle
+                    : glassMode
+                      ? adminActive
+                        ? navLinkGlassActive
+                        : navLinkGlassIdle
+                      : adminActive
+                        ? navLinkHeroActive
+                        : navLinkHeroIdle),
+                'flex items-center gap-1.5',
+              )}
+            >
+              <Shield className={compact && !isSearchDiscoverLanding ? 'w-3 h-3' : 'w-3.5 h-3.5'} /> Dashboard
+            </Link>
+          )}
         </nav>
 
         <div className="flex flex-col items-end gap-0.5 shrink-0">
@@ -355,7 +379,7 @@ export function Navbar() {
             href="/search"
             className={clsx(
               isSearchDiscoverLanding && scrolled ? iconDiscoverScrolled : glassMode ? iconButtonGlass : iconButtonHero,
-              isHome && iconButtonHero,
+              isHomeHero && iconButtonHero,
             )}
             aria-label="Search"
           >
@@ -366,7 +390,7 @@ export function Navbar() {
             className={clsx(
               'hidden sm:inline-flex',
               isSearchDiscoverLanding && scrolled ? iconDiscoverScrolled : glassMode ? iconButtonGlass : iconButtonHero,
-              isHome && iconButtonHero,
+              isHomeHero && iconButtonHero,
             )}
             aria-label="Saved"
           >
@@ -379,7 +403,7 @@ export function Navbar() {
                 type="button"
                 className={clsx(
                   isSearchDiscoverLanding && scrolled ? iconDiscoverScrolled : glassMode ? iconButtonGlass : iconButtonHero,
-                  isHome && iconButtonHero,
+                  isHomeHero && iconButtonHero,
                 )}
               >
                 <User className={compact && !isSearchDiscoverLanding ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
@@ -397,6 +421,11 @@ export function Navbar() {
                 {canSeeAdmin && (
                   <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-[#2a2623] hover:bg-[#ebe6e0]">
                     <Shield className="w-3.5 h-3.5" /> Admin
+                  </Link>
+                )}
+                {canSeeBusinessDashboard && (
+                  <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-[#2a2623] hover:bg-[#ebe6e0]">
+                    <Shield className="w-3.5 h-3.5" /> Dashboard
                   </Link>
                 )}
                 <div className="border-t border-[#e3ddd4] my-1" />
@@ -432,7 +461,7 @@ export function Navbar() {
             className={clsx(
               'md:hidden',
               isSearchDiscoverLanding && scrolled ? iconDiscoverScrolled : glassMode ? iconButtonGlass : iconButtonHero,
-              isHome && iconButtonHero,
+              isHomeHero && iconButtonHero,
             )}
             aria-label="Open menu"
           >
@@ -482,7 +511,7 @@ export function Navbar() {
                         ? navLinkActive(link.href)
                           ? 'font-semibold text-[#F8F3EE] underline decoration-[#7A4E3A] decoration-2 underline-offset-8'
                           : 'text-[#F8F3EE]/90 hover:bg-white/10'
-                        : isHome
+                        : isHomeHero
                           ? navLinkActive(link.href)
                             ? 'font-semibold !text-white visited:!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.22)]'
                             : clsx(HOME_NAV_LINK_IDLE)
@@ -502,6 +531,35 @@ export function Navbar() {
                     {link.label}
                   </Link>
                 ))}
+                {canSeeBusinessDashboard && (
+                  <Link
+                    href="/dashboard"
+                    className={clsx(
+                      'px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-center',
+                      isSearchDiscoverLanding && scrolled
+                        ? adminActive
+                          ? 'font-semibold text-[#F8F3EE] underline decoration-[#7A4E3A] decoration-2 underline-offset-8'
+                          : 'text-[#F8F3EE]/90 hover:bg-white/10'
+                        : isHomeHero
+                          ? adminActive
+                            ? 'font-semibold !text-white visited:!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.22)]'
+                            : clsx(HOME_NAV_LINK_IDLE)
+                          : glassMode
+                            ? adminActive
+                              ? navLinkGlassActive
+                              : 'text-neutral-700 hover:bg-neutral-900/[0.05]'
+                            : isDarkHeroTop
+                              ? adminActive
+                                ? 'font-semibold !text-white visited:!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.22)]'
+                                : clsx(HOME_NAV_LINK_IDLE)
+                              : adminActive
+                                ? 'font-semibold bg-[#2B2521]/10 text-[#2B2521] ring-1 ring-[#2B2521]/18'
+                                : 'text-[#2B2521] hover:bg-black/[0.06]',
+                    )}
+                  >
+                    Dashboard
+                  </Link>
+                )}
               </div>
               {!isAuthenticated() && (
                 <div

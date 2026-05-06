@@ -272,7 +272,6 @@ export function ShopTheLookResults({
 }) {
   const [visibleByKey, setVisibleByKey] = useState<Record<string, number>>({})
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null)
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [highlightedIdx, setHighlightedIdx] = useState<number | null>(null)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
@@ -282,7 +281,6 @@ export function ShopTheLookResults({
 
   useEffect(() => {
     setSelectedIdx(null)
-    setHoveredIdx(null)
     setHighlightedIdx(null)
     sectionRefs.current = []
   }, [outfitImageUrl])
@@ -431,8 +429,6 @@ export function ShopTheLookResults({
                         e.stopPropagation()
                         focusDetection(rowIdx)
                       }}
-                      onMouseEnter={() => setHoveredIdx(rowIdx)}
-                      onMouseLeave={() => setHoveredIdx((cur) => (cur === rowIdx ? null : cur))}
                       aria-label={`Select ${label}`}
                       aria-pressed={isSelected}
                       className={`absolute box-border rounded-[12px] border-2 border-brand bg-transparent shadow-none transition-[transform,box-shadow,border-color] duration-[250ms] ease-out [will-change:transform] hover:z-[22] hover:scale-[1.03] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] ${

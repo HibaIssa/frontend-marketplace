@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useCallback, useEffect, useMemo, memo } from 'react'
-import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { getStablePagination } from '@/lib/shopPagination'
 import { compressImageForShopUpload } from '@/lib/image/compressImageForShopUpload'
 import { motion } from 'framer-motion'
@@ -25,7 +25,6 @@ import { api, type ApiResponse } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { ProductCard } from '@/components/product/ProductCard'
 import { SearchBar } from '@/components/search/SearchBar'
-import { TextSearchProductCard } from '@/components/search/TextSearchProductCard'
 import { DiscoverHeroMasonry } from '@/components/search/DiscoverHeroMasonry'
 import {
   normalizeShopTheLookGroups,
@@ -33,6 +32,8 @@ import {
   type ShopTheLookStats,
 } from '@/lib/shopTheLookNormalize'
 import { useCompareStore } from '@/store/compare'
+import { useAuthStore } from '@/store/auth'
+import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
 import type { Product } from '@/types/product'
 import { mergeVendorFromHit } from '@/lib/vendorLogo'
 import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
@@ -96,15 +97,40 @@ const TRY_SEARCHING_TAGS = [
 
 const TextSearchProductGrid = memo(function TextSearchProductGrid({
   products,
+  addToCompare,
+  onAddToWardrobe,
+  wardrobeAddedIds,
+  addToWardrobeMutationPending,
+  pendingWardrobeProductId,
   fromReturnPath,
 }: {
   products: Product[]
+  addToCompare: (id: number) => void
+  onAddToWardrobe: (product: Product) => void
+  wardrobeAddedIds: Set<number>
+  addToWardrobeMutationPending: boolean
+  pendingWardrobeProductId?: number
   fromReturnPath?: string
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
-      {products.map((product) => (
-        <TextSearchProductCard key={product.id} product={product} fromReturnPath={fromReturnPath} />
+      {products.map((product, i) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          index={i}
+          snappyMotion
+          fromReturnPath={fromReturnPath}
+          onAddToCompare={addToCompare}
+          onAddToWardrobe={onAddToWardrobe}
+          wardrobeStatus={
+            wardrobeAddedIds.has(product.id)
+              ? 'added'
+              : addToWardrobeMutationPending && pendingWardrobeProductId === product.id
+                ? 'loading'
+                : 'idle'
+          }
+        />
       ))}
     </div>
   )
@@ -220,9 +246,11 @@ function toProducts(results: unknown[]): Product[] {
 
 
 function SearchContent() {
+  const queryClient = useQueryClient()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const q = searchParams.get('q') || ''
   const pageFromUrl = Math.max(1, Math.min(999, parseInt(searchParams.get('page') || '1', 10) || 1))
   const rawMode = searchParams.get('mode')
@@ -278,6 +306,35 @@ function SearchContent() {
   )
 
   const addToCompare = useCompareStore((s) => s.add)
+  const [wardrobeAddedIds, setWardrobeAddedIds] = useState<Set<number>>(() => new Set())
+  const addToWardrobeMutation = useMutation({
+    mutationFn: (product: Product) => addCatalogProductToWardrobe(product),
+    onMutate: (product) => {
+      setWardrobeAddedIds((prev) => new Set(prev).add(product.id))
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    },
+    onError: (_err, product) => {
+      setWardrobeAddedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(product.id)
+        return next
+      })
+    },
+  })
+
+  const handleAddToWardrobe = useCallback(
+    (product: Product) => {
+      if (!isAuthenticated()) {
+        const qs = new URLSearchParams({ next: `${pathname}${searchParams.toString() ? `?${searchParams}` : ''}` })
+        router.push(`/login?${qs.toString()}`)
+        return
+      }
+      addToWardrobeMutation.mutate(product)
+    },
+    [addToWardrobeMutation, isAuthenticated, pathname, router, searchParams],
+  )
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
@@ -930,6 +987,11 @@ function SearchContent() {
 
                   <TextSearchProductGrid
                     products={products}
+                    addToCompare={addToCompare}
+                    onAddToWardrobe={handleAddToWardrobe}
+                    wardrobeAddedIds={wardrobeAddedIds}
+                    addToWardrobeMutationPending={addToWardrobeMutation.isPending}
+                    pendingWardrobeProductId={addToWardrobeMutation.variables?.id}
                     fromReturnPath={discoverReturnPath}
                   />
 

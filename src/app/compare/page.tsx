@@ -10,8 +10,6 @@ import {
   ArrowRight,
   Sparkles,
   SlidersHorizontal,
-  MousePointerClick,
-  Layers,
   Check,
   Trash2,
 } from 'lucide-react'

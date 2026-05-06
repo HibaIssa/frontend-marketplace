@@ -23,10 +23,6 @@ import { useAuthStore } from '@/store/auth'
 import { useTryOn } from '@/context/try-on-context'
 import { TryOnCompleteStylePanel } from '@/components/try-on/TryOnCompleteStylePanel'
 import { TryOnMarketingHero } from '@/components/try-on/TryOnMarketingHero'
-import { api } from '@/lib/api/client'
-import { endpoints } from '@/lib/api/endpoints'
-
-const TRYON_SHOP_SESSION_KEY = 'styleai_tryon_shop_payload'
 
 function TryOnUploadCard({
   title,

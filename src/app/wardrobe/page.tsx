@@ -129,15 +129,59 @@ export default function WardrobePage() {
     queryFn: async () => {
       if (!selectedItem) return null
       const body: Record<string, unknown> = {
-        item_ids: [selectedItem.id],
-        limit: COMPLETE_LOOK_FETCH_CAP,
+        product: {
+          title: selectedItem.name || 'Wardrobe item',
+          category: selectedItem.category || undefined,
+          color: selectedItem.color || undefined,
+        },
+        options: {
+          maxPerCategory: 8,
+          maxTotal: COMPLETE_LOOK_FETCH_CAP,
+        },
       }
       if (selectedItem.audience_gender) body.audience_gender = selectedItem.audience_gender
       if (selectedItem.age_group) body.age_group = selectedItem.age_group
-      const res = await api.post<{ suggestions?: CompleteLookSuggestion[] }>(endpoints.wardrobe.completeLook, body)
-      const r = res as { success?: boolean; suggestions?: CompleteLookSuggestion[]; data?: CompleteLookSuggestion[]; error?: { message?: string } }
+      const res = await api.post<unknown>(endpoints.products.completeStylePost, body)
+      const r = res as {
+        success?: boolean
+        suggestions?: CompleteLookSuggestion[]
+        data?: unknown
+        error?: { message?: string }
+      }
       if (r?.success === false) throw new Error(r?.error?.message ?? 'Failed to get suggestions')
-      return (r?.suggestions ?? r?.data ?? []) as CompleteLookSuggestion[]
+      if (Array.isArray(r?.suggestions)) return r.suggestions
+      if (Array.isArray(r?.data)) return r.data as CompleteLookSuggestion[]
+      const payload = r?.data as
+        | {
+            recommendations?: Array<{
+              category?: string
+              products?: Array<{
+                id?: number
+                product_id?: number
+                title?: string
+                brand?: string
+                price_cents?: number
+                currency?: string
+                image?: string
+              }>
+            }>
+          }
+        | undefined
+      const flattened =
+        payload?.recommendations?.flatMap((group) =>
+          (group.products ?? []).map((p) => ({
+            id: p.id,
+            product_id: p.product_id ?? p.id ?? 0,
+            title: p.title ?? 'Untitled',
+            brand: p.brand,
+            category: group.category,
+            price_cents: p.price_cents,
+            currency: p.currency,
+            image_url: p.image,
+            image_cdn: p.image,
+          })),
+        ) ?? []
+      return flattened
     },
     enabled: showCompleteStyle && !!selectedItem,
   })
