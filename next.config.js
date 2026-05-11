@@ -47,12 +47,54 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
   },
   images: {
-    unoptimized: true,
+    unoptimized: process.env.NEXT_IMAGE_UNOPTIMIZED === 'true',
     formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 7,
+    deviceSizes: [360, 480, 640, 750, 828, 1080, 1200, 1440],
+    imageSizes: [32, 48, 64, 96, 128, 160, 256, 384],
     remotePatterns: [
       { protocol: 'https', hostname: '**', pathname: '/**' },
       { protocol: 'http', hostname: '**', pathname: '/**' },
     ],
+  },
+  async rewrites() {
+    const mirror = (process.env.CATALOG_MIRROR_ORIGIN || '').trim().replace(/\/+$/, '')
+
+    /** Local dev: transparent proxy to deployed Bolden (same JSON as Cloud Run). Browser still calls `/api/...` on localhost. */
+    const catalogMirrorRewrites = mirror
+      ? [
+          { source: '/api/admin/overview', destination: `${mirror}/api/admin/overview` },
+          { source: '/api/admin/freshness', destination: `${mirror}/api/admin/freshness` },
+          { source: '/api/admin/prices', destination: `${mirror}/api/admin/prices` },
+          { source: '/api/admin/vendors', destination: `${mirror}/api/admin/vendors` },
+          { source: '/api/catalog/overview', destination: `${mirror}/api/catalog/overview` },
+          { source: '/api/catalog/filters', destination: `${mirror}/api/catalog/filters` },
+          {
+            source: '/api/catalog/products/:id/price-history',
+            destination: `${mirror}/api/catalog/products/:id/price-history`,
+          },
+          { source: '/api/catalog/products', destination: `${mirror}/api/catalog/products` },
+          { source: '/api/catalog-backend/:path*', destination: `${mirror}/api/catalog-backend/:path*` },
+        ]
+      : []
+
+    return [
+      ...catalogMirrorRewrites,
+
+      // Admin catalog endpoints without /api prefix
+      { source: '/admin/overview', destination: '/api/admin/overview' },
+      { source: '/admin/freshness', destination: '/api/admin/freshness' },
+      { source: '/admin/prices', destination: '/api/admin/prices' },
+      { source: '/admin/vendors', destination: '/api/admin/vendors' },
+
+      // Business dashboard endpoints without /api prefix
+      { source: '/dashboard/summary', destination: '/api/dashboard/summary' },
+      { source: '/dashboard/products', destination: '/api/dashboard/products' },
+      { source: '/dashboard/products/:id/signals', destination: '/api/dashboard/products/:id/signals' },
+      { source: '/dashboard/alerts', destination: '/api/dashboard/alerts' },
+      { source: '/dashboard/alerts/generate', destination: '/api/dashboard/alerts/generate' },
+      { source: '/dashboard/alerts/:id/dismiss', destination: '/api/dashboard/alerts/:id/dismiss' },
+    ]
   },
 }
 

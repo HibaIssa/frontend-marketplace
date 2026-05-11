@@ -15,7 +15,7 @@ import {
   Cell,
   Legend,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { useAdminBasePath } from '@/components/admin/AdminBasePathContext'
 
@@ -42,21 +42,21 @@ export function AdminOverviewSection() {
         let totalCanonicals: number | null = null
 
         try {
-          const flagged = (await api.get<unknown>(endpoints.admin.flagged, { page: 1, limit: 1 })) as Record<string, unknown>
+          const flagged = (await adminDashboardApi.get<unknown>(endpoints.admin.flagged, { page: 1, limit: 1 })) as Record<string, unknown>
           const n = flagged.total
           if (typeof n === 'number' && Number.isFinite(n)) flaggedProducts = n
         } catch {
           // ignore
         }
         try {
-          const hidden = (await api.get<unknown>(endpoints.admin.hidden, { page: 1, limit: 1 })) as Record<string, unknown>
+          const hidden = (await adminDashboardApi.get<unknown>(endpoints.admin.hidden, { page: 1, limit: 1 })) as Record<string, unknown>
           const n = hidden.total
           if (typeof n === 'number' && Number.isFinite(n)) hiddenProducts = n
         } catch {
           // ignore
         }
         try {
-          const canon = (await api.get<unknown>(endpoints.admin.canonicals)) as Record<string, unknown>
+          const canon = (await adminDashboardApi.get<unknown>(endpoints.admin.canonicals)) as Record<string, unknown>
           const list = canon.canonicals
           if (Array.isArray(list)) totalCanonicals = list.length
         } catch {
@@ -75,7 +75,7 @@ export function AdminOverviewSection() {
       }
 
       try {
-        const res = (await api.get<unknown>(endpoints.admin.stats)) as Record<string, unknown>
+        const res = (await adminDashboardApi.get<unknown>(endpoints.admin.stats)) as Record<string, unknown>
         if (res?.success === false) {
           const err = res.error as { message?: string } | undefined
           return fallbackFromListEndpoints(err?.message ?? 'Stats endpoint unavailable')

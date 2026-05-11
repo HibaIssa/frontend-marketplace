@@ -1,3 +1,7 @@
 'use client'
 
-export { default } from '../../admin/system/page'
+import { redirect } from 'next/navigation'
+
+export default function DashboardSystemRedirect() {
+  redirect('/dashboard')
+}

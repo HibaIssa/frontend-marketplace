@@ -5,13 +5,14 @@ import { PageHeader, KpiCard, Section } from '@/components/catalog-admin/ui'
 import { fetchAdminFreshness, type FreshnessData } from '@/lib/admin/adminCatalogApi'
 import { formatRelativeTime } from '@/lib/utils/catalog-quality'
 
+/** Fresh = emerald (last day). Recent = sky (1–7d) — avoids brand / brand-active charcoal looking identical. */
 function FreshnessBar({ fresh, recent, aging, stale }: {
   fresh: number; recent: number; aging: number; stale: number
 }) {
   return (
     <div className="h-2 rounded-full overflow-hidden flex w-full">
-      <div className="bg-brand-active transition-all" style={{ width: `${fresh}%` }} title={`Fresh: ${fresh}%`} />
-      <div className="bg-brand transition-all" style={{ width: `${recent}%` }} title={`Recent: ${recent}%`} />
+      <div className="bg-emerald-500 transition-all" style={{ width: `${fresh}%` }} title={`Fresh: ${fresh}%`} />
+      <div className="bg-sky-500 transition-all" style={{ width: `${recent}%` }} title={`Recent: ${recent}%`} />
       <div className="bg-[#c9ae9f] transition-all" style={{ width: `${aging}%` }} title={`Aging: ${aging}%`} />
       <div className="bg-red-400 transition-all" style={{ width: `${stale}%` }} title={`Stale: ${stale}%`} />
     </div>
@@ -37,8 +38,8 @@ export default function FreshnessPage() {
         sub="Scrape staleness analysis by vendor"
         actions={
           <div className="flex items-center gap-3 text-[11px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-active inline-block" /> Fresh &lt;1d</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand inline-block" /> Recent 1–7d</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block shrink-0" /> Fresh &lt;1d</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-sky-500 inline-block shrink-0" /> Recent 1–7d</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#c9ae9f] inline-block" /> Aging 7–14d</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Stale &gt;14d</span>
           </div>
@@ -101,8 +102,8 @@ export default function FreshnessPage() {
                     <td className="px-4 py-3 w-48">
                       <FreshnessBar fresh={v.fresh_pct} recent={v.recent_pct} aging={v.aging_pct} stale={v.stale_pct} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-[#2a2623] tabular-nums font-medium">{v.fresh_pct}%</td>
-                    <td className="px-4 py-3 text-xs text-[#7d4b3a] tabular-nums">{v.recent_pct}%</td>
+                    <td className="px-4 py-3 text-xs text-emerald-700 tabular-nums font-medium">{v.fresh_pct}%</td>
+                    <td className="px-4 py-3 text-xs text-sky-700 tabular-nums">{v.recent_pct}%</td>
                     <td className="px-4 py-3 text-xs text-[#3d3030] tabular-nums">{v.aging_pct}%</td>
                     <td className="px-4 py-3 text-xs text-red-500 tabular-nums">{v.stale_pct}%</td>
                     <td className="px-4 py-3 text-[11px] text-gray-400 whitespace-nowrap">

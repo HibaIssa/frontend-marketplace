@@ -263,7 +263,7 @@ export default function TryOnPage() {
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <a
                       href={resultUrl}
-                      download="styleai-try-on.jpg"
+                      download="bolden-try-on.jpg"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand/25 transition hover:bg-brand-hover"

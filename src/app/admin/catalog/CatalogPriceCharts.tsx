@@ -27,7 +27,17 @@ export function CatalogPriceCharts({ volume }: Props) {
               </linearGradient>
             </defs>
             <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+            <YAxis
+              tick={{ fontSize: 10 }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+              domain={[
+                0,
+                (_dataMin: number, dataMax: number) =>
+                  Math.max(1, Number.isFinite(dataMax) ? Math.ceil(dataMax * 1.12) : 1),
+              ]}
+            />
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
               formatter={(v: number) => [v.toLocaleString(), 'Actual changes']}

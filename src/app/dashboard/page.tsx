@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api/client'
+import { dashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { AlertTriangle, TrendingDown, DollarSign, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 
 type DashboardSummary = {
   total_at_risk: number
@@ -55,8 +56,7 @@ export default function BusinessDashboardPage() {
 
   const { data: productsRaw, isLoading } = useQuery({
     queryKey: ['dsr-products', riskFilter, sort],
-    queryFn: () =>
-      fetch(`/api/dashboard/products?risk_level=${riskFilter}&sort=${sort}`).then((r) => r.json()),
+    queryFn: () => dashboardApi.get(endpoints.dashboard.products, { risk_level: riskFilter, sort }),
     staleTime: 5 * 60 * 1000,
     retry: false,
   })
@@ -146,6 +146,9 @@ export default function BusinessDashboardPage() {
           <p className="text-xs text-neutral-400 mt-1">Alerts dismissed</p>
         </div>
       </div>
+
+      {/* Charts */}
+      <DashboardCharts products={products} isLoading={isLoading} />
 
       {/* Product Table */}
       <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">

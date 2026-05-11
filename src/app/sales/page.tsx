@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
@@ -69,6 +69,7 @@ function SalesContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const limit = SALES_LISTING_LIMIT
 
@@ -168,7 +169,17 @@ function SalesContent() {
     router.replace(p.toString() ? `${pathname}?${p}` : pathname)
   }, [knownTotalPages, page, pathname, router, searchParams])
 
+  useEffect(() => {
+    if (!canGoNext || isFetching) return
+    void queryClient.prefetchQuery({
+      queryKey: salesListingQueryKey(page + 1),
+      queryFn: () => fetchSalesListingPage(page + 1),
+      staleTime: SALES_LISTING_STALE_MS,
+    })
+  }, [canGoNext, isFetching, page, queryClient])
+
   const showPaginationControls = products.length > 0 && (page > 1 || canGoNext)
+  const isSwitchingPage = isFetching && isPlaceholderData
 
   const discountLabel = (p: Product) => {
     const reg = p.price_cents
@@ -200,7 +211,7 @@ function SalesContent() {
 
         {isPending && !isPlaceholderData ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
-            {Array.from({ length: 12 }).map((_, i) => (
+            {Array.from({ length: 16 }).map((_, i) => (
               <div key={i} className="space-y-3">
                 <div className="aspect-[3/4] rounded-2xl skeleton-shimmer ring-1 ring-neutral-200/60" />
                 <div className="h-3 w-2/3 rounded-md skeleton-shimmer" />
@@ -210,29 +221,44 @@ function SalesContent() {
           </div>
         ) : products.length > 0 ? (
           <>
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={{ visible: { transition: { staggerChildren: 0.05 } }, hidden: {} }}
-              className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6 ${isFetching ? 'opacity-[0.92] transition-opacity duration-200' : ''}`}
-            >
-              {products.map((product, i) => {
-                const pct = discountLabel(product)
-                return (
-                  <motion.div
-                    key={product.id}
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                  >
-                    <ProductCard
-                      product={product}
-                      index={i}
-                      fromReturnPath={salesReturnPath}
-                      saleDiscountPercent={pct != null && pct > 0 ? pct : null}
-                    />
-                  </motion.div>
-                )
-              })}
-            </motion.div>
+            <div className="relative">
+              {isSwitchingPage ? (
+                <div
+                  className="absolute inset-x-0 top-0 z-20 flex justify-center pt-8"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <div className="inline-flex items-center gap-3 rounded-full border border-[#e7d9d0] bg-white/95 px-4 py-2 text-sm font-semibold text-[#2a2623] shadow-lg shadow-black/10 backdrop-blur">
+                    <span className="h-4 w-4 rounded-full border-2 border-[#eadfd7] border-t-[#2a2623] animate-spin" />
+                    Loading page {page}...
+                  </div>
+                </div>
+              ) : null}
+
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.04 } }, hidden: {} }}
+                className={`grid grid-cols-2 gap-5 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5 ${isSwitchingPage ? 'pointer-events-none opacity-55 blur-[1px] transition-all duration-200' : 'transition-opacity duration-200'}`}
+              >
+                {products.map((product, i) => {
+                  const pct = discountLabel(product)
+                  return (
+                    <motion.div
+                      key={product.id}
+                      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                    >
+                      <ProductCard
+                        product={product}
+                        index={i}
+                        fromReturnPath={salesReturnPath}
+                        saleDiscountPercent={pct != null && pct > 0 ? pct : null}
+                      />
+                    </motion.div>
+                  )
+                })}
+              </motion.div>
+            </div>
 
             {showPaginationControls && (
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
@@ -240,7 +266,7 @@ function SalesContent() {
                   <button
                     type="button"
                     onClick={() => setPageParams({ page: String(Math.max(1, page - 1)) })}
-                    disabled={page <= 1}
+                    disabled={page <= 1 || isFetching}
                     className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -265,6 +291,7 @@ function SalesContent() {
                             key={pageNum}
                             type="button"
                             onClick={() => setPageParams({ page: String(pageNum) })}
+                            disabled={isFetching}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
                               pageNum === page
                                 ? 'bg-brand text-white shadow-md shadow-brand/20'
@@ -283,7 +310,7 @@ function SalesContent() {
                   <button
                     type="button"
                     onClick={() => setPageParams({ page: String(page + 1) })}
-                    disabled={!canGoNext}
+                    disabled={!canGoNext || isFetching}
                     className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-600 hover:bg-[#f7f0eb] hover:border-[#d8c6bb] hover:text-[#2a2623] disabled:opacity-40 transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />

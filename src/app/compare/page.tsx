@@ -235,7 +235,7 @@ export default function ComparePage() {
                 Compare
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#5c5752]">
-                Stack pieces side by side — fabric, fit, price and reviews — then run an AI-backed comparison to decide with confidence.
+                Compare fabric, fit, price, styling details, and reviews in one place so you can choose the piece that feels right.
               </p>
             </div>
             {productIds.length > 0 ? (

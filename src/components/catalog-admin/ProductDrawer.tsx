@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, ExternalLink } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -14,6 +15,7 @@ import {
   getActiveFlags,
   discountPercent,
 } from '@/lib/utils/catalog-quality'
+import { catalogBackendAbsoluteUrl } from '@/lib/api/fashionApiOrigin'
 
 interface Props {
   product: Product
@@ -55,12 +57,25 @@ interface StyleData {
 }
 
 export function ProductDrawer({ product: p, onClose }: Props) {
+  const [mounted, setMounted] = useState(false)
   const [tab, setTab]           = useState<Tab>('details')
   const [history, setHistory]   = useState<PriceHistory[]>([])
   const [loadingH, setLoadingH] = useState(false)
   const [styleData, setStyleData] = useState<StyleData | null>(null)
   const [styleError, setStyleError] = useState<string | null>(null)
   const [loadingS, setLoadingS] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
 
   const flags = getProductFlags(p)
   const active = getActiveFlags(flags)
@@ -79,11 +94,10 @@ export function ProductDrawer({ product: p, onClose }: Props) {
   useEffect(() => {
     if (tab === 'style' && !styleData && !styleError) {
       setLoadingS(true)
-      const base =
-        process.env.NEXT_PUBLIC_API_URL ||
-        process.env.NEXT_PUBLIC_MARKETPLACE_API_URL ||
-        'https://marketplace-96918972071.asia-southeast1.run.app'
-      fetch(`${base}/products/${p.id}/complete-style?maxPerCategory=5&maxTotal=12`)
+      const url = new URL(catalogBackendAbsoluteUrl(`/products/${p.id}/complete-style`))
+      url.searchParams.set('maxPerCategory', '5')
+      url.searchParams.set('maxTotal', '12')
+      fetch(url.toString())
         .then((r) => r.json())
         .then((d) => {
           if (d.success && d.data) {
@@ -124,33 +138,58 @@ export function ProductDrawer({ product: p, onClose }: Props) {
     { id: 'style', label: 'Complete style' },
   ]
 
-  return (
+  const drawer = (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      {/* Above site Navbar (z-[1000]); portal avoids parent stacking-context clipping */}
+      <div
+        className="fixed inset-0 z-[1100] bg-black/40 backdrop-blur-[2px]"
+        aria-hidden
+        onClick={onClose}
+      />
 
-      <div className="fixed right-0 top-0 bottom-0 w-[520px] max-w-full bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
-        <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex-1 min-w-0 pr-4">
-            <h2 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">{p.title}</h2>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <Badge color="gray">{p.vendor?.name ?? p.vendor_id}</Badge>
-              {p.brand && <span className="text-xs text-gray-400">{p.brand}</span>}
-              {active.length > 0 && (
-                <Badge severity={active.some((f) => f.severity === 'critical') ? 'critical' : 'warning'}>
-                  {active.length} issue{active.length > 1 ? 's' : ''}
-                </Badge>
-              )}
-            </div>
+      <div
+        className="fixed inset-y-0 right-0 z-[1101] flex w-[min(100vw,520px)] max-w-full flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-drawer-title"
+      >
+        <header className="shrink-0 border-b border-gray-100 bg-white px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <div className="flex items-start justify-between gap-3">
+            <h2
+              id="product-drawer-title"
+              className="min-w-0 flex-1 break-words text-base font-semibold leading-snug text-gray-900"
+            >
+              {p.title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close product drawer"
+              aria-label="Close product drawer"
+              className="-mr-1 shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100"
+            >
+              <X className="h-5 w-5" strokeWidth={2} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            title="Close product drawer"
-            aria-label="Close product drawer"
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-          >
-            <X className="w-4 h-4 text-gray-500" />
-          </button>
-        </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Badge color="gray">{p.vendor?.name ?? p.vendor_id}</Badge>
+            {p.brand ? (
+              <span className="max-w-full truncate text-xs text-gray-500" title={p.brand}>
+                {p.brand}
+              </span>
+            ) : null}
+            {disc != null && disc > 0 ? (
+              <span className="rounded-full bg-[#f7f0eb] px-2 py-0.5 text-[11px] font-semibold text-[#2a2623] ring-1 ring-[#d8c6bb]">
+                Sale · -{disc}%
+              </span>
+            ) : null}
+            {active.length > 0 ? (
+              <Badge severity={active.some((f) => f.severity === 'critical') ? 'critical' : 'warning'}>
+                {active.length} issue{active.length > 1 ? 's' : ''}
+              </Badge>
+            ) : null}
+          </div>
+        </header>
 
         <div className="flex border-b border-gray-100 px-5 shrink-0">
           {tabs.map((t) => (
@@ -168,7 +207,7 @@ export function ProductDrawer({ product: p, onClose }: Props) {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5">
           {tab === 'details' && (
             <div className="space-y-4">
               {active.length > 0 && (
@@ -400,4 +439,7 @@ export function ProductDrawer({ product: p, onClose }: Props) {
       </div>
     </>
   )
+
+  if (!mounted) return null
+  return createPortal(drawer, document.body)
 }

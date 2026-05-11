@@ -16,7 +16,7 @@ import { useAuthStore } from '@/store/auth'
 import { api, type ApiResponse } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
-const TRYON_JOB_STORAGE_KEY = 'styleai_tryon_job_id'
+const TRYON_JOB_STORAGE_KEY = 'bolden_tryon_job_id'
 
 export type TryOnJobPayload = {
   status?: string

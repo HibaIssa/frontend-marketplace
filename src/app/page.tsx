@@ -21,8 +21,15 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { Product } from '@/types/product'
-import type { OverviewKPIs } from '@/types/catalog-admin'
+import type { CategoryCount, OverviewKPIs, VendorProductCount } from '@/types/catalog-admin'
+import { fetchAdminOverview } from '@/lib/admin/adminCatalogApi'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
+
+type AdminOverviewResponse = {
+  kpis: OverviewKPIs | null
+  vendorCounts?: VendorProductCount[]
+  catCounts?: CategoryCount[]
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Palette tokens (kept inline for clarity — same set across the page)
@@ -87,66 +94,41 @@ function sumFacetBuckets(b?: FacetBucket[]): number {
   return b.reduce((s, x) => s + (Number(x.count ?? x.doc_count ?? 0) || 0), 0)
 }
 
+function positiveNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : 0
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
 /**
- * Prefer admin-aligned KPIs from `/api/catalog/overview` when non-zero.
- * If the DB aggregate is empty or unreachable (local dev, timeout), fall back to the public product API
- * so “Products in catalog” matches what shoppers can actually query.
+ * Live KPIs for the homepage "By the numbers" section.
+ * Primary source: `/api/admin/overview` (same payload as the admin dashboard — kpis + catCounts + vendorCounts).
+ * Falls back to public facets/list endpoints if the admin overview returns nothing.
  */
 function useCatalogStats() {
   return useQuery({
-    queryKey: ['home-stats'],
+    queryKey: ['admin-overview', 'home-stats'],
     queryFn: async () => {
-      const [overviewRes, facetsRes, listRes] = await Promise.allSettled([
-        fetch('/api/catalog/overview', { cache: 'no-store' }).then(async (r) => {
-          if (!r.ok) return null
-          const body = (await r.json()) as OverviewKPIs | { error?: string }
-          if (body && typeof body === 'object' && 'error' in body && !('total_products' in body)) return null
-          return body as OverviewKPIs
-        }),
-        api.get<FacetsResponse>(endpoints.products.facets),
-        api.get<unknown>(endpoints.products.list, { limit: 1, page: 1 }),
-      ])
+      const overview = await fetchAdminOverview()
+      const kpis = overview.kpis
+      const catCounts = overview.catCounts ?? []
+      const vendorCounts = overview.vendorCounts ?? []
 
-      const kpis = overviewRes.status === 'fulfilled' ? overviewRes.value : null
-      const facets = facetsRes.status === 'fulfilled' ? facetsRes.value?.data : undefined
-      const listPayload = listRes.status === 'fulfilled' ? listRes.value : undefined
+      /** `/products/sales` is often slow — only ask when admin KPIs don't already report sale counts. */
+      const productsFromVendors = vendorCounts.reduce((sum, vendor) => sum + positiveNumber(vendor.total), 0)
+      const productsFromCategories = catCounts.reduce((sum, category) => sum + positiveNumber(category.count), 0)
+      const totalProducts = positiveNumber(kpis?.total_products) || Math.max(productsFromVendors, productsFromCategories)
 
-      const facetListTotal = typeof facets?.totalProductCount === 'number' ? facets.totalProductCount : 0
-      const listTotal = paginationTotal(listPayload)
+      const brandsLen = positiveNumber(kpis?.total_vendors) || vendorCounts.length
 
-      /** `/products/sales` is often slow — only request it when KPIs don’t already include sale counts. */
-      let salesTotal = 0
-      const ovSale = kpis?.with_sale_price ?? 0
-      if (ovSale <= 0) {
-        const salesRes = await api.get<unknown>(endpoints.products.sales, { limit: 1, page: 1 }).catch(() => null)
-        salesTotal = salesRes ? paginationTotal(salesRes) : 0
-      }
-      const sumCategories = sumFacetBuckets(facets?.categories)
-      const sumBrands = sumFacetBuckets(facets?.brands)
-      const sumFallback = Math.max(sumCategories, sumBrands)
+      const categoriesLen = positiveNumber(kpis?.unique_categories) || catCounts.length
 
-      const ovProducts = kpis?.total_products ?? 0
-      const ovVendors = kpis?.total_vendors ?? 0
-      const ovCats = kpis?.unique_categories ?? 0
-
-      const totalProducts =
-        ovProducts > 0
-          ? ovProducts
-          : Math.max(facetListTotal, listTotal, sumFallback)
-
-      const brandsLen =
-        ovVendors > 0 ? ovVendors : Array.isArray(facets?.brands) ? facets.brands.length : 0
-
-      const categoriesLen =
-        ovCats > 0 ? ovCats : Array.isArray(facets?.categories) ? facets.categories.length : 0
-
-      const onSaleTotal = ovSale > 0 ? ovSale : salesTotal
+      const onSaleTotal = positiveNumber(kpis?.with_sale_price)
 
       return { totalProducts, brandsLen, categoriesLen, onSaleTotal }
     },
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    retry: 1,
+    retry: false,
   })
 }
 

@@ -1,9 +1,9 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api/client'
+import { useQuery } from '@tanstack/react-query'
+import { dashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
-import { AlertTriangle, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react'
 
 type Alert = {
   id: number
@@ -46,19 +46,10 @@ function unwrap<T>(res: unknown): T {
 }
 
 export default function AlertsPage() {
-  const qc = useQueryClient()
-
   const { data: raw, isLoading } = useQuery({
     queryKey: ['dsr-alerts'],
-    queryFn: () => fetch('/api/dashboard/alerts').then((r) => r.json()),
+    queryFn: () => dashboardApi.get(endpoints.dashboard.alerts),
     retry: 1,
-  })
-
-  const dismiss = useMutation({
-    mutationFn: async (alertId: number) => {
-      return { success: true }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dsr-alerts'] }),
   })
 
   const alerts: Alert[] = Array.isArray(unwrap(raw)) ? (unwrap(raw) as Alert[]) : []
@@ -74,11 +65,10 @@ export default function AlertsPage() {
       <div>
         <h1 className="font-display text-3xl font-bold text-neutral-800">DSR Alerts</h1>
         <p className="text-neutral-500 mt-1 text-sm">
-          Active alerts ordered by severity — dismiss once reviewed
+          Active alerts ordered by severity
         </p>
       </div>
 
-      {/* Summary chips */}
       {!isLoading && alerts.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {counts.critical > 0 && (
@@ -146,15 +136,6 @@ export default function AlertsPage() {
                 </p>
                 <p className="text-sm text-neutral-600 mt-0.5">{alert.message}</p>
               </div>
-
-              <button
-                onClick={() => dismiss.mutate(alert.id)}
-                disabled={dismiss.isPending}
-                className="shrink-0 p-1.5 rounded-lg hover:bg-black/10 transition-colors text-neutral-400 hover:text-neutral-700 disabled:opacity-50"
-                aria-label="Dismiss alert"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           )
         })}

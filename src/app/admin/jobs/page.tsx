@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 const JOB_TYPES = ['nightly-crawl', 'price-snapshot', 'canonical-recompute', 'cleanup-old-data'] as const
@@ -49,19 +49,19 @@ export default function AdminJobsPage() {
 
   const schedules = useQuery({
     queryKey: ['admin-job-schedules'],
-    queryFn: () => api.get<unknown>(endpoints.admin.jobSchedules),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.admin.jobSchedules),
   })
   const metrics = useQuery({
     queryKey: ['admin-job-metrics'],
-    queryFn: () => api.get<unknown>(endpoints.admin.jobMetrics),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.admin.jobMetrics),
   })
   const history = useQuery({
     queryKey: ['admin-job-history'],
-    queryFn: () => api.get<unknown>(endpoints.admin.jobHistory),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.admin.jobHistory),
   })
 
   const run = useMutation({
-    mutationFn: () => api.post(endpoints.admin.jobRun(jobType), {}),
+    mutationFn: () => adminDashboardApi.post(endpoints.admin.jobRun(jobType), {}),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin-job-history'] })
       void qc.invalidateQueries({ queryKey: ['admin-job-metrics'] })

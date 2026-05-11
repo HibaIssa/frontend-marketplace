@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 type AnyObj = Record<string, unknown>
@@ -32,7 +32,7 @@ export default function AdminCanonicalsPage() {
   const list = useQuery({
     queryKey: ['admin-canonicals'],
     queryFn: async () => {
-      const res = (await api.get<unknown>(endpoints.admin.canonicals)) as {
+      const res = (await adminDashboardApi.get<unknown>(endpoints.admin.canonicals)) as {
         canonicals?: unknown[]
         success?: boolean
         error?: { message?: string }
@@ -46,7 +46,7 @@ export default function AdminCanonicalsPage() {
     queryKey: ['admin-canonical', canonicalId],
     queryFn: async () => {
       if (!canonicalId.trim()) return null
-      const res = (await api.get<unknown>(endpoints.admin.canonical(canonicalId.trim()))) as Record<string, unknown>
+      const res = (await adminDashboardApi.get<unknown>(endpoints.admin.canonical(canonicalId.trim()))) as Record<string, unknown>
       if (res?.success === false) throw new Error((res.error as { message?: string })?.message ?? 'Failed')
       return res
     },
@@ -57,7 +57,7 @@ export default function AdminCanonicalsPage() {
 
   const mergeM = useMutation({
     mutationFn: () =>
-      api.post(endpoints.admin.canonicalMerge, {
+      adminDashboardApi.post(endpoints.admin.canonicalMerge, {
         sourceId: parseInt(mergeSource, 10),
         targetId: parseInt(mergeTarget, 10),
       }),
@@ -66,7 +66,7 @@ export default function AdminCanonicalsPage() {
 
   const detachM = useMutation({
     mutationFn: () =>
-      api.post(endpoints.admin.canonicalDetach(detachCanon.trim(), detachProduct.trim()), {}),
+      adminDashboardApi.post(endpoints.admin.canonicalDetach(detachCanon.trim(), detachProduct.trim()), {}),
     onSuccess: invalidate,
   })
 

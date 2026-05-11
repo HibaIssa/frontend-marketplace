@@ -8,8 +8,15 @@ import { formatCents, formatRelativeTime } from '@/lib/utils/catalog-quality'
 
 const EMPTY = '--'
 
+function isTodayIso(iso: string | null | undefined): boolean {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  return d.toDateString() === new Date().toDateString()
+}
+
 export default function PricesPage() {
-  const { data, isLoading } = useQuery<PricesData>({
+  const { data, isLoading, isError, error } = useQuery<PricesData>({
     queryKey: ['admin-prices'],
     queryFn: fetchAdminPrices,
     staleTime: 5 * 60 * 1000,
@@ -21,9 +28,16 @@ export default function PricesPage() {
 
   const discounts = changesTyped.filter(c => c.is_discount).slice(0, 20)
   const increases = changesTyped.filter(c => !c.is_discount).slice(0, 10)
-  const todayCount = changesTyped.filter(c => {
-    return new Date(c.recorded_at).toDateString() === new Date().toDateString()
-  }).length
+  const showingCurrentSales = discounts.length === 0 && activeSales.length > 0
+
+  let todayCount = changesTyped.filter(c => isTodayIso(c.recorded_at)).length
+  if (todayCount === 0 && showingCurrentSales) {
+    todayCount = activeSales.filter(s => isTodayIso(s.last_seen)).length
+  }
+
+  const newDiscountsKpi =
+    discounts.length > 0 ? discounts.length : showingCurrentSales ? activeSales.length : 0
+
   const biggestDisc = discounts[0]
     ? Math.abs(Math.round(discounts[0].change_pct))
     : activeSales[0]
@@ -42,7 +56,6 @@ export default function PricesPage() {
     is_discount: true,
   }))
   const tableRows = discounts.length > 0 ? discounts : fallbackRows
-  const showingCurrentSales = discounts.length === 0 && activeSales.length > 0
 
   const volumeMap = new Map<string, number>()
   for (const c of changesTyped) {
@@ -73,11 +86,17 @@ export default function PricesPage() {
         }
       />
 
+      {isError && (
+        <div className="mx-6 mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+          Could not load price data: {error instanceof Error ? error.message : 'Request failed'}
+        </div>
+      )}
+
       <div className="p-6 flex flex-col gap-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KpiCard label="Changes today"    value={isLoading ? EMPTY : todayCount} />
           <KpiCard label="Biggest discount" value={isLoading ? EMPTY : (biggestDisc > 0 ? `-${biggestDisc}%` : EMPTY)} tone="good" />
-          <KpiCard label="New discounts"    value={isLoading ? EMPTY : discounts.length} tone="good" />
+          <KpiCard label="New discounts"    value={isLoading ? EMPTY : newDiscountsKpi} tone="good" />
           <KpiCard label="Price increases"  value={isLoading ? EMPTY : increases.length} tone="warn" />
         </div>
 

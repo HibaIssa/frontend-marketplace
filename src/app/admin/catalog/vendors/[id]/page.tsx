@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { supabaseAdmin as sb } from '@/lib/supabase/client'
 import { fetchVendorStats } from '@/lib/catalog-queries'
 import { PageHeader, KpiCard, Section, Badge, HealthBar } from '@/components/catalog-admin/ui'
+import { hostedCatalogNavHref } from '@/lib/admin/adminApiOrigin'
 import { formatRelativeTime, formatCents } from '@/lib/utils/catalog-quality'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 
@@ -47,7 +48,7 @@ export default async function VendorDetailPage({ params }: Props) {
         actions={
           <>
             <Link
-              href="/admin/catalog/vendors"
+              href={hostedCatalogNavHref('/admin/catalog/vendors')}
               className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
             >
               <ArrowLeft className="w-3 h-3" /> Back
