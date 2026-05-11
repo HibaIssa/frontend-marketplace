@@ -1,3 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-export { default } from '../../admin/jobs/page'
+export default function DashboardJobsRedirect() {
+  redirect('/dashboard')
+}

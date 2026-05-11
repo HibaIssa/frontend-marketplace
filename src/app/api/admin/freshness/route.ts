@@ -1,14 +1,11 @@
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import { mirrorCatalogRequestOk } from '@/lib/admin/catalogMirror'
 import { fetchFreshnessStats, fetchVendorFreshness } from '@/lib/catalog-queries'
-import { hasSupabaseCatalogEnv } from '@/lib/admin/supabaseEnv'
 
-export async function GET() {
-  if (!hasSupabaseCatalogEnv()) {
-    return NextResponse.json({
-      stats: { fresh_count: 0, recent_count: 0, aging_count: 0, stale_count: 0 },
-      vendorFresh: [],
-    })
-  }
+export async function GET(req: NextRequest) {
+  const mirrored = await mirrorCatalogRequestOk(req, '/api/admin/freshness')
+  if (mirrored) return mirrored
 
   const [stats, vendorFresh] = await Promise.allSettled([
     fetchFreshnessStats(),

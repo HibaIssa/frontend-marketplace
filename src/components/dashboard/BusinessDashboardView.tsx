@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Bell, Loader2, RefreshCcw } from 'lucide-react'
-import { api } from '@/lib/api/client'
+import { useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Bell } from 'lucide-react'
+import { dashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 type RiskLevel = 'all' | 'green' | 'yellow' | 'red'
@@ -38,14 +38,6 @@ type DashboardAlert = {
   message: string
   dismissed: boolean
   created_at: string
-}
-
-type ProductSignals = {
-  product_id: number
-  product_title: string
-  dsr_score: number
-  risk_level: Exclude<RiskLevel, 'all'>
-  signals: Record<string, unknown>
 }
 
 const QUERY_KEYS = {
@@ -88,13 +80,11 @@ function riskTone(level: Exclude<RiskLevel, 'all'>) {
 export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?: 'overview' | 'products' | 'alerts' }) {
   const [tab, setTab] = useState<'overview' | 'products' | 'alerts'>(initialTab)
   const [riskFilter, setRiskFilter] = useState<RiskLevel>('all')
-  const [signalsFor, setSignalsFor] = useState<number | null>(null)
-  const qc = useQueryClient()
 
   const summaryQ = useQuery({
     queryKey: QUERY_KEYS.summary,
     queryFn: async () => {
-      const res = await withTimeout(() => api.get<DashboardSummary>(endpoints.dashboard.summary), 'Summary')
+      const res = await withTimeout(() => dashboardApi.get<DashboardSummary>(endpoints.dashboard.summary), 'Summary')
       if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load summary')
       return res.data
     },
@@ -106,7 +96,7 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
     queryFn: async () => {
       const params = riskFilter === 'all' ? undefined : { risk_level: riskFilter }
       const res = await withTimeout(
-        () => api.get<DashboardProduct[]>(endpoints.dashboard.products, params),
+        () => dashboardApi.get<DashboardProduct[]>(endpoints.dashboard.products, params),
         'Products',
       )
       if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load products')
@@ -118,44 +108,11 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
   const alertsQ = useQuery({
     queryKey: QUERY_KEYS.alerts,
     queryFn: async () => {
-      const res = await withTimeout(() => api.get<DashboardAlert[]>(endpoints.dashboard.alerts), 'Alerts')
+      const res = await withTimeout(() => dashboardApi.get<DashboardAlert[]>(endpoints.dashboard.alerts), 'Alerts')
       if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load alerts')
       return res.data
     },
     retry: 1,
-  })
-
-  const signalsQ = useQuery({
-    queryKey: ['biz-dashboard', 'signals', signalsFor],
-    enabled: signalsFor != null,
-    queryFn: async () => {
-      const res = await api.get<ProductSignals>(endpoints.dashboard.productSignals(String(signalsFor)))
-      if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load signals')
-      return res.data
-    },
-  })
-
-  const dismissAlert = useMutation({
-    mutationFn: async (alertId: number) => {
-      const res = await api.post(endpoints.dashboard.dismissAlert(String(alertId)))
-      if (!res.success) throw new Error(res.error?.message || 'Dismiss failed')
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.alerts })
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.summary })
-    },
-  })
-
-  const generateAlerts = useMutation({
-    mutationFn: async () => {
-      const res = await api.post(endpoints.dashboard.generateAlerts)
-      if (!res.success) throw new Error(res.error?.message || 'Generation failed')
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.alerts })
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.summary })
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.products('all') })
-    },
   })
 
   const topAtRisk = useMemo(() => (productsQ.data || []).slice(0, 8), [productsQ.data])
@@ -167,15 +124,6 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
           <h1 className="text-xl font-semibold text-neutral-900">Business Dashboard</h1>
           <p className="text-sm text-neutral-600">Risk summary, product signals, and vendor alerts.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => generateAlerts.mutate()}
-          disabled={generateAlerts.isPending}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
-        >
-          {generateAlerts.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-          Generate Alerts
-        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -235,7 +183,6 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
                     <th className="pb-2">DSR</th>
                     <th className="pb-2">Risk</th>
                     <th className="pb-2">Reason</th>
-                    <th className="pb-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -253,15 +200,6 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
                         </span>
                       </td>
                       <td className="py-2 text-neutral-700">{p.top_reason}</td>
-                      <td className="py-2">
-                        <button
-                          type="button"
-                          onClick={() => setSignalsFor(p.id)}
-                          className="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
-                        >
-                          View signals
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -290,17 +228,7 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
                     <p className="text-sm text-neutral-600">{a.message}</p>
                     <p className="text-xs text-neutral-500">{formatDate(a.created_at)}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">{a.alert_type}</span>
-                    <button
-                      type="button"
-                      onClick={() => dismissAlert.mutate(a.id)}
-                      disabled={dismissAlert.isPending}
-                      className="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50 disabled:opacity-60"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
+                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700">{a.alert_type}</span>
                 </div>
               ))}
             </div>
@@ -311,36 +239,6 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
             </div>
           )}
         </section>
-      )}
-
-      {signalsFor != null && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-4">
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <h3 className="text-base font-semibold text-neutral-900">Product Signals</h3>
-              <button type="button" onClick={() => setSignalsFor(null)} className="text-sm text-neutral-600 hover:text-neutral-900">
-                Close
-              </button>
-            </div>
-            {signalsQ.isPending ? (
-              <p className="text-sm text-neutral-500">Loading signals...</p>
-            ) : signalsQ.isError ? (
-              <p className="text-sm text-red-700">{(signalsQ.error as Error).message}</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-neutral-700">
-                  <span className="font-medium">Product:</span> {signalsQ.data?.product_title}
-                </p>
-                <p className="text-sm text-neutral-700">
-                  <span className="font-medium">DSR:</span> {signalsQ.data?.dsr_score} ({signalsQ.data?.risk_level})
-                </p>
-                <pre className="overflow-auto rounded-xl bg-neutral-50 p-3 text-xs text-neutral-700">
-                  {JSON.stringify(signalsQ.data?.signals ?? {}, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   )

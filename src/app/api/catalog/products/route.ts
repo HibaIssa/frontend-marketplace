@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { mirrorCatalogRequestOk } from '@/lib/admin/catalogMirror'
 import { fetchProducts } from '@/lib/catalog-queries'
 import type { ProductFilters, SortConfig, ProductSortField } from '@/types/catalog-admin'
 
 export async function GET(req: NextRequest) {
+  const mirrored = await mirrorCatalogRequestOk(req, '/api/catalog/products')
+  if (mirrored) return mirrored
+
   const sp = req.nextUrl.searchParams
 
   const filters: ProductFilters = {

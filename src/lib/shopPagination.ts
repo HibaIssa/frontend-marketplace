@@ -51,7 +51,7 @@ export function getStablePagination<T>(
     return { totalItems, totalPages }
   }
 
-  if (typeof totalItemsRaw === 'number' && totalItemsRaw >= 0) {
+  if (typeof totalItemsRaw === 'number' && totalItemsRaw > 0) {
     return {
       totalItems: totalItemsRaw,
       totalPages: Math.max(1, Math.ceil(totalItemsRaw / itemsPerPage)),

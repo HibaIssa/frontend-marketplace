@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { mirrorCatalogRequestOk } from '@/lib/admin/catalogMirror'
 import { fetchPriceHistory } from '@/lib/catalog-queries'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const mirrored = await mirrorCatalogRequestOk(req, `/api/catalog/products/${encodeURIComponent(params.id)}/price-history`)
+  if (mirrored) return mirrored
+
   try {
     const history = await fetchPriceHistory(params.id)
     return NextResponse.json(history)

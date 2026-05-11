@@ -1,1 +1,5 @@
-export { default } from '../../../admin/catalog/products/page'
+import { redirect } from 'next/navigation'
+
+export default function DashboardCatalogProductsRedirect() {
+  redirect('/dashboard')
+}

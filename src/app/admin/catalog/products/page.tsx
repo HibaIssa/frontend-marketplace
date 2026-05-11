@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect, useTransition } from 'react'
-import { Search, SlidersHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Search, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { useDebounce } from '@/hooks/useDebounce'
 import { ProductDrawer } from '@/components/catalog-admin/ProductDrawer'
 import {
@@ -31,7 +31,8 @@ export default function ProductsPage() {
     { value: '', label: 'All categories' },
   ])
   const [page, setPage]         = useState(1)
-  const [loading, startTransition] = useTransition()
+  /** Tracks async fetch — useTransition does not stay pending across await. */
+  const [isLoading, setIsLoading] = useState(true)
   const [selected, setSelected] = useState<Product | null>(null)
 
   const [filters, setFilters] = useState<ProductFilters>({})
@@ -48,7 +49,8 @@ export default function ProductsPage() {
   const debouncedSearch = useDebounce(search, 350)
 
   const load = useCallback((f: ProductFilters, s: SortConfig, p: number) => {
-    startTransition(async () => {
+    void (async () => {
+      setIsLoading(true)
       try {
         setLoadError(null)
         const params = new URLSearchParams()
@@ -88,8 +90,10 @@ export default function ProductsPage() {
         setTotal(0)
         setHasMore(undefined)
         console.error(e)
+      } finally {
+        setIsLoading(false)
       }
-    })
+    })()
   }, [])
 
   useEffect(() => {
@@ -160,10 +164,25 @@ export default function ProductsPage() {
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader
         title="Products"
-        sub={hasMore === true ? 'Live catalog (API)' : `${total.toLocaleString()} rows`}
+        sub={
+          isLoading && products.length === 0
+            ? 'Loading catalog…'
+            : hasMore === true
+              ? 'Live catalog (API)'
+              : `${total.toLocaleString()} rows`
+        }
         actions={
-          <span className="text-xs bg-[#f4ece6] text-[#2a2623] border border-[#d8c6bb] px-2.5 py-1 rounded-full font-medium">
-            {hasMore === true ? 'Paged · more available' : `${total.toLocaleString()} total`}
+          <span className="inline-flex items-center gap-1.5 text-xs bg-[#f4ece6] text-[#2a2623] border border-[#d8c6bb] px-2.5 py-1 rounded-full font-medium">
+            {isLoading && products.length === 0 ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7d4b3a]" aria-hidden />
+                Loading
+              </>
+            ) : hasMore === true ? (
+              'Paged · more available'
+            ) : (
+              `${total.toLocaleString()} total`
+            )}
           </span>
         }
       />
@@ -253,8 +272,33 @@ export default function ProductsPage() {
               ))}
             </tr>
           </thead>
-          <tbody className={loading ? 'opacity-60' : ''}>
-            {products.length === 0 && !loading && (
+          <tbody className={isLoading && products.length > 0 ? 'opacity-60' : ''}>
+            {isLoading && products.length === 0 ? (
+              <>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={`sk-${i}`} className="border-b border-gray-50">
+                    <td className="px-3 py-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="h-3.5 w-[min(180px,28vw)] rounded bg-gray-100 animate-pulse" />
+                      <div className="mt-1.5 h-2 w-24 rounded bg-gray-50 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2.5"><div className="h-5 w-14 rounded-full bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-16 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-20 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-10 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-8 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-12 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-14 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-5 w-11 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-16 rounded bg-gray-100 animate-pulse" /></td>
+                    <td className="px-3 py-2.5"><div className="h-5 w-7 rounded bg-gray-100 animate-pulse" /></td>
+                  </tr>
+                ))}
+              </>
+            ) : null}
+            {!isLoading && products.length === 0 && (
               <tr><td colSpan={12}><EmptyState message="No products match your filters" /></td></tr>
             )}
             {products.map(p => {
@@ -331,7 +375,14 @@ export default function ProductsPage() {
           Page {page}
           {hasMore !== true ? ` of ${totalPages}` : ''}
           {' · '}
-          {resultsSummary} results
+          {isLoading ? (
+            <span className="inline-flex items-center gap-1 text-[#7d4b3a]">
+              <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden />
+              Loading…
+            </span>
+          ) : (
+            <>{resultsSummary} results</>
+          )}
         </span>
         <div className="flex gap-2">
           <button

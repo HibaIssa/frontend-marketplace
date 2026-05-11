@@ -1,3 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-export { default } from '../../admin/reco/page'
+export default function DashboardRecoRedirect() {
+  redirect('/dashboard')
+}

@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 type Obj = Record<string, unknown>
@@ -91,19 +91,19 @@ function StatusPill({ label, value }: { label: string; value: unknown }) {
 export default function AdminSystemPage() {
   const live = useQuery({
     queryKey: ['health-live'],
-    queryFn: () => api.get<unknown>(endpoints.health.live),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.health.live),
   })
   const ready = useQuery({
     queryKey: ['health-ready'],
-    queryFn: () => api.get<unknown>(endpoints.health.ready),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.health.ready),
   })
   const detailed = useQuery({
     queryKey: ['health-detailed'],
-    queryFn: () => api.get<unknown>(endpoints.health.detailed),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.health.detailed),
   })
   const prom = useQuery({
     queryKey: ['metrics-prometheus'],
-    queryFn: () => api.getRaw(endpoints.metrics),
+    queryFn: () => adminDashboardApi.getRaw(endpoints.metrics),
   })
 
   const liveData = unwrapPayload(live.data)

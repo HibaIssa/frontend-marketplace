@@ -161,20 +161,17 @@ export const endpoints = {
     recoLabels: '/admin/reco/labels',
     recoStats: '/admin/reco/stats',
   },
-  /** Catalog quality dashboard — served by the same backend as `NEXT_PUBLIC_API_URL` (`/api/admin/*`, admin JWT). */
+  /** Catalog quality dashboard — Cloud routes use `/admin/*` (admin JWT). */
   adminCatalog: {
-    overview: '/api/admin/overview',
-    freshness: '/api/admin/freshness',
-    prices: '/api/admin/prices',
-    vendors: '/api/admin/vendors',
+    overview: '/admin/overview',
+    freshness: '/admin/freshness',
+    prices: '/admin/prices',
+    vendors: '/admin/vendors',
   },
   dashboard: {
     summary: '/api/dashboard/summary',
     products: '/api/dashboard/products',
-    productSignals: (id: string) => `/api/dashboard/products/${id}/signals`,
     alerts: '/api/dashboard/alerts',
-    dismissAlert: (id: string) => `/api/dashboard/alerts/${id}/dismiss`,
-    generateAlerts: '/api/dashboard/alerts/generate',
   },
   health: {
     live: '/health/live',

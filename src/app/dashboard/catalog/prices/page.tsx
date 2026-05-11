@@ -1,1 +1,5 @@
-export { default } from '../../../admin/catalog/prices/page'
+import { redirect } from 'next/navigation'
+
+export default function DashboardCatalogPricesRedirect() {
+  redirect('/dashboard')
+}

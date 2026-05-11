@@ -208,17 +208,29 @@ function ProductsContent() {
     !pagination!.indeterminate &&
     typeof pagination!.totalItems === 'number' &&
     pagination!.totalItems > itemsAccountedFor
+  const hasReliablePageCount =
+    Boolean(pagination) &&
+    !pagination!.approximate &&
+    !pagination!.indeterminate &&
+    typeof pagination!.totalItems === 'number' &&
+    pagination!.totalItems > 0
+  const hasPotentialNextPage = !hasReliablePageCount && rawProducts.length >= limit
 
   const knownTotalPages = pagination?.totalPages ?? 0
   /** `has_more`, known page count, or catalog total greater than rows returned for this page (e.g. search total 24, first payload 4). */
   const canGoNext =
     hasMoreFromApi ||
     hasMoreByTotal ||
+    hasPotentialNextPage ||
     (knownTotalPages > 1 && page < knownTotalPages)
 
   /** When API total > rows but `ceil(total/limit)` is 1 (chunked responses), still show at least `page + 1` in the pager. */
   const pagerTotalPages =
-    knownTotalPages > 1 ? knownTotalPages : canGoNext ? Math.max(knownTotalPages, page + 1) : Math.max(knownTotalPages, 1)
+    knownTotalPages > 1 && hasReliablePageCount
+      ? knownTotalPages
+      : canGoNext
+        ? Math.max(knownTotalPages, page + 1)
+        : Math.max(knownTotalPages, page)
 
   useEffect(() => {
     if (pagerTotalPages > 0 && page > pagerTotalPages) setPageInUrl(pagerTotalPages)
@@ -409,7 +421,7 @@ function ProductsContent() {
 
                   <div className="flex items-center gap-1 px-2">
                     {(() => {
-                      const tp = pagerTotalPages
+                      const tp = Math.max(pagerTotalPages, page)
                       const windowSize = Math.min(tp, 7)
                       return Array.from({ length: windowSize }).map((_, i) => {
                         let pageNum: number
@@ -439,7 +451,7 @@ function ProductsContent() {
                       })
                     })()}
 
-                    {pagerTotalPages <= 1 && canGoNext && (
+                    {!hasReliablePageCount && canGoNext && (
                       <span className="w-9 h-9 flex items-center justify-center text-sm text-[#b8aea5]">…</span>
                     )}
                   </div>
@@ -460,7 +472,7 @@ function ProductsContent() {
                     e.preventDefault()
                     const n = parseInt(pageJump, 10)
                     if (!Number.isFinite(n) || n < 1) return
-                    setPageInUrl(pagerTotalPages > 0 ? Math.min(n, pagerTotalPages) : n)
+                    setPageInUrl(hasReliablePageCount && pagerTotalPages > 0 ? Math.min(n, pagerTotalPages) : n)
                   }}
                 >
                   <label htmlFor="shop-page-jump" className="text-sm text-[#7a726b] whitespace-nowrap">
@@ -470,7 +482,7 @@ function ProductsContent() {
                     id="shop-page-jump"
                     type="number"
                     min={1}
-                    {...(pagerTotalPages > 0 ? { max: pagerTotalPages } : {})}
+                    {...(hasReliablePageCount && pagerTotalPages > 0 ? { max: pagerTotalPages } : {})}
                     value={pageJump}
                     onChange={(e) => setPageJump(e.target.value)}
                     className="w-16 px-2 py-2 rounded-lg border border-[#e8e4df] bg-white text-[#2a2623] text-center text-sm focus:ring-2 focus:ring-[#d8c6bb]/40 focus:border-[#d8d2cd]"
@@ -483,7 +495,7 @@ function ProductsContent() {
                 <span className="text-sm text-[#7a726b]">
                   {pagination?.indeterminate && hasMoreFromApi
                     ? `Page ${page} · more results`
-                    : pagination?.indeterminate
+                    : pagination?.indeterminate || !hasReliablePageCount
                       ? `Page ${page}`
                       : pagerTotalPages > 0
                         ? `Page ${page} of ${pagerTotalPages}`

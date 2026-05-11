@@ -303,25 +303,15 @@ export function ShopTheLookResults({
       : rows.map((_, i) => i)
 
   const focusDetection = useCallback((idx: number) => {
-    setSelectedIdx((cur) => {
-      const next = cur === idx ? null : idx
-      if (next !== null) {
-        setHighlightedIdx(next)
-        requestAnimationFrame(() => {
-          sectionRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        })
-      } else {
-        setHighlightedIdx(null)
-      }
-      return next
+    setSelectedIdx(idx)
+    setHighlightedIdx(idx)
+    requestAnimationFrame(() => {
+      sectionRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }, [])
 
   const selectedGroup =
     selectedIdx !== null && selectedIdx >= 0 && selectedIdx < rows.length ? rows[selectedIdx] : null
-  const selectedMeta = selectedGroup ? firstBoxMeta(selectedGroup) : null
-  const selectedCrop =
-    selectedMeta?.box && canDrawBoxes ? boxStylePercents(selectedMeta.box, refW, refH) : null
 
   const productHref = useCallback(
     (id: number) =>
@@ -337,11 +327,6 @@ export function ShopTheLookResults({
   const saveScrollBeforeProduct = useCallback(() => {
     saveListingScrollY(returnPath, typeof window !== 'undefined' ? window.scrollY : 0)
   }, [returnPath])
-
-  const floatingProduct =
-    selectedIdx !== null && selectedIdx >= 0 && selectedIdx < rows.length
-      ? topMatchProduct(rows[selectedIdx]!)
-      : null
 
   return (
     <motion.div
@@ -391,7 +376,7 @@ export function ShopTheLookResults({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={outfitImageUrl}
-                alt="Outfit with AI-detected pieces highlighted"
+                alt="Outfit with detected pieces highlighted"
                 className="w-full max-h-[min(88vh,920px)] object-contain object-center"
                 onLoad={(e) => {
                   const el = e.currentTarget
@@ -457,96 +442,6 @@ export function ShopTheLookResults({
                 })
               })}
 
-            <AnimatePresence>
-              {selectedIdx !== null &&
-              selectedCrop &&
-              floatingProduct &&
-              floatingProduct.id >= 1 ? (
-                <motion.div
-                  key={`stl-pop-${selectedIdx}-${floatingProduct.id}`}
-                  role="dialog"
-                  aria-label="Top match for selection"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  transition={{ duration: 0.25, ease: 'easeOut' }}
-                  className="stl-product-pop absolute z-[35] w-[min(296px,calc(100%-1.75rem))]"
-                  style={{
-                    left: `${selectedCrop.left + selectedCrop.width / 2}%`,
-                    top: `${selectedCrop.top + selectedCrop.height}%`,
-                    transform: 'translate(-50%, 12px)',
-                    perspective: '1000px',
-                  }}
-                >
-                  <div className="[transform-style:preserve-3d]">
-                    <div
-                      className="overflow-hidden rounded-2xl border border-[#e8e4df] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] transition-[transform] duration-[250ms] ease-out hover:[transform:perspective(1000px)_rotateY(0deg)] motion-reduce:transition-none"
-                      style={{
-                        transform: 'perspective(1000px) rotateY(8deg)',
-                        transformOrigin: 'center center',
-                      }}
-                    >
-                      <div className="flex gap-3.5 p-3.5 sm:p-4">
-                        <Link
-                          href={productHref(floatingProduct.id)}
-                          onClick={saveScrollBeforeProduct}
-                          className="relative block h-[76px] w-[60px] shrink-0 overflow-hidden rounded-xl bg-[#ece8e3] ring-1 ring-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
-                          aria-label={`Open product: ${floatingProduct.title}`}
-                        >
-                          {floatingProduct.image_cdn || floatingProduct.image_url ? (
-                            <NextImage
-                              src={(floatingProduct.image_cdn || floatingProduct.image_url) as string}
-                              alt={floatingProduct.title}
-                              fill
-                              className="object-cover"
-                              sizes="60px"
-                            />
-                          ) : null}
-                        </Link>
-                        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0.5">
-                          {floatingProduct.brand ? (
-                            <Link
-                              href={productHref(floatingProduct.id)}
-                              onClick={saveScrollBeforeProduct}
-                              className="truncate text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-brand underline-offset-2 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
-                            >
-                              {floatingProduct.brand}
-                            </Link>
-                          ) : null}
-                          <Link
-                            href={productHref(floatingProduct.id)}
-                            onClick={saveScrollBeforeProduct}
-                            className="line-clamp-3 text-left text-[13px] font-semibold leading-snug text-[#2B2521] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
-                          >
-                            {floatingProduct.title}
-                          </Link>
-                          {productMetaLine(floatingProduct) ? (
-                            <p className="line-clamp-2 text-[11px] leading-snug text-[#6b6560]">
-                              {productMetaLine(floatingProduct)}
-                            </p>
-                          ) : null}
-                          {(() => {
-                            const list = formatProductPrice(floatingProduct)
-                            const saleStr = formatSalePrice(floatingProduct)
-                            if (isProductOnSale(floatingProduct) && saleStr && list) {
-                              return (
-                                <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
-                                  <span className="text-[14px] font-semibold tabular-nums text-brand">{saleStr}</span>
-                                  <span className="text-[12px] font-medium tabular-nums text-[#9c9590] line-through">{list}</span>
-                                </div>
-                              )
-                            }
-                            return list ? (
-                              <p className="mt-auto pt-1 text-[14px] font-semibold tabular-nums text-[#2B2521]">{list}</p>
-                            ) : null
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
             </div>
 
             {/* When the wardrobe panel is taller than the photo, extend the frame color so dead stripes aren’t raw page beige */}
@@ -554,7 +449,7 @@ export function ShopTheLookResults({
           </div>
 
           <p className="mt-3 shrink-0 text-center text-[12px] text-[#6b5348] sm:text-left">
-            Drag isn't needed — click a framed region to preview our closest catalog match.
+            Drag isn't needed — click a framed region to jump to its matches below.
           </p>
         </div>
 

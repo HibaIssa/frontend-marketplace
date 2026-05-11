@@ -26,7 +26,7 @@ export function Footer() {
               Where style meets confidence.
             </p>
             <p className="mt-4 text-body text-muted/90 leading-relaxed max-w-xs font-sans">
-              Fashion discovery powered by AI: search, compare, wardrobe, and try-on in one seamless experience.
+              Fashion discovery for shopping, comparing, wardrobe planning, and try-on in one seamless experience.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link

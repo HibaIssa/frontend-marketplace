@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { PageHeader, Section, Badge, HealthBar } from '@/components/catalog-admin/ui'
 import { fetchAdminVendors } from '@/lib/admin/adminCatalogApi'
+import { hostedCatalogNavHref } from '@/lib/admin/adminApiOrigin'
 import { formatRelativeTime } from '@/lib/utils/catalog-quality'
 import type { VendorStats } from '@/types/catalog-admin'
 
@@ -74,7 +75,7 @@ export default function VendorsPage() {
                           <div className="flex items-center gap-2.5">
                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-red-400' : 'bg-orange-500'}`} />
                             <div>
-                              <Link href={`/admin/catalog/vendors/${v.id}`} className="font-medium text-gray-900 hover:text-[#2a2623] transition-colors">
+                              <Link href={hostedCatalogNavHref(`/admin/catalog/vendors/${v.id}`)} className="font-medium text-gray-900 hover:text-[#2a2623] transition-colors">
                                 {v.name}
                               </Link>
                               <div className="flex items-center gap-1 mt-0.5">

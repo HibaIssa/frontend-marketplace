@@ -48,7 +48,7 @@ const ShopTheLookResultsPanel = dynamic(() => import('@/components/search/ShopTh
   ),
 })
 
-const TRYON_SHOP_SESSION_KEY = 'styleai_tryon_shop_payload'
+const TRYON_SHOP_SESSION_KEY = 'bolden_tryon_shop_payload'
 
 type HydratedShopPayload = {
   byDetection?: DetectionGroup[]
@@ -522,7 +522,7 @@ function SearchContent() {
 
   const modeTabs = [
     { key: 'text', label: 'Text', Icon: Search, href: '/search', desc: 'Describe what you want' },
-    { key: 'shop', label: 'Shop the look', Icon: Sparkles, href: '/search?mode=shop', desc: 'AI detects items' },
+    { key: 'shop', label: 'Shop the look', Icon: Sparkles, href: '/search?mode=shop', desc: 'Match outfit pieces' },
   ] as const
 
   const textReportedTotal = textSearchPaged.data?.totalItems ?? 0
@@ -577,9 +577,9 @@ function SearchContent() {
           initial={{ clipPath: 'inset(0 0 100% 0)' }}
           animate={{ clipPath: 'inset(0 0 0% 0)' }}
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-          className="-mt-[72px] relative w-full discover-hero-premium-bg overflow-x-clip"
+          className="-mt-[72px] relative w-full discover-hero-premium-bg overflow-hidden"
         >
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-[72px] pb-[72px] sm:px-6 lg:px-10">
+          <div className="relative z-10 mx-auto flex w-full max-w-7xl px-4 pt-[88px] pb-[76px] sm:min-h-[560px] sm:px-6 sm:pt-[96px] sm:pb-[88px] lg:min-h-[620px] lg:px-10 lg:pt-[104px] lg:pb-[96px]">
             <div className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -588,13 +588,13 @@ function SearchContent() {
                 className="flex flex-col justify-center lg:col-span-6 lg:text-left"
               >
                 <p className="mx-auto mb-2 inline-flex max-w-full items-center justify-center rounded-full border border-white/40 bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2B2521]/90 backdrop-blur-sm sm:px-3.5 sm:text-[10px] lg:mx-0">
-                  AI fashion discovery
+                  Fashion discovery
                 </p>
                 <h1 className="font-display text-[clamp(1.95rem,4.9vw,3rem)] font-extrabold leading-[0.98] tracking-[-0.03em] text-white drop-shadow-[0_2px_16px_rgba(43,37,33,0.18)]">
                   Discover
                 </h1>
                 <p className="mx-auto mt-2 max-w-lg text-[13px] leading-snug text-[#2B2521]/88 sm:mt-3 sm:text-[14px] lg:mx-0">
-                  Search naturally. Discover curated pieces. Build your look with AI.
+                  Search naturally. Discover curated pieces. Build your look with confidence.
                 </p>
                 <div className="mx-auto mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 lg:mx-0 lg:justify-start">
                   <button
@@ -627,9 +627,9 @@ function SearchContent() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-                className="relative flex w-full shrink-0 flex-col items-center justify-center min-h-0 lg:col-span-6"
+                className="relative flex w-full shrink-0 flex-col items-center justify-center min-h-0 lg:col-span-6 lg:self-stretch"
               >
-                <div className="relative w-full max-w-[min(92vw,380px)] sm:max-w-[420px] lg:max-w-[460px] xl:max-w-[500px] max-h-[min(52vh,520px)] sm:max-h-[min(56vh,560px)] h-[min(52vh,520px)] sm:h-[min(56vh,560px)]">
+                <div className="relative h-[min(54vh,440px)] max-h-[440px] w-full max-w-[min(92vw,380px)] sm:h-[min(58vh,500px)] sm:max-h-[500px] sm:max-w-[420px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:max-h-none lg:max-w-[min(45vw,580px)] xl:max-w-[min(42vw,620px)]">
                   <DiscoverHeroMasonry
                     className="h-full w-full min-h-0 max-h-full"
                     variant="full"
@@ -649,8 +649,8 @@ function SearchContent() {
         </div>
       ) : null}
       {mode === 'text' ? (
-        <header className="border-b border-[#ebe8e4] bg-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-5">
+        <header className="border-b border-[#e8dfd7] bg-[#f8f4ef]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 pb-7">
             {!q.trim() ? (
               <motion.section
             initial={{ opacity: 0, y: 12 }}
@@ -777,15 +777,22 @@ function SearchContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, delay: 0.06 }}
-                className="text-center max-w-3xl mx-auto"
+                className="relative mx-auto max-w-5xl overflow-hidden rounded-[28px] border border-[#e3d6cc] bg-gradient-to-br from-[#fbf7f2] via-[#f1e8df] to-[#dfcfc1] px-5 py-8 text-center shadow-[0_24px_80px_-48px_rgba(54,43,34,0.45)] sm:px-8 sm:py-10"
               >
-                <h1 className="font-display text-[1.95rem] sm:text-[2.5rem] font-semibold text-[#2a2623] tracking-[-0.02em]">
-                  Discover
-                </h1>
-                <p className="mt-3 text-base sm:text-lg text-[#6b6560] leading-relaxed px-2 font-normal">
-                  Upload an outfit photo to shop the look, or switch to Text search for keywords.
-                </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-3 sm:gap-4">
+                <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-white/45 blur-3xl" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#c8ad9a]/35 blur-3xl" aria-hidden />
+                <div className="relative">
+                  <p className="mx-auto mb-3 inline-flex rounded-full border border-white/60 bg-white/35 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b5a4e]">
+                    Outfit search
+                  </p>
+                  <h1 className="font-display text-[2.25rem] sm:text-[3.35rem] font-semibold text-[#2a2623] tracking-[-0.035em] leading-none">
+                    Shop the look
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg text-[#6b5f56] leading-relaxed px-2 font-normal">
+                    Upload a full outfit or detail shot, then browse matching pieces in the Bolden catalog.
+                  </p>
+                </div>
+                <div className="relative mt-8 flex flex-wrap justify-center gap-3 sm:gap-4">
                   {modeTabs.map((tab, i) => (
                     <motion.a
                       key={tab.key}
@@ -821,18 +828,59 @@ function SearchContent() {
           {mode === 'shop' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
               {!imageFile ? (
-                <div className="relative p-8 sm:p-10 rounded-[18px] border border-dashed border-[#d8d2cd] bg-white shadow-[0_6px_28px_-16px_rgba(42,38,35,0.08)] hover:border-[#c9ae9f] transition-colors">
-                  <div className="text-center">
-                    <div className="relative w-16 h-16 mx-auto mb-5">
-                      <div className="absolute inset-0 rounded-2xl bg-[#eadfd7]/90 blur-lg" aria-hidden />
-                      <div className="relative w-16 h-16 rounded-2xl bg-[#faf9f7] ring-1 ring-[#ebe8e4] flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-[#3d3030]" strokeWidth={1.75} aria-hidden />
+                <div className="relative overflow-hidden rounded-[28px] border border-[#e2d7cf] bg-[#f8f3ee] shadow-[0_28px_90px_-62px_rgba(42,38,35,0.65)]">
+                  <div className="absolute inset-y-0 right-0 hidden w-[42%] bg-[linear-gradient(135deg,rgba(255,255,255,0.42),rgba(210,190,174,0.36))] lg:block" aria-hidden />
+                  <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+                    <div className="relative p-7 sm:p-10 lg:p-12">
+                      <p className="mb-3 inline-flex rounded-full border border-[#d8c9bd] bg-white/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b5a4f]">
+                        Upload studio
+                      </p>
+                      <h2 className="font-display text-[2rem] font-semibold leading-none tracking-[-0.03em] text-[#2a2623] sm:text-[2.55rem]">
+                        Turn an outfit photo into a shopping edit.
+                      </h2>
+                      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[#756a62]">
+                        Use a full-body mirror shot, a flat lay, or a close-up. Bolden will organize the matching pieces into a clean shopping result.
+                      </p>
+                      <div className="mt-6 grid gap-3 text-sm text-[#5f554d] sm:grid-cols-3">
+                        {[
+                          ['01', 'Upload'],
+                          ['02', 'Match pieces'],
+                          ['03', 'Shop results'],
+                        ].map(([step, label]) => (
+                          <div key={step} className="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 shadow-sm">
+                            <p className="text-[10px] font-bold tracking-[0.2em] text-[#a38d7d]">{step}</p>
+                            <p className="mt-1 font-semibold text-[#2a2623]">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-8 flex flex-wrap gap-3">
+                        <label
+                          htmlFor="shop-image-file-pick"
+                          className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#2a2623] text-sm font-semibold border border-[#d8d2cd] hover:bg-[#f3f1ee] hover:border-[#c9ae9f] active:scale-[0.98] transition-all"
+                        >
+                          <Upload className="w-4 h-4 text-[#3d3030]" aria-hidden />
+                          Choose file
+                        </label>
+                        <label
+                          htmlFor="shop-image-camera-capture"
+                          className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm active:scale-[0.98] transition-all"
+                        >
+                          <Camera className="w-4 h-4 opacity-90" aria-hidden />
+                          Take a photo
+                        </label>
                       </div>
                     </div>
-                    <p className="font-display text-base font-semibold text-[#2a2623] mb-1">Upload an outfit photo</p>
-                    <p className="text-sm text-[#7a726b] mb-7 max-w-sm mx-auto leading-relaxed">
-                      We detect pieces in your shot and match each one to similar products you can shop.
-                    </p>
+                    <div className="relative min-h-[280px] overflow-hidden border-t border-[#e2d7cf] bg-[#efe5dc] p-5 lg:border-l lg:border-t-0">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.65),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(135,105,82,0.18),transparent_38%)]" aria-hidden />
+                      <div className="relative grid h-full grid-cols-2 gap-3">
+                        {['/discover-hero/02.png', '/discover-hero/05.png', '/discover-hero/08.png', '/discover-hero/10.png'].map((src, i) => (
+                          <div key={src} className={`overflow-hidden rounded-[18px] bg-white shadow-sm ring-1 ring-black/5 ${i % 2 ? 'translate-y-5' : ''}`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={src} alt="" className="h-full min-h-[128px] w-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -854,34 +902,19 @@ function SearchContent() {
                         e.target.value = ''
                       }}
                     />
-                    <div className="flex flex-wrap justify-center gap-3">
-                      <label
-                        htmlFor="shop-image-file-pick"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#2a2623] text-sm font-semibold border border-[#e8e4df] hover:bg-[#f3f1ee] hover:border-[#d8d2cd] active:scale-[0.98] transition-all"
-                      >
-                        <Upload className="w-4 h-4 text-[#3d3030]" aria-hidden />
-                        Choose file
-                      </label>
-                      <label
-                        htmlFor="shop-image-camera-capture"
-                        className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover shadow-sm active:scale-[0.98] transition-all"
-                      >
-                        <Camera className="w-4 h-4 opacity-90" aria-hidden />
-                        Take a photo
-                      </label>
-                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-5 sm:p-6 rounded-[18px] bg-white border border-[#ebe8e4] shadow-[0_6px_28px_-16px_rgba(42,38,35,0.08)]">
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-                    <div className="relative w-[min(100%,200px)] h-[200px] sm:w-36 sm:h-36 sm:max-w-none rounded-[14px] overflow-hidden bg-[#faf9f7] flex-shrink-0 ring-1 ring-[#ebe8e4] mx-auto sm:mx-0">
+                <div className="rounded-[28px] bg-[#fbf8f4] border border-[#e2d7cf] shadow-[0_24px_80px_-58px_rgba(42,38,35,0.55)] p-5 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                    <div className="relative w-[min(100%,220px)] h-[220px] sm:w-40 sm:h-40 sm:max-w-none rounded-[20px] overflow-hidden bg-[#faf9f7] flex-shrink-0 ring-1 ring-[#d8d2cd] mx-auto sm:mx-0 shadow-sm">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imagePreviewUrl} alt="Preview" className="object-cover w-full h-full" />
                     </div>
                     <div className="flex-1 min-w-0 pt-1 text-center sm:text-left">
-                      <p className="text-sm font-semibold text-[#2a2623] truncate">{imageFile.name}</p>
-                      <p className="text-xs text-[#9c9590] mt-0.5">{(imageFile.size / 1024).toFixed(0)} KB</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9a8778]">Ready to match</p>
+                      <p className="mt-2 font-display text-2xl font-semibold text-[#2a2623] truncate">{imageFile.name}</p>
+                      <p className="text-sm text-[#8b8179] mt-1">{(imageFile.size / 1024).toFixed(0)} KB uploaded</p>
                       <div className="flex flex-wrap gap-2 mt-5 justify-center sm:justify-start">
                         <button
                           type="button"

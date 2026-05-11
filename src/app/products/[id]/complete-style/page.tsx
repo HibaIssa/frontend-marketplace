@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -22,6 +22,7 @@ import { endpoints } from '@/lib/api/endpoints'
 import { useAuthStore } from '@/store/auth'
 import { useCompareStore } from '@/store/compare'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
+import { currentInAppPath, productDetailHref, safeProductReturnFrom } from '@/lib/navigation/productDetailReturn'
 
 interface CategoryRec {
   category: string
@@ -120,9 +121,11 @@ const HOW_STEPS = [
 function MiniOrbitCard({
   card,
   delay,
+  returnPath,
 }: {
   card: ReturnType<typeof toProductCard>
   delay: number
+  returnPath: string
 }) {
   const shot = card.image_cdn || card.image_url || ''
   return (
@@ -132,7 +135,7 @@ function MiniOrbitCard({
       transition={{ duration: 0.45, delay, ease: EASE }}
     >
       <Link
-        href={`/products/${card.id}`}
+        href={productDetailHref(card.id, returnPath)}
         className="group relative block w-[76px] sm:w-[88px] rounded-xl border-2 border-dashed border-[#8D6E63]/45 bg-white/90 p-1.5 shadow-[0_8px_24px_-12px_rgba(62,39,35,0.2)] ring-1 ring-[#5D4037]/10 transition-all hover:border-[#5D4037]/55 hover:shadow-md"
       >
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-[#efe8e0]">
@@ -153,18 +156,22 @@ function MiniOrbitCard({
 
 function PhoneMockup({
   productId,
+  sourceProductHref,
   sourceTitle,
   sourcePrice,
   sourceImg,
   flat,
   onAddAll,
+  returnPath,
 }: {
   productId: string
+  sourceProductHref: string
   sourceTitle: string
   sourcePrice: string | null
   sourceImg: string
   flat: ReturnType<typeof toProductCard>[]
   onAddAll: () => void
+  returnPath: string
 }) {
   const grid = flat.slice(0, 6)
   return (
@@ -176,7 +183,7 @@ function PhoneMockup({
         <div className="overflow-hidden rounded-[2rem] bg-[#F9F6F1]">
           <div className="flex items-center justify-between border-b border-[#5D4037]/10 px-4 py-3">
             <Link
-              href={`/products/${productId}`}
+              href={sourceProductHref}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#5D4037] shadow-sm ring-1 ring-[#5D4037]/10 transition hover:bg-[#efe8e0]"
               aria-label="Back to product"
             >
@@ -210,7 +217,7 @@ function PhoneMockup({
                 return (
                   <Link
                     key={card.id}
-                    href={`/products/${card.id}`}
+                    href={productDetailHref(card.id, returnPath)}
                     className="overflow-hidden rounded-xl border border-[#5D4037]/10 bg-white shadow-sm transition hover:ring-2 hover:ring-[#5D4037]/20"
                   >
                     <div className="relative aspect-[3/4] w-full bg-[#efe8e0]">
@@ -244,8 +251,13 @@ function PhoneMockup({
 
 export default function CompleteStylePage() {
   const params = useParams()
+  const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const id = params.id as string
+  const originalReturn = safeProductReturnFrom(searchParams.get('from'))
+  const sourceProductHref = `/products/${id}${originalReturn ? `?from=${encodeURIComponent(originalReturn.href)}` : ''}`
+  const completeStyleReturnPath = currentInAppPath(pathname, searchParams)
   const productId = parseInt(id, 10)
   const isAuth = useAuthStore((s) => s.isAuthenticated())
   const compareAdd = useCompareStore((s) => s.add)
@@ -340,7 +352,7 @@ export default function CompleteStylePage() {
       <div className="min-h-screen px-4 py-24 text-center" style={{ backgroundColor: CREAM }}>
         <p className="font-medium text-[#3E2723]">{(error as Error)?.message ?? 'Failed to load outfit suggestions'}</p>
         <Link
-          href={`/products/${id}`}
+          href={sourceProductHref}
           className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-[#F9F6F1] transition hover:opacity-95"
           style={{ backgroundColor: ACCENT }}
         >
@@ -383,7 +395,7 @@ export default function CompleteStylePage() {
       <div className="border-b border-[#5D4037]/10 bg-[#F9F6F1]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link
-            href={`/products/${id}`}
+            href={sourceProductHref}
             className="inline-flex items-center gap-2 text-sm font-medium text-[#5D4037] transition hover:text-[#3E2723]"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -409,7 +421,7 @@ export default function CompleteStylePage() {
                 Complete the Style
               </h1>
               <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[#5D4037]/90 sm:text-lg">
-                Get AI-powered outfit recommendations that complete your look perfectly.
+                Get curated outfit recommendations that complete your look perfectly.
               </p>
 
               <ul className="mt-10 space-y-6">
@@ -448,7 +460,7 @@ export default function CompleteStylePage() {
               </p>
               <div className="-mx-1 flex gap-3 overflow-x-auto pb-2 scrollbar-none">
                 {orbitCards.map((c, i) => (
-                  <MiniOrbitCard key={c.id} card={c} delay={0.04 * i} />
+                  <MiniOrbitCard key={c.id} card={c} delay={0.04 * i} returnPath={completeStyleReturnPath} />
                 ))}
               </div>
             </motion.div>
@@ -466,7 +478,7 @@ export default function CompleteStylePage() {
               <div className="relative mx-auto flex max-w-xl flex-col items-center gap-8">
                 <div className="flex justify-center gap-6">
                   {orbitCards.slice(0, 3).map((c, i) => (
-                    <MiniOrbitCard key={c.id} card={c} delay={0.05 * i} />
+                    <MiniOrbitCard key={c.id} card={c} delay={0.05 * i} returnPath={completeStyleReturnPath} />
                   ))}
                 </div>
                 <div className="relative w-[min(100%,280px)] aspect-[3/4]">
@@ -480,7 +492,7 @@ export default function CompleteStylePage() {
                 </div>
                 <div className="flex justify-center gap-6">
                   {orbitCards.slice(3, 6).map((c, i) => (
-                    <MiniOrbitCard key={c.id} card={c} delay={0.08 + 0.05 * i} />
+                    <MiniOrbitCard key={c.id} card={c} delay={0.08 + 0.05 * i} returnPath={completeStyleReturnPath} />
                   ))}
                 </div>
               </div>
@@ -496,11 +508,13 @@ export default function CompleteStylePage() {
             >
               <PhoneMockup
                 productId={id}
+                sourceProductHref={sourceProductHref}
                 sourceTitle={source.title}
                 sourcePrice={sourcePrice}
                 sourceImg={imgUrl}
                 flat={flatProducts}
                 onAddAll={addAllToCompare}
+                returnPath={completeStyleReturnPath}
               />
               <p className="mt-4 text-center text-[11px] text-[#8D6E63]">
                 Preview only — scroll for full categories &amp; links.
@@ -585,7 +599,7 @@ export default function CompleteStylePage() {
                           transition={{ duration: 0.4, ease: EASE }}
                         >
                           <Link
-                            href={`/products/${card.id}`}
+                            href={productDetailHref(card.id, completeStyleReturnPath)}
                             className="group block overflow-hidden rounded-2xl border border-[#5D4037]/10 bg-white shadow-[0_8px_28px_-16px_rgba(62,39,35,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#5D4037]/25 hover:shadow-[0_16px_40px_-18px_rgba(62,39,35,0.18)]"
                           >
                             <div className="relative aspect-[3/4] bg-[#efe8e0]">

@@ -6,6 +6,8 @@ export type WardrobeAgeGroup = 'kids' | 'adult'
 
 export interface WardrobeItemDto {
   id: number
+  product_id?: number | string | null
+  catalog_product_id?: number | string | null
   name?: string
   category?: string
   color?: string

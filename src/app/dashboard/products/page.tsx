@@ -1,5 +1,6 @@
-import { BusinessDashboardView } from '@/components/dashboard/BusinessDashboardView'
+import { redirect } from 'next/navigation'
 
-export default function BusinessProductsPage() {
-  return <BusinessDashboardView initialTab="products" />
+/** Legacy path — main overview lists products by risk at `/dashboard`. */
+export default function DashboardProductsRedirectPage() {
+  redirect('/dashboard')
 }

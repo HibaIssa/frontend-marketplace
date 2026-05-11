@@ -20,6 +20,16 @@ import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 type WardrobeItem = WardrobeItemDto
 
+type WardrobeListResponse = {
+  success?: boolean
+  items?: unknown[]
+  data?: unknown
+  item?: unknown
+  wardrobe_item?: unknown
+  total?: number
+  error?: { message?: string }
+}
+
 interface CompleteLookSuggestion {
   id?: number
   product_id: number
@@ -35,6 +45,7 @@ interface CompleteLookSuggestion {
 }
 
 const COMPLETE_LOOK_FETCH_CAP = 48
+const WARDROBE_COMPLETE_LOOK_LIMIT = 16
 /** First paint shows this many cards so “Show more” appears when the API returns more. */
 const COMPLETE_STYLE_INITIAL_VISIBLE = 4
 const COMPLETE_STYLE_PAGE_INCREMENT = 8
@@ -42,6 +53,65 @@ const COMPLETE_STYLE_PAGE_INCREMENT = 8
 function suggestionProductId(s: CompleteLookSuggestion): number | null {
   const n = Number(s.id ?? s.product_id)
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null
+}
+
+function wardrobeCatalogProductId(item: WardrobeItem | null): number | null {
+  const n = Number(item?.product_id ?? item?.catalog_product_id)
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null
+}
+
+function extractWardrobeItems(payload: unknown): WardrobeItem[] {
+  const r = payload as WardrobeListResponse | undefined
+  if (!r) return []
+  if (Array.isArray(r.items)) return r.items as WardrobeItem[]
+  if (Array.isArray(r.data)) return r.data as WardrobeItem[]
+  if (r.data && typeof r.data === 'object' && Array.isArray((r.data as WardrobeListResponse).items)) {
+    return (r.data as WardrobeListResponse).items as WardrobeItem[]
+  }
+  return []
+}
+
+function extractWardrobeItem(payload: unknown): WardrobeItem | null {
+  const r = payload as WardrobeListResponse | undefined
+  const data = r?.data
+  const raw =
+    r?.item ??
+    r?.wardrobe_item ??
+    (data && typeof data === 'object' && !Array.isArray(data)
+      ? (data as WardrobeListResponse).item ?? data
+      : null)
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as WardrobeItem
+  return Number.isFinite(Number(item.id)) ? item : null
+}
+
+function mergeWardrobeItem(payload: unknown, item: WardrobeItem): WardrobeListResponse {
+  const prev = (payload && typeof payload === 'object' ? payload : {}) as WardrobeListResponse
+  const items = extractWardrobeItems(prev)
+  const nextItems = [item, ...items.filter((existing) => Number(existing.id) !== Number(item.id))]
+  if (prev.data && typeof prev.data === 'object' && !Array.isArray(prev.data)) {
+    return {
+      ...prev,
+      items: nextItems,
+      data: { ...(prev.data as object), items: nextItems },
+      total: Math.max(Number(prev.total ?? nextItems.length), nextItems.length),
+    }
+  }
+  return {
+    ...prev,
+    items: nextItems,
+    data: Array.isArray(prev.data) ? nextItems : prev.data,
+    total: Math.max(Number(prev.total ?? nextItems.length), nextItems.length),
+  }
+}
+
+function removeWardrobeItem(payload: unknown, itemId: number): WardrobeListResponse {
+  const prev = (payload && typeof payload === 'object' ? payload : {}) as WardrobeListResponse
+  const nextItems = extractWardrobeItems(prev).filter((item) => Number(item.id) !== Number(itemId))
+  if (prev.data && typeof prev.data === 'object' && !Array.isArray(prev.data)) {
+    return { ...prev, items: nextItems, data: { ...(prev.data as object), items: nextItems }, total: nextItems.length }
+  }
+  return { ...prev, items: nextItems, data: Array.isArray(prev.data) ? nextItems : prev.data, total: nextItems.length }
 }
 
 export default function WardrobePage() {
@@ -62,8 +132,8 @@ export default function WardrobePage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['wardrobe'],
     queryFn: async () => {
-      const res = await api.get<{ items?: unknown[]; success?: boolean; error?: { message?: string } }>(endpoints.wardrobe.items)
-      const r = res as { items?: unknown[]; success?: boolean; error?: { message?: string } }
+      const res = await api.get<WardrobeListResponse>(endpoints.wardrobe.items)
+      const r = res as WardrobeListResponse
       if (r?.success === false && r?.error?.message) throw new Error(r.error.message)
       return r
     },
@@ -82,8 +152,13 @@ export default function WardrobePage() {
       }
       return res
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onSuccess: async (res) => {
+      const item = extractWardrobeItem(res)
+      if (item) {
+        queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+      }
+      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+      await queryClient.refetchQueries({ queryKey: ['wardrobe'], type: 'active' })
       setShowUploadModal(false)
       setPendingUploadFile(null)
       setUploadMeta(emptyWardrobeMetaForm())
@@ -98,8 +173,12 @@ export default function WardrobePage() {
       }
       return res
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onSuccess: async (res) => {
+      const item = extractWardrobeItem(res)
+      if (item) {
+        queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+      }
+      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
       queryClient.invalidateQueries({ queryKey: ['complete-style'] })
       setEditingItem(null)
     },
@@ -113,8 +192,9 @@ export default function WardrobePage() {
       }
       return res
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onSuccess: async (_res, id) => {
+      queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => removeWardrobeItem(prev, id))
+      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
       setSelectedItem(null)
     },
   })
@@ -123,25 +203,24 @@ export default function WardrobePage() {
     queryKey: [
       'complete-style',
       selectedItem?.id,
+      wardrobeCatalogProductId(selectedItem),
       selectedItem?.audience_gender ?? '',
       selectedItem?.age_group ?? '',
     ],
     queryFn: async () => {
       if (!selectedItem) return null
-      const body: Record<string, unknown> = {
-        product: {
-          title: selectedItem.name || 'Wardrobe item',
-          category: selectedItem.category || undefined,
-          color: selectedItem.color || undefined,
-        },
-        options: {
-          maxPerCategory: 8,
-          maxTotal: COMPLETE_LOOK_FETCH_CAP,
-        },
+      const catalogProductId = wardrobeCatalogProductId(selectedItem)
+      const wardrobePayload = {
+        limit: WARDROBE_COMPLETE_LOOK_LIMIT,
+        ...(catalogProductId != null ? { product_ids: [catalogProductId] } : { item_ids: [selectedItem.id] }),
+        ...(selectedItem.audience_gender ? { audience_gender: selectedItem.audience_gender } : {}),
+        ...(selectedItem.age_group ? { age_group: selectedItem.age_group } : {}),
+        ...(selectedItem.style_tags?.length ? { style_tags: selectedItem.style_tags } : {}),
+        ...(selectedItem.occasion_tags?.length ? { occasion: selectedItem.occasion_tags[0] } : {}),
+        ...(selectedItem.season_tags?.length ? { season: selectedItem.season_tags[0] } : {}),
+        ...(selectedItem.color ? { color: selectedItem.color } : {}),
       }
-      if (selectedItem.audience_gender) body.audience_gender = selectedItem.audience_gender
-      if (selectedItem.age_group) body.age_group = selectedItem.age_group
-      const res = await api.post<unknown>(endpoints.products.completeStylePost, body)
+      const res = await api.post<unknown>(endpoints.wardrobe.completeLook, wardrobePayload)
       const r = res as {
         success?: boolean
         suggestions?: CompleteLookSuggestion[]
@@ -184,6 +263,7 @@ export default function WardrobePage() {
       return flattened
     },
     enabled: showCompleteStyle && !!selectedItem,
+    staleTime: 5 * 60 * 1000,
   })
 
   const completeStyleSuggestionsAll = useMemo(() => {
@@ -303,7 +383,7 @@ export default function WardrobePage() {
             </div>
           </div>
           <h2 className="font-display text-2xl font-bold text-neutral-900 mb-2">Sign in for your wardrobe</h2>
-          <p className="text-neutral-500 mb-8">Upload your clothes, get style suggestions, and complete looks with AI.</p>
+          <p className="text-neutral-500 mb-8">Upload your clothes, get style suggestions, and complete your looks.</p>
           <a
             href="/login"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white font-semibold shadow-lg shadow-brand/20 hover:bg-brand-hover active:scale-[0.97] transition-all"
@@ -315,7 +395,7 @@ export default function WardrobePage() {
     )
   }
 
-  const items = ((data as { items?: unknown[] })?.items ?? []) as WardrobeItem[]
+  const items = extractWardrobeItems(data)
 
   if (isError && error) {
     return (
@@ -430,7 +510,7 @@ export default function WardrobePage() {
               </div>
             </div>
             <h2 className="font-display text-xl font-bold text-neutral-900 mb-2">Your wardrobe is empty</h2>
-            <p className="text-neutral-500 mb-8">Upload photos of your clothes to get AI-powered style suggestions and outfit completions.</p>
+            <p className="text-neutral-500 mb-8">Upload photos of your clothes to get style suggestions and outfit completions.</p>
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -561,7 +641,7 @@ export default function WardrobePage() {
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-neutral-900">Complete your style</h3>
-                    <p className="text-xs text-neutral-500">AI-picked pieces that pair with your item</p>
+                    <p className="text-xs text-neutral-500">Curated pieces that pair with your item</p>
                   </div>
                 </div>
                 <button

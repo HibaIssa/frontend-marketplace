@@ -14,6 +14,7 @@ import type { Product } from '@/types/product'
 import { formatStoredPriceAsUsd, storedAmountToUsdCents } from '@/lib/money/displayUsd'
 import { extractVendorFieldsFromRecords } from '@/lib/vendorLogo'
 import { VendorSourceBadge } from '@/components/product/VendorSourceBadge'
+import { safeProductReturnFrom } from '@/lib/navigation/productDetailReturn'
 
 function formatPrice(storedCents: number, currency?: string | null) {
   return formatStoredPriceAsUsd(storedCents, currency, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -116,36 +117,6 @@ function parseProductPayload(res: { success?: boolean; data?: unknown; error?: {
   return merged as Product
 }
 
-/** In-app back targets from `?from=` (block open redirects). */
-function safeProductReturnFrom(raw: string | null): { href: string; label: string } | null {
-  if (!raw) return null
-  try {
-    const decoded = decodeURIComponent(raw.trim())
-    if (!decoded.startsWith('/') || decoded.includes('..')) return null
-
-    const pathOnly = decoded.split('?')[0] ?? ''
-
-    if (/^\/search(\?|$)/.test(decoded)) {
-      return { href: decoded, label: 'Back to Discover' }
-    }
-    if (/^\/products(\?|$)/.test(decoded)) {
-      return { href: decoded, label: 'Back to catalog' }
-    }
-    if (/^\/sales(\?|$)/.test(decoded)) {
-      return { href: decoded, label: 'Back to sale' }
-    }
-    if (pathOnly === '/compare') {
-      return { href: '/compare', label: 'Back to Compare' }
-    }
-    if (pathOnly === '/try-on') {
-      return { href: '/try-on', label: 'Back to Try on' }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
 function ProductBackLink({ href, label, className = 'mb-8' }: { href: string; label: string; className?: string }) {
   const base =
     'inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-800 transition-colors font-medium hover:underline'
@@ -164,6 +135,9 @@ function ProductDetailContent() {
   const returnFrom = safeProductReturnFrom(searchParams.get('from'))
   const backHref = returnFrom?.href ?? '/products'
   const backLabel = returnFrom?.label ?? 'Back to shop'
+  const completeStyleHref = `/products/${params.id}/complete-style${
+    returnFrom ? `?from=${encodeURIComponent(returnFrom.href)}` : ''
+  }`
 
   const id = params.id as string
   const numericId = id ? Number(id) : NaN
@@ -340,7 +314,7 @@ function ProductDetailContent() {
 
           <div className="mt-12 pt-8 border-t border-neutral-200">
             <Link
-              href={`/products/${product.id}/complete-style`}
+              href={completeStyleHref}
               className="inline-flex items-center gap-2 text-neutral-800 font-medium hover:underline"
             >
               <Shirt className="w-4 h-4" />

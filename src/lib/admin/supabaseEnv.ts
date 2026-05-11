@@ -12,8 +12,9 @@ export function hasSupabaseCatalogEnv(): boolean {
   return Boolean(url && key)
 }
 
-const DEFAULT_CLOUD_API = 'https://marketplace-96918972071.asia-southeast1.run.app'
+import { getAdminDashboardApiOrigin } from '@/lib/admin/adminApiOrigin'
 
+/** Same deploy as admin catalog (Fashion REST reached via `/api/catalog-backend/...`). */
 export function getApiBase(): string {
-  return (process.env.NEXT_PUBLIC_API_URL || DEFAULT_CLOUD_API).replace(/\/+$/, '')
+  return getAdminDashboardApiOrigin()
 }

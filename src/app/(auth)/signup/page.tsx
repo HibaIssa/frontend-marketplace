@@ -97,16 +97,6 @@ export default function SignupPage() {
                 Business / Seller
               </button>
             </div>
-            <p className="text-xs text-neutral-400 mt-2">
-              {userType === 'customer' ? (
-                'Browse and buy fashion. Save favorites, use your wardrobe.'
-              ) : (
-                <>
-                  After sign up you go to the <strong className="text-neutral-600">business dashboard</strong> on the
-                  same site (catalog, analytics, and API tools). Admin-only tools stay invite-only.
-                </>
-              )}
-            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">

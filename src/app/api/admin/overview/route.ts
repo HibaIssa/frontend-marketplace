@@ -1,20 +1,11 @@
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import { mirrorCatalogRequestOk } from '@/lib/admin/catalogMirror'
 import { fetchOverviewKPIs, fetchVendorProductCounts, fetchCategoryCounts } from '@/lib/catalog-queries'
-import { hasSupabaseCatalogEnv } from '@/lib/admin/supabaseEnv'
-import { buildOverviewFromBackendFacets } from '@/lib/admin/overviewFromFacets'
 
-export async function GET() {
-  if (!hasSupabaseCatalogEnv()) {
-    try {
-      const { kpis, vendorCounts, catCounts } = await buildOverviewFromBackendFacets()
-      return NextResponse.json({ kpis, vendorCounts, catCounts })
-    } catch {
-      return NextResponse.json(
-        { kpis: null, vendorCounts: [], catCounts: [], error: { message: 'Could not load catalog from API facets' } },
-        { status: 502 },
-      )
-    }
-  }
+export async function GET(req: NextRequest) {
+  const mirrored = await mirrorCatalogRequestOk(req, '/api/admin/overview')
+  if (mirrored) return mirrored
 
   const [kpis, vendorCounts, catCounts] = await Promise.allSettled([
     fetchOverviewKPIs(),

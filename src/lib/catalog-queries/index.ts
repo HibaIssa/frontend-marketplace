@@ -1,3 +1,4 @@
+import { getAdminDashboardApiOrigin } from '@/lib/admin/adminApiOrigin'
 import { supabaseAdmin as sb } from '../supabase/client'
 import type {
   Product,
@@ -62,6 +63,7 @@ const EXCLUDED_VENDOR_NAMES = ['H&M']
 
 let _excludedVendorIds: Promise<number[]> | null = null
 async function getExcludedVendorIds(): Promise<number[]> {
+  if (catalogAdminUsesBackendOnly()) return []
   if (EXCLUDED_VENDOR_NAMES.length === 0) return []
   if (!_excludedVendorIds) {
     _excludedVendorIds = (async () => {
@@ -114,7 +116,18 @@ let aggregateCache: {
   inFlight: null,
 }
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://marketplace-96918972071.asia-southeast1.run.app').replace(/\/+$/, '')
+/**
+ * When `1`, admin catalog never reads Supabase/Postgres — all KPIs and lists are derived from the
+ * Fashion API via `/api/catalog-backend/products/...` (same deploy as admin UI).
+ * Set this on Cloud Run when the Next app has no database URL.
+ */
+function catalogAdminUsesBackendOnly(): boolean {
+  return process.env.CATALOG_ADMIN_BACKEND_ONLY === '1'
+}
+
+type BackendVendorMeta = { name: string; url: string; ship_to_lebanon: boolean }
+/** Filled when aggregates are built from the backend in backend-only mode. */
+let backendVendorMetaCache: Map<number, BackendVendorMeta> | null = null
 
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -158,7 +171,8 @@ function extractArray<T = unknown>(input: unknown): T[] {
 }
 
 async function backendGet(path: string, params?: Record<string, string | number | undefined>): Promise<unknown> {
-  const url = new URL(`${API_BASE}${path}`)
+  const origin = getAdminDashboardApiOrigin().replace(/\/+$/, '')
+  const url = new URL(`${origin}/api/catalog-backend${path}`)
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v != null && v !== '') url.searchParams.set(k, String(v))
@@ -338,6 +352,309 @@ function isMissingImageUrls(value: unknown): boolean {
   return false
 }
 
+function filterExcludedBackendProducts(rows: BackendProductRow[]): BackendProductRow[] {
+  return rows.filter((row) => {
+    const vendorObj = row.vendor && typeof row.vendor === 'object' ? (row.vendor as Record<string, unknown>) : null
+    const name = (vendorObj?.name as string | undefined)?.trim()
+    if (!name) return true
+    return !EXCLUDED_VENDOR_NAMES.some((n) => n.toLowerCase() === name.toLowerCase())
+  })
+}
+
+function populateBackendVendorMeta(raw: BackendProductRow[]): void {
+  backendVendorMetaCache = new Map()
+  for (const row of raw) {
+    const vendorObj = row.vendor && typeof row.vendor === 'object' ? (row.vendor as Record<string, unknown>) : null
+    const id = Number(row.vendor_id ?? vendorObj?.id)
+    if (!Number.isFinite(id) || backendVendorMetaCache.has(id)) continue
+    backendVendorMetaCache.set(id, {
+      name: String(vendorObj?.name ?? `Vendor ${id}`),
+      url: String(vendorObj?.url ?? ''),
+      ship_to_lebanon: Boolean(vendorObj?.ship_to_lebanon ?? vendorObj?.shipToLebanon ?? false),
+    })
+  }
+}
+
+function clearBackendVendorMeta(): void {
+  backendVendorMetaCache = null
+}
+
+function computeOverviewKpisFromAggregateRows(rows: ProductAggregateRow[]): OverviewKPIs {
+  const now = Date.now()
+  const vendorIds = new Set<number>()
+  const categories = new Set<string>()
+  let available = 0
+  let unavailable = 0
+  let seen24h = 0
+  let missingCategory = 0
+  let missingColor = 0
+  let missingSize = 0
+  let missingImageUrl = 0
+  let missingImageUrls = 0
+  let missingVariantId = 0
+  let missingParentUrl = 0
+  let withSalePrice = 0
+
+  for (const row of rows) {
+    if (row.vendor_id != null) vendorIds.add(Number(row.vendor_id))
+    if (row.availability === true) available += 1
+    if (row.availability === false) unavailable += 1
+    if (row.last_seen) {
+      const ageMs = now - new Date(row.last_seen).getTime()
+      if (ageMs <= DAY_MS) seen24h += 1
+    }
+    if (isBlank(row.category)) missingCategory += 1
+    else categories.add(row.category as string)
+    if (isBlank(row.color)) missingColor += 1
+    if (isBlank(row.size)) missingSize += 1
+    if (!row.image_url) missingImageUrl += 1
+    if (isMissingImageUrls(row.image_urls)) missingImageUrls += 1
+    if (isBlank(row.variant_id)) missingVariantId += 1
+    if (isBlank(row.parent_product_url)) missingParentUrl += 1
+    if ((row.sales_price_cents ?? 0) > 0) withSalePrice += 1
+  }
+
+  return {
+    total_vendors: vendorIds.size,
+    total_products: rows.length,
+    unique_categories: categories.size,
+    available_products: available,
+    unavailable_products: unavailable,
+    products_seen_today: seen24h,
+    missing_category: missingCategory,
+    missing_color: missingColor,
+    missing_size: missingSize,
+    missing_image_url: missingImageUrl,
+    missing_image_urls: missingImageUrls,
+    missing_variant_id: missingVariantId,
+    missing_parent_url: missingParentUrl,
+    with_sale_price: withSalePrice,
+    updated_last_24h: seen24h,
+  }
+}
+
+function categoryCountsFromAggregateRows(rows: ProductAggregateRow[]): CategoryCount[] {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const cat = row.category ?? '(uncategorized)'
+    counts.set(cat, (counts.get(cat) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20)
+}
+
+function vendorProductCountsFromAggregates(rows: ProductAggregateRow[]): VendorProductCount[] {
+  const map = new Map<number, { vendor_name: string; total: number; available: number; unavailable: number }>()
+  for (const row of rows) {
+    const vid = Number(row.vendor_id)
+    if (!Number.isFinite(vid)) continue
+    const meta = backendVendorMetaCache?.get(vid)
+    const vendor_name = meta?.name ?? `Vendor ${vid}`
+    const e = map.get(vid) ?? { vendor_name, total: 0, available: 0, unavailable: 0 }
+    e.total += 1
+    if (row.availability === true) e.available += 1
+    if (row.availability === false) e.unavailable += 1
+    map.set(vid, e)
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total)
+}
+
+function vendorStatsFromAggregates(rows: ProductAggregateRow[]): VendorStats[] {
+  const sevenDaysAgo = Date.now() - 7 * DAY_MS
+  const byVendor = new Map<number, ProductAggregateRow[]>()
+  for (const row of rows) {
+    const vid = Number(row.vendor_id)
+    if (!Number.isFinite(vid)) continue
+    const list = byVendor.get(vid) ?? []
+    list.push(row)
+    byVendor.set(vid, list)
+  }
+
+  const out: VendorStats[] = []
+  for (const [vid, vrows] of byVendor) {
+    const meta = backendVendorMetaCache?.get(vid)
+    let missing_category = 0
+    let missing_image_url = 0
+    let missing_image_urls = 0
+    let missing_variant_id = 0
+    let missing_parent_url = 0
+    let missing_color = 0
+    let missing_size = 0
+    let latest_last_seen: string | null = null
+    for (const row of vrows) {
+      if (isBlank(row.category)) missing_category += 1
+      if (!row.image_url) missing_image_url += 1
+      if (isMissingImageUrls(row.image_urls)) missing_image_urls += 1
+      if (isBlank(row.variant_id)) missing_variant_id += 1
+      if (isBlank(row.parent_product_url)) missing_parent_url += 1
+      if (isBlank(row.color)) missing_color += 1
+      if (isBlank(row.size)) missing_size += 1
+      if (row.last_seen) {
+        if (!latest_last_seen || new Date(row.last_seen) > new Date(latest_last_seen)) {
+          latest_last_seen = row.last_seen
+        }
+      }
+    }
+    const total = vrows.length
+    let healthy = 0
+    for (const row of vrows) {
+      const ok =
+        !!row.image_url &&
+        !isBlank(row.category) &&
+        !!row.last_seen &&
+        new Date(row.last_seen).getTime() >= sevenDaysAgo
+      if (ok) healthy += 1
+    }
+    out.push({
+      id: vid,
+      name: meta?.name ?? `Vendor ${vid}`,
+      url: meta?.url ?? '',
+      ship_to_lebanon: meta?.ship_to_lebanon ?? false,
+      total_products: total,
+      available_products: vrows.filter((r) => r.availability === true).length,
+      unavailable_products: vrows.filter((r) => r.availability === false).length,
+      missing_category,
+      missing_image_url,
+      missing_image_urls,
+      missing_variant_id,
+      missing_parent_url,
+      missing_color,
+      missing_size,
+      latest_last_seen,
+      health_score: total > 0 ? Math.round((healthy / total) * 100) : 0,
+    })
+  }
+  return out.sort((a, b) => b.total_products - a.total_products)
+}
+
+function freshnessStatsFromAggregates(rows: ProductAggregateRow[]): FreshnessStats {
+  const now = Date.now()
+  const stats: FreshnessStats = { fresh_count: 0, recent_count: 0, aging_count: 0, stale_count: 0 }
+  for (const row of rows) {
+    if (!row.last_seen) {
+      stats.stale_count += 1
+      continue
+    }
+    const ageDays = (now - new Date(row.last_seen).getTime()) / DAY_MS
+    if (ageDays < 1) stats.fresh_count += 1
+    else if (ageDays < 7) stats.recent_count += 1
+    else if (ageDays < 14) stats.aging_count += 1
+    else stats.stale_count += 1
+  }
+  return stats
+}
+
+function vendorFreshnessFromAggregates(rows: ProductAggregateRow[]): VendorFreshness[] {
+  const now = Date.now()
+  const freshCut = new Date(now - DAY_MS).toISOString()
+  const recentCut = new Date(now - 7 * DAY_MS).toISOString()
+  const agingCut = new Date(now - 14 * DAY_MS).toISOString()
+  const byVendor = new Map<number, ProductAggregateRow[]>()
+  for (const row of rows) {
+    const vid = Number(row.vendor_id)
+    if (!Number.isFinite(vid)) continue
+    const list = byVendor.get(vid) ?? []
+    list.push(row)
+    byVendor.set(vid, list)
+  }
+  const out: VendorFreshness[] = []
+  for (const [vid, vrows] of byVendor) {
+    const meta = backendVendorMetaCache?.get(vid)
+    let fresh = 0
+    let recent = 0
+    let aging = 0
+    let stale = 0
+    let last: number = 0
+    for (const row of vrows) {
+      if (row.last_seen) {
+        const t = new Date(row.last_seen).getTime()
+        if (t > last) last = t
+        if (row.last_seen >= freshCut) fresh += 1
+        else if (row.last_seen >= recentCut) recent += 1
+        else if (row.last_seen >= agingCut) aging += 1
+        else stale += 1
+      } else {
+        stale += 1
+      }
+    }
+    const total = fresh + recent + aging + stale || 1
+    out.push({
+      vendor_id: vid,
+      vendor_name: meta?.name ?? `Vendor ${vid}`,
+      product_count: vrows.length,
+      fresh_pct: Math.round((fresh / total) * 100),
+      recent_pct: Math.round((recent / total) * 100),
+      aging_pct: Math.round((aging / total) * 100),
+      stale_pct: Math.round((stale / total) * 100),
+      last_scrape: last ? new Date(last).toISOString() : null,
+    })
+  }
+  return out.sort((a, b) => b.product_count - a.product_count)
+}
+
+function filterSortPageCatalogProducts(
+  all: Product[],
+  filters: ProductFilters,
+  sort: SortConfig,
+  pagination: PaginationConfig
+): ProductsQueryResult {
+  const { page, pageSize } = pagination
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+  const staleCutoff = Date.now() - 14 * DAY_MS
+  const filtered = all.filter((p) => {
+    if (filters.search) {
+      const term = filters.search.toLowerCase()
+      const hay = `${p.title} ${p.brand ?? ''} ${p.category ?? ''}`.toLowerCase()
+      if (!hay.includes(term)) return false
+    }
+    if (filters.vendor_id != null && String(p.vendor_id) !== String(filters.vendor_id)) return false
+    if (filters.category && p.category !== filters.category) return false
+    if (filters.brand && !(p.brand ?? '').toLowerCase().includes(filters.brand.toLowerCase())) return false
+    if (filters.color && !(p.color ?? '').toLowerCase().includes(filters.color.toLowerCase())) return false
+    if (filters.availability !== undefined && p.availability !== filters.availability) return false
+    if (filters.has_sale && !((p.sales_price_cents ?? 0) > 0)) return false
+    if (filters.missing_category && !isBlank(p.category)) return false
+    if (filters.missing_image_url && p.image_url) return false
+    if (filters.missing_variant_id && !isBlank(p.variant_id)) return false
+    if (filters.is_stale) {
+      const ts = p.last_seen ? new Date(p.last_seen).getTime() : 0
+      if (!ts || ts >= staleCutoff) return false
+    }
+    if (filters.has_issues) {
+      const hasIssues =
+        isBlank(p.category) ||
+        isBlank(p.brand) ||
+        isBlank(p.color) ||
+        isBlank(p.size) ||
+        !p.image_url ||
+        isBlank(p.variant_id) ||
+        isBlank(p.parent_product_url) ||
+        isBlank(p.return_policy) ||
+        (p.price_cents ?? 0) === 0
+      if (!hasIssues) return false
+    }
+    return true
+  })
+
+  const sortDir = sort.direction === 'asc' ? 1 : -1
+  filtered.sort((a, b) => {
+    const av = (a as unknown as Record<string, unknown>)[sort.field]
+    const bv = (b as unknown as Record<string, unknown>)[sort.field]
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
+    return String(av).localeCompare(String(bv)) * sortDir
+  })
+
+  const total = filtered.length
+  const data = filtered.slice(from, to + 1)
+  return { data, total, page, pageSize }
+}
+
 async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
   const now = Date.now()
   if (aggregateCache.data && aggregateCache.expiresAt > now) {
@@ -346,6 +663,17 @@ async function fetchProductAggregateRows(): Promise<ProductAggregateRow[]> {
   if (aggregateCache.inFlight) return aggregateCache.inFlight
 
   aggregateCache.inFlight = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const raw = filterExcludedBackendProducts(await fetchAllProductsFromBackend())
+      populateBackendVendorMeta(raw)
+      const mapped = raw.map(mapBackendProductToAggregate)
+      aggregateCache.data = mapped
+      aggregateCache.expiresAt = Date.now() + AGGREGATE_CACHE_TTL_MS
+      return mapped
+    }
+
+    clearBackendVendorMeta()
+
     const rows: ProductAggregateRow[] = []
     let from = 0
 
@@ -418,6 +746,13 @@ async function fetchOverviewKPIsFallback(): Promise<OverviewKPIs> {
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = computeOverviewKpisFromAggregateRows(rows)
+      _overviewCache.set(result)
+      return result
+    }
+
     const since24h = new Date(Date.now() - DAY_MS).toISOString()
     const excludedIds = await getExcludedVendorIds()
     const exStr = excludedIds.length > 0 ? `(${excludedIds.join(',')})` : null
@@ -480,6 +815,13 @@ async function fetchCategoryCountsFallback(): Promise<CategoryCount[]> {
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = categoryCountsFromAggregateRows(rows)
+      _catCountsCache.set(result)
+      return result
+    }
+
     const excludedIds = await getExcludedVendorIds()
     const exStr = excludedIds.length > 0 ? `(${excludedIds.join(',')})` : null
 
@@ -520,6 +862,13 @@ async function fetchVendorProductCountsFallback(): Promise<VendorProductCount[]>
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = vendorProductCountsFromAggregates(rows)
+      _vendorCountsCache.set(result)
+      return result
+    }
+
     const [vendorsRes, statsRes] = await Promise.all([
       sb.from('vendors').select('id, name')
         .not('name', 'in', `(${EXCLUDED_VENDOR_NAMES.map(n => `"${n}"`).join(',')})`),
@@ -562,6 +911,13 @@ async function fetchVendorStatsFallback(): Promise<VendorStats[]> {
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = vendorStatsFromAggregates(rows)
+      _vendorStatsCache.set(result)
+      return result
+    }
+
     const [vendorsRes, statsRes] = await Promise.all([
       sb.from('vendors').select('id, name, url, ship_to_lebanon')
         .not('name', 'in', `(${EXCLUDED_VENDOR_NAMES.map(n => `"${n}"`).join(',')})`),
@@ -624,6 +980,13 @@ async function fetchFreshnessStatsFallback(): Promise<FreshnessStats> {
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = freshnessStatsFromAggregates(rows)
+      _freshnessCache.set(result)
+      return result
+    }
+
     const now = Date.now()
     const freshCut = new Date(now - DAY_MS).toISOString()
     const recentCut = new Date(now - 7 * DAY_MS).toISOString()
@@ -683,6 +1046,15 @@ export async function fetchProducts(
   const { page, pageSize } = pagination
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
+
+  if (catalogAdminUsesBackendOnly()) {
+    if (!productFiltersNeedSupabaseOnlyMirror(filters)) {
+      const live = await fetchProductsPageFromBackend(filters, pagination)
+      if (live) return live
+    }
+    const all = filterExcludedBackendProducts(await fetchAllProductsFromBackend()).map(mapBackendProductToCatalog)
+    return filterSortPageCatalogProducts(all, filters, sort, pagination)
+  }
 
   let query = sb
     .from('products')
@@ -775,60 +1147,21 @@ export async function fetchProducts(
     }
   }
 
-  const all = (await fetchAllProductsFromBackend()).map(mapBackendProductToCatalog)
-  const staleCutoff = Date.now() - 14 * DAY_MS
-  const filtered = all.filter((p) => {
-    if (filters.search) {
-      const term = filters.search.toLowerCase()
-      const hay = `${p.title} ${p.brand ?? ''} ${p.category ?? ''}`.toLowerCase()
-      if (!hay.includes(term)) return false
-    }
-    if (filters.vendor_id != null && String(p.vendor_id) !== String(filters.vendor_id)) return false
-    if (filters.category && p.category !== filters.category) return false
-    if (filters.brand && !(p.brand ?? '').toLowerCase().includes(filters.brand.toLowerCase())) return false
-    if (filters.color && !(p.color ?? '').toLowerCase().includes(filters.color.toLowerCase())) return false
-    if (filters.availability !== undefined && p.availability !== filters.availability) return false
-    if (filters.has_sale && !((p.sales_price_cents ?? 0) > 0)) return false
-    if (filters.missing_category && !isBlank(p.category)) return false
-    if (filters.missing_image_url && p.image_url) return false
-    if (filters.missing_variant_id && !isBlank(p.variant_id)) return false
-    if (filters.is_stale) {
-      const ts = p.last_seen ? new Date(p.last_seen).getTime() : 0
-      if (!ts || ts >= staleCutoff) return false
-    }
-    if (filters.has_issues) {
-      const hasIssues =
-        isBlank(p.category) ||
-        isBlank(p.brand) ||
-        isBlank(p.color) ||
-        isBlank(p.size) ||
-        !p.image_url ||
-        isBlank(p.variant_id) ||
-        isBlank(p.parent_product_url) ||
-        isBlank(p.return_policy) ||
-        (p.price_cents ?? 0) === 0
-      if (!hasIssues) return false
-    }
-    return true
-  })
-
-  const sortDir = sort.direction === 'asc' ? 1 : -1
-  filtered.sort((a, b) => {
-    const av = (a as unknown as Record<string, unknown>)[sort.field]
-    const bv = (b as unknown as Record<string, unknown>)[sort.field]
-    if (av == null && bv == null) return 0
-    if (av == null) return 1
-    if (bv == null) return -1
-    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
-    return String(av).localeCompare(String(bv)) * sortDir
-  })
-
-  const total = filtered.length
-  const paged = filtered.slice(from, to + 1)
-  return { data: paged, total, page, pageSize }
+  const all = filterExcludedBackendProducts(await fetchAllProductsFromBackend()).map(mapBackendProductToCatalog)
+  return filterSortPageCatalogProducts(all, filters, sort, pagination)
 }
 
 export async function fetchPriceHistory(productId: string | number): Promise<PriceHistory[]> {
+  if (catalogAdminUsesBackendOnly()) {
+    try {
+      const payload = await backendGet(`/products/${productId}/price-history`)
+      const arr = extractArray<PriceHistory>(payload)
+      return Array.isArray(arr) ? arr : []
+    } catch {
+      return []
+    }
+  }
+
   const { data, error } = await sb
     .from('price_history')
     .select('*')
@@ -895,6 +1228,10 @@ async function fetchCurrentSaleProductsFromBackend(limit: number): Promise<Curre
 }
 
 async function fetchRecentPriceChangesFallback(limit = 50) {
+  if (catalogAdminUsesBackendOnly()) {
+    return fetchPriceChangeEventsFromBackend(limit)
+  }
+
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - 30)
 
@@ -1001,6 +1338,10 @@ export async function fetchRecentPriceChanges(limit = 50) {
 }
 
 async function fetchCurrentSaleProductsFallback(limit = 20): Promise<CurrentSaleProduct[]> {
+  if (catalogAdminUsesBackendOnly()) {
+    return fetchCurrentSaleProductsFromBackend(limit)
+  }
+
   type RawSaleRow = {
     id: number
     title: string | null
@@ -1088,6 +1429,13 @@ export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
   if (inflight) return inflight
 
   const promise = (async () => {
+    if (catalogAdminUsesBackendOnly()) {
+      const rows = await fetchProductAggregateRows()
+      const result = vendorFreshnessFromAggregates(rows)
+      _vendorFreshnessCache.set(result)
+      return result
+    }
+
     const now = Date.now()
     const freshCut = new Date(now - DAY_MS).toISOString()
     const recentCut = new Date(now - 7 * DAY_MS).toISOString()
@@ -1149,6 +1497,15 @@ export async function fetchVendorFreshness(): Promise<VendorFreshness[]> {
 }
 
 export async function fetchDistinctCategories(): Promise<string[]> {
+  if (catalogAdminUsesBackendOnly()) {
+    const rows = await fetchProductAggregateRows()
+    const cats = new Set<string>()
+    for (const row of rows) {
+      if (row.category) cats.add(row.category)
+    }
+    return Array.from(cats).sort((a, b) => a.localeCompare(b))
+  }
+
   const excludedIds = await getExcludedVendorIds()
   const exStr = excludedIds.length > 0 ? `(${excludedIds.join(',')})` : null
 
@@ -1171,6 +1528,17 @@ export async function fetchDistinctCategories(): Promise<string[]> {
 }
 
 export async function fetchDistinctVendors(): Promise<Array<{ id: number; name: string }>> {
+  if (catalogAdminUsesBackendOnly()) {
+    await fetchProductAggregateRows()
+    const out: Array<{ id: number; name: string }> = []
+    if (backendVendorMetaCache) {
+      for (const [id, meta] of backendVendorMetaCache) {
+        out.push({ id, name: meta.name })
+      }
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
   const { data, error } = await sb
     .from('vendors')
     .select('id, name')

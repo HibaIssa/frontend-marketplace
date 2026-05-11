@@ -1,5 +1,5 @@
 import type { OverviewKPIs, VendorProductCount, CategoryCount, VendorStats } from '@/types/catalog-admin'
-import { getApiBase } from '@/lib/admin/supabaseEnv'
+import { catalogBackendAbsoluteUrl } from '@/lib/api/fashionApiOrigin'
 
 type FacetItem = { value?: string; count?: number | string }
 type FacetsPayload = {
@@ -27,8 +27,10 @@ export async function buildOverviewFromBackendFacets(): Promise<{
   vendorCounts: VendorProductCount[]
   catCounts: CategoryCount[]
 }> {
-  const API_BASE = getApiBase()
-  const res = await fetch(`${API_BASE}/products/facets`, { cache: 'no-store', next: { revalidate: 0 } })
+  const res = await fetch(catalogBackendAbsoluteUrl('/products/facets'), {
+    cache: 'no-store',
+    next: { revalidate: 0 },
+  })
   const payload = (await res.json().catch(() => ({}))) as FacetsPayload
   if (!res.ok || !payload?.data) {
     throw new Error(`Facets request failed (${res.status})`)

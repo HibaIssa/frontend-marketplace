@@ -1,3 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-export { default } from '../../admin/moderation/page'
+export default function DashboardModerationRedirect() {
+  redirect('/dashboard')
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { ADMIN_API_CATALOG, catalogGroups, type CatalogOp } from '@/lib/admin-api-catalog'
 import { useAuthStore } from '@/store/auth'
 
@@ -123,13 +123,13 @@ export function AdminApiRunner() {
         for (const [k, v] of Object.entries(extra)) {
           if (v != null) fd.append(k, String(v))
         }
-        const res = await api.postForm(path, fd)
+        const res = await adminDashboardApi.postForm(path, fd)
         setResult(JSON.stringify(res, null, 2))
         return
       }
 
       if (selected.rawText && selected.method === 'GET') {
-        const raw = await api.getRaw(path, query)
+        const raw = await adminDashboardApi.getRaw(path, query)
         setResult(
           JSON.stringify(
             {
@@ -146,7 +146,7 @@ export function AdminApiRunner() {
       }
 
       if (selected.method === 'GET') {
-        const res = await api.get(path, query)
+        const res = await adminDashboardApi.get(path, query)
         setResult(JSON.stringify(res, null, 2))
         return
       }
@@ -162,22 +162,22 @@ export function AdminApiRunner() {
       }
 
       if (selected.method === 'POST') {
-        const res = await api.post(path, body)
+        const res = await adminDashboardApi.post(path, body)
         setResult(JSON.stringify(res, null, 2))
         return
       }
       if (selected.method === 'PATCH') {
-        const res = await api.patch(path, body)
+        const res = await adminDashboardApi.patch(path, body)
         setResult(JSON.stringify(res, null, 2))
         return
       }
       if (selected.method === 'PUT') {
-        const res = await api.put(path, body)
+        const res = await adminDashboardApi.put(path, body)
         setResult(JSON.stringify(res, null, 2))
         return
       }
       if (selected.method === 'DELETE') {
-        const res = await api.delete(path)
+        const res = await adminDashboardApi.delete(path)
         setResult(JSON.stringify(res, null, 2))
         return
       }

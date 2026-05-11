@@ -1,3 +1,7 @@
 'use client'
 
-export { default } from '../../admin/canonicals/page'
+import { redirect } from 'next/navigation'
+
+export default function DashboardCanonicalsRedirect() {
+  redirect('/dashboard')
+}

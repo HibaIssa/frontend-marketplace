@@ -15,7 +15,7 @@ import {
   Cell,
   Legend,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 type ProductRow = {
@@ -87,7 +87,7 @@ export default function AdminModerationPage() {
   const flagged = useQuery({
     queryKey: ['admin-flagged'],
     queryFn: async () => {
-      const res = await api.get<unknown>(endpoints.admin.flagged, { page: 1, limit: 50 })
+      const res = await adminDashboardApi.get<unknown>(endpoints.admin.flagged, { page: 1, limit: 50 })
       if (res.success === false) throw new Error(res.error?.message ?? 'Failed')
       return normalizeModerationList(res)
     },
@@ -96,7 +96,7 @@ export default function AdminModerationPage() {
   const hidden = useQuery({
     queryKey: ['admin-hidden'],
     queryFn: async () => {
-      const res = await api.get<unknown>(endpoints.admin.hidden, { page: 1, limit: 50 })
+      const res = await adminDashboardApi.get<unknown>(endpoints.admin.hidden, { page: 1, limit: 50 })
       if (res.success === false) throw new Error(res.error?.message ?? 'Failed')
       return normalizeModerationList(res)
     },
@@ -188,7 +188,7 @@ export default function AdminModerationPage() {
             type="button"
             className="btn-secondary text-xs py-2"
             disabled={!pid || m.isPending}
-            onClick={() => m.mutate(() => api.post(endpoints.admin.hideProduct(pid), {}))}
+            onClick={() => m.mutate(() => adminDashboardApi.post(endpoints.admin.hideProduct(pid), {}))}
           >
             Hide
           </button>
@@ -196,7 +196,7 @@ export default function AdminModerationPage() {
             type="button"
             className="btn-secondary text-xs py-2"
             disabled={!pid || m.isPending}
-            onClick={() => m.mutate(() => api.post(endpoints.admin.unhideProduct(pid), {}))}
+            onClick={() => m.mutate(() => adminDashboardApi.post(endpoints.admin.unhideProduct(pid), {}))}
           >
             Unhide
           </button>
@@ -204,7 +204,7 @@ export default function AdminModerationPage() {
             type="button"
             className="btn-secondary text-xs py-2"
             disabled={!pid || m.isPending}
-            onClick={() => m.mutate(() => api.post(endpoints.admin.flagProduct(pid), {}))}
+            onClick={() => m.mutate(() => adminDashboardApi.post(endpoints.admin.flagProduct(pid), {}))}
           >
             Flag
           </button>
@@ -212,7 +212,7 @@ export default function AdminModerationPage() {
             type="button"
             className="btn-secondary text-xs py-2"
             disabled={!pid || m.isPending}
-            onClick={() => m.mutate(() => api.post(endpoints.admin.unflagProduct(pid), {}))}
+            onClick={() => m.mutate(() => adminDashboardApi.post(endpoints.admin.unflagProduct(pid), {}))}
           >
             Unflag
           </button>
@@ -220,7 +220,7 @@ export default function AdminModerationPage() {
             type="button"
             className="btn-secondary text-xs py-2"
             disabled={!pid || m.isPending}
-            onClick={() => m.mutate(() => api.get(endpoints.admin.duplicates(pid)))}
+            onClick={() => m.mutate(() => adminDashboardApi.get(endpoints.admin.duplicates(pid)))}
           >
             Duplicates (log)
           </button>
@@ -240,7 +240,7 @@ export default function AdminModerationPage() {
               className="btn-primary text-xs py-2"
               disabled={parsedIds.length === 0 || m.isPending}
               onClick={() =>
-                m.mutate(() => api.post(endpoints.admin.hideBatch, { productIds: parsedIds, reason: reason || undefined }))
+                m.mutate(() => adminDashboardApi.post(endpoints.admin.hideBatch, { productIds: parsedIds, reason: reason || undefined }))
               }
             >
               Hide batch

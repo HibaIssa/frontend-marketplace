@@ -15,7 +15,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts'
-import { api } from '@/lib/api/client'
+import { adminDashboardApi } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 
 type RecoLabel = 'good' | 'ok' | 'bad'
@@ -179,13 +179,13 @@ export default function AdminRecoPage() {
 
   const stats = useQuery({
     queryKey: ['admin-reco-stats'],
-    queryFn: () => api.get<unknown>(endpoints.admin.recoStats),
+    queryFn: () => adminDashboardApi.get<unknown>(endpoints.admin.recoStats),
   })
 
   const baseSuggestions = useQuery({
     queryKey: ['admin-reco-base-suggestions'],
     queryFn: async () => {
-      const res = await api.get<unknown>(endpoints.products.list, { page: 1, limit: 20 })
+      const res = await adminDashboardApi.get<unknown>(endpoints.products.list, { page: 1, limit: 20 })
       const raw = (res as { data?: unknown[] })?.data
       const list = Array.isArray(raw) ? raw : []
       return list
@@ -222,14 +222,14 @@ export default function AdminRecoPage() {
     queryFn: async () => {
       const id = parseInt(baseId, 10)
       if (!Number.isFinite(id)) throw new Error('Invalid base product id')
-      return api.get<unknown>(endpoints.admin.recoLabel, { baseProductId: id, limit: 20 })
+      return adminDashboardApi.get<unknown>(endpoints.admin.recoLabel, { baseProductId: id, limit: 20 })
     },
     enabled: Number.isFinite(parseInt(baseId, 10)),
   })
 
   const save = useMutation({
     mutationFn: () =>
-      api.post(endpoints.admin.recoLabelPost, {
+      adminDashboardApi.post(endpoints.admin.recoLabelPost, {
         baseProductId: parseInt(baseId, 10),
         candidateProductId: parseInt(candidateId, 10),
         label,
@@ -244,7 +244,7 @@ export default function AdminRecoPage() {
   const saveBatch = useMutation({
     mutationFn: async () => {
       const labels = normalizeRows(batchText)
-      return api.post(endpoints.admin.recoLabelBatch, { labels })
+      return adminDashboardApi.post(endpoints.admin.recoLabelBatch, { labels })
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin-reco-stats'] })
@@ -258,7 +258,7 @@ export default function AdminRecoPage() {
     queryFn: async () => {
       const base = parseNum(labelsQueryBaseId)
       const limit = parseNum(labelsQueryLimit)
-      return api.get<unknown>(endpoints.admin.recoLabels, {
+      return adminDashboardApi.get<unknown>(endpoints.admin.recoLabels, {
         ...(base != null ? { baseProductId: base } : {}),
         ...(labelsQueryLabel ? { label: labelsQueryLabel } : {}),
         ...(limit != null ? { limit } : {}),
@@ -271,7 +271,7 @@ export default function AdminRecoPage() {
     mutationFn: async () => {
       const base = parseNum(labelsQueryBaseId)
       const limit = parseNum(labelsQueryLimit)
-      return api.getRaw(endpoints.admin.recoLabels, {
+      return adminDashboardApi.getRaw(endpoints.admin.recoLabels, {
         ...(base != null ? { baseProductId: base } : {}),
         ...(labelsQueryLabel ? { label: labelsQueryLabel } : {}),
         ...(limit != null ? { limit } : {}),
