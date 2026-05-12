@@ -22,7 +22,6 @@ import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { Product } from '@/types/product'
 import type { CategoryCount, OverviewKPIs, VendorProductCount } from '@/types/catalog-admin'
-import { fetchAdminOverview } from '@/lib/admin/adminCatalogApi'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
 
 type AdminOverviewResponse = {
@@ -99,6 +98,22 @@ function positiveNumber(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+function finiteNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : 0
+  return Number.isFinite(n) && n >= 0 ? n : 0
+}
+
+function normalizeAdminOverview(input: unknown): AdminOverviewResponse {
+  const root = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+  const wrapped = root.data && typeof root.data === 'object' ? (root.data as Record<string, unknown>) : null
+  const source = wrapped && ('kpis' in wrapped || 'vendorCounts' in wrapped || 'catCounts' in wrapped) ? wrapped : root
+  return {
+    kpis: (source.kpis && typeof source.kpis === 'object' ? source.kpis : null) as OverviewKPIs | null,
+    vendorCounts: Array.isArray(source.vendorCounts) ? (source.vendorCounts as VendorProductCount[]) : [],
+    catCounts: Array.isArray(source.catCounts) ? (source.catCounts as CategoryCount[]) : [],
+  }
+}
+
 /**
  * Live KPIs for the homepage "By the numbers" section.
  * Primary source: `/api/admin/overview` (same payload as the admin dashboard — kpis + catCounts + vendorCounts).
@@ -106,9 +121,11 @@ function positiveNumber(value: unknown): number {
  */
 function useCatalogStats() {
   return useQuery({
-    queryKey: ['admin-overview', 'home-stats'],
+    queryKey: ['home-stats', 'admin-overview', 'v3'],
     queryFn: async () => {
-      const overview = await fetchAdminOverview()
+      const res = await fetch('/api/admin/overview', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Overview request failed (${res.status})`)
+      const overview = normalizeAdminOverview(await res.json())
       const kpis = overview.kpis
       const catCounts = overview.catCounts ?? []
       const vendorCounts = overview.vendorCounts ?? []
@@ -122,14 +139,56 @@ function useCatalogStats() {
 
       const categoriesLen = positiveNumber(kpis?.unique_categories) || catCounts.length
 
-      const onSaleTotal = positiveNumber(kpis?.with_sale_price)
+      let onSaleTotal = finiteNumber(kpis?.with_sale_price)
+
+      // If admin KPIs don't report sale counts, try the wardrobe "complete look" endpoint
+      // which can surface items that are part of curated/completed looks (often used for sale bundles).
+      if (!onSaleTotal) {
+        try {
+          const r = await fetch('/api/wardrobe/complete-look', { cache: 'no-store' })
+          if (r.ok) {
+            const body = await r.json()
+            if (Array.isArray(body)) {
+              onSaleTotal = body.length
+            } else if (body && typeof body === 'object') {
+              if (Array.isArray((body as any).items)) onSaleTotal = (body as any).items.length
+              else if (typeof (body as any).total === 'number') onSaleTotal = (body as any).total
+              else if (typeof (body as any).count === 'number') onSaleTotal = (body as any).count
+            }
+          }
+        } catch (err) {
+          // Ignore fetch errors and keep onSaleTotal as 0
+        }
+        onSaleTotal = finiteNumber(onSaleTotal)
+      }
 
       return { totalProducts, brandsLen, categoriesLen, onSaleTotal }
     },
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     retry: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
+}
+
+function overviewToHomeStats(input: unknown) {
+  const overview = normalizeAdminOverview(input)
+  const kpis = overview.kpis
+  const catCounts = overview.catCounts ?? []
+  const vendorCounts = overview.vendorCounts ?? []
+  const productsFromVendors = vendorCounts.reduce((sum, vendor) => sum + positiveNumber(vendor.total), 0)
+  const productsFromCategories = catCounts.reduce((sum, category) => sum + positiveNumber(category.count), 0)
+  return {
+    totalProducts: positiveNumber(kpis?.total_products) || Math.max(productsFromVendors, productsFromCategories),
+    brandsLen: positiveNumber(kpis?.total_vendors) || vendorCounts.length,
+    categoriesLen: positiveNumber(kpis?.unique_categories) || catCounts.length,
+    onSaleTotal: finiteNumber(kpis?.with_sale_price),
+  }
+}
+
+function formatStatNumber(value: number): string {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)).toLocaleString() : '0'
 }
 
 function formatPrice(p: Product) {
@@ -724,37 +783,38 @@ function FeaturedProducts() {
 
 function Numbers() {
   const { data, isLoading } = useCatalogStats()
-
+  const stats = data
   const items = [
-    { topNum: data?.totalProducts ?? 0, label: 'Products in catalog' },
-    { topNum: data?.brandsLen ?? 0, label: 'Curated brands' },
-    { topNum: data?.categoriesLen ?? 0, label: 'Live categories' },
-    { topNum: data?.onSaleTotal ?? 0, label: 'Items on sale now' },
+    { topNum: stats?.totalProducts ?? 0, label: 'Products in catalog' },
+    { topNum: stats?.brandsLen ?? 0, label: 'Curated brands' },
+    { topNum: stats?.categoriesLen ?? 0, label: 'Live categories' },
+    { topNum: stats?.onSaleTotal ?? 0, label: 'Items on sale now' },
   ]
+  const loadingNumbers = isLoading && !stats
 
   return (
     <section className="px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
       <SectionHead eyebrow="By the numbers" title="A studio, in motion" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10 border-t border-[#d8d2cd] pt-8">
         {items.map((it, i) => (
-            <motion.div
-            key={i}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
+          <motion.div
+            key={it.label}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, delay: i * 0.06, ease: EASE_OUT }}
           >
             <p
               className="font-display font-semibold text-[#2a2623] tracking-[-0.02em] leading-none"
               style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
             >
-              {isLoading ? <span className="text-[#b8aea5]">···</span> : <CountUp to={it.topNum} />}
+              {loadingNumbers ? <span className="text-[#b8aea5]">...</span> : formatStatNumber(it.topNum)}
             </p>
             <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[#736b65]">
               {it.label}
             </p>
-            </motion.div>
-          ))}
+          </motion.div>
+        ))}
       </div>
     </section>
   )

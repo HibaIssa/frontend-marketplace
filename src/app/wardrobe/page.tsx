@@ -17,6 +17,7 @@ import {
   wardrobeMetaFormFromItem,
 } from '@/types/wardrobeItem'
 import { formatStoredPriceAsUsd } from '@/lib/money/displayUsd'
+import { postWardrobeItemForm } from '@/lib/wardrobe/postWardrobeItem'
 
 type WardrobeItem = WardrobeItemDto
 
@@ -46,9 +47,11 @@ interface CompleteLookSuggestion {
 
 const COMPLETE_LOOK_FETCH_CAP = 48
 const WARDROBE_COMPLETE_LOOK_LIMIT = 16
+const WARDROBE_QUERY_KEY = ['wardrobe'] as const
+const WARDROBE_STALE_MS = 5 * 60 * 1000
 /** First paint shows this many cards so “Show more” appears when the API returns more. */
-const COMPLETE_STYLE_INITIAL_VISIBLE = 4
-const COMPLETE_STYLE_PAGE_INCREMENT = 8
+const COMPLETE_LOOK_INITIAL_VISIBLE = 4
+const COMPLETE_LOOK_PAGE_INCREMENT = 8
 
 function suggestionProductId(s: CompleteLookSuggestion): number | null {
   const n = Number(s.id ?? s.product_id)
@@ -56,8 +59,42 @@ function suggestionProductId(s: CompleteLookSuggestion): number | null {
 }
 
 function wardrobeCatalogProductId(item: WardrobeItem | null): number | null {
+  // Only use product_id or catalog_product_id - don't fall back to wardrobe item ID
   const n = Number(item?.product_id ?? item?.catalog_product_id)
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null
+}
+
+function extractMatchedProductId(payload: unknown): number | null {
+  const raw = payload as {
+    similarProducts?: { byDetection?: Array<{ products?: Array<{ id?: number | string; product_id?: number | string }> }> }
+    byDetection?: Array<{ products?: Array<{ id?: number | string; product_id?: number | string }> }>
+    data?: unknown
+  } | undefined
+  const byDetection = raw?.similarProducts?.byDetection ?? raw?.byDetection ?? (raw?.data as { byDetection?: unknown[] } | undefined)?.byDetection
+  if (!Array.isArray(byDetection)) return null
+  for (const group of byDetection as Array<{ products?: Array<{ id?: number | string; product_id?: number | string }> }>) {
+    const products = Array.isArray(group.products) ? group.products : []
+    for (const product of products) {
+      const n = Number(product?.id ?? product?.product_id)
+      if (Number.isFinite(n) && n >= 1) return Math.floor(n)
+    }
+  }
+  return null
+}
+
+async function resolveCompleteStyleProductId(item: WardrobeItem): Promise<number | null> {
+  const directProductId = wardrobeCatalogProductId(item)
+  if (directProductId) return directProductId
+
+  const imageUrl = item.image_cdn || item.image_url
+  if (!imageUrl) return null
+
+  const res = await api.post<unknown>(endpoints.images.searchUrl, { url: imageUrl })
+  const r = res as { success?: boolean; error?: { message?: string } }
+  if (r.success === false) {
+    throw new Error(r.error?.message ?? 'Could not match wardrobe item to a catalog product')
+  }
+  return extractMatchedProductId(res)
 }
 
 function extractWardrobeItems(payload: unknown): WardrobeItem[] {
@@ -127,10 +164,10 @@ export default function WardrobePage() {
   const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null)
   const [editMeta, setEditMeta] = useState<WardrobeItemMetaForm>(() => emptyWardrobeMetaForm())
   /** Visible count only; suggestions are fetched once (cap below) and sliced client-side so “Show more” does not refetch. */
-  const [completeLookVisible, setCompleteLookVisible] = useState(COMPLETE_STYLE_INITIAL_VISIBLE)
+  const [completeStyleVisible, setCompleteStyleVisible] = useState(COMPLETE_LOOK_INITIAL_VISIBLE)
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['wardrobe'],
+    queryKey: WARDROBE_QUERY_KEY,
     queryFn: async () => {
       const res = await api.get<WardrobeListResponse>(endpoints.wardrobe.items)
       const r = res as WardrobeListResponse
@@ -138,6 +175,11 @@ export default function WardrobePage() {
       return r
     },
     enabled: isAuth,
+    staleTime: WARDROBE_STALE_MS,
+    gcTime: 30 * 60 * 1000,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   const addMutation = useMutation({
@@ -145,8 +187,10 @@ export default function WardrobePage() {
       const formData = new FormData()
       formData.append('image', file)
       formData.append('source', 'uploaded')
+      const inferredName = file.name.replace(/\.[^.]+$/, '').trim()
+      if (inferredName) formData.append('name', inferredName)
       appendWardrobeItemMultipartFields(formData, meta)
-      const res = await api.postForm(endpoints.wardrobe.items, formData)
+      const res = await postWardrobeItemForm(formData)
       if ((res as { success?: boolean }).success === false) {
         throw new Error((res as { error?: { message?: string } }).error?.message ?? 'Upload failed')
       }
@@ -155,10 +199,9 @@ export default function WardrobePage() {
     onSuccess: async (res) => {
       const item = extractWardrobeItem(res)
       if (item) {
-        queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+        queryClient.setQueryData<WardrobeListResponse | undefined>(WARDROBE_QUERY_KEY, (prev) => mergeWardrobeItem(prev, item))
       }
-      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
-      await queryClient.refetchQueries({ queryKey: ['wardrobe'], type: 'active' })
+      void queryClient.invalidateQueries({ queryKey: WARDROBE_QUERY_KEY, refetchType: 'none' })
       setShowUploadModal(false)
       setPendingUploadFile(null)
       setUploadMeta(emptyWardrobeMetaForm())
@@ -176,10 +219,10 @@ export default function WardrobePage() {
     onSuccess: async (res) => {
       const item = extractWardrobeItem(res)
       if (item) {
-        queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+        queryClient.setQueryData<WardrobeListResponse | undefined>(WARDROBE_QUERY_KEY, (prev) => mergeWardrobeItem(prev, item))
       }
-      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
-      queryClient.invalidateQueries({ queryKey: ['complete-style'] })
+      void queryClient.invalidateQueries({ queryKey: WARDROBE_QUERY_KEY, refetchType: 'none' })
+      queryClient.invalidateQueries({ queryKey: ['complete-look'] })
       setEditingItem(null)
     },
   })
@@ -193,8 +236,8 @@ export default function WardrobePage() {
       return res
     },
     onSuccess: async (_res, id) => {
-      queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => removeWardrobeItem(prev, id))
-      await queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+      queryClient.setQueryData<WardrobeListResponse | undefined>(WARDROBE_QUERY_KEY, (prev) => removeWardrobeItem(prev, id))
+      void queryClient.invalidateQueries({ queryKey: WARDROBE_QUERY_KEY, refetchType: 'none' })
       setSelectedItem(null)
     },
   })
@@ -209,18 +252,22 @@ export default function WardrobePage() {
     ],
     queryFn: async () => {
       if (!selectedItem) return null
-      const catalogProductId = wardrobeCatalogProductId(selectedItem)
-      const wardrobePayload = {
-        limit: WARDROBE_COMPLETE_LOOK_LIMIT,
-        ...(catalogProductId != null ? { product_ids: [catalogProductId] } : { item_ids: [selectedItem.id] }),
-        ...(selectedItem.audience_gender ? { audience_gender: selectedItem.audience_gender } : {}),
-        ...(selectedItem.age_group ? { age_group: selectedItem.age_group } : {}),
-        ...(selectedItem.style_tags?.length ? { style_tags: selectedItem.style_tags } : {}),
-        ...(selectedItem.occasion_tags?.length ? { occasion: selectedItem.occasion_tags[0] } : {}),
-        ...(selectedItem.season_tags?.length ? { season: selectedItem.season_tags[0] } : {}),
-        ...(selectedItem.color ? { color: selectedItem.color } : {}),
+      const productId = await resolveCompleteStyleProductId(selectedItem)
+      if (!productId) {
+        throw new Error('Could not match this wardrobe item to a catalog product')
       }
-      const res = await api.post<unknown>(endpoints.wardrobe.completeLook, wardrobePayload)
+      const options = {
+        maxPerCategory: 8,
+        maxTotal: WARDROBE_COMPLETE_LOOK_LIMIT,
+        ...(selectedItem.audience_gender ? { audienceGenderHint: selectedItem.audience_gender } : {}),
+      }
+      const params: Record<string, string | number | undefined> = {
+        maxPerCategory: options.maxPerCategory,
+        maxTotal: options.maxTotal,
+        ...(selectedItem.audience_gender ? { audienceGenderHint: selectedItem.audience_gender } : {}),
+      }
+      const endpoint = endpoints.wardrobe.completeStyle(productId)
+      const res = await api.get<unknown>(endpoint, params)
       const r = res as {
         success?: boolean
         suggestions?: CompleteLookSuggestion[]
@@ -230,7 +277,7 @@ export default function WardrobePage() {
       if (r?.success === false) throw new Error(r?.error?.message ?? 'Failed to get suggestions')
       if (Array.isArray(r?.suggestions)) return r.suggestions
       if (Array.isArray(r?.data)) return r.data as CompleteLookSuggestion[]
-      const payload = r?.data as
+      const resp = r?.data as
         | {
             recommendations?: Array<{
               category?: string
@@ -247,7 +294,7 @@ export default function WardrobePage() {
           }
         | undefined
       const flattened =
-        payload?.recommendations?.flatMap((group) =>
+        resp?.recommendations?.flatMap((group) =>
           (group.products ?? []).map((p) => ({
             id: p.id,
             product_id: p.product_id ?? p.id ?? 0,
@@ -264,6 +311,10 @@ export default function WardrobePage() {
     },
     enabled: showCompleteStyle && !!selectedItem,
     staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   const completeStyleSuggestionsAll = useMemo(() => {
@@ -281,8 +332,8 @@ export default function WardrobePage() {
   }, [completeStyleQuery.data])
 
   const completeStyleSuggestionsVisible = useMemo(
-    () => completeStyleSuggestionsAll.slice(0, completeLookVisible),
-    [completeStyleSuggestionsAll, completeLookVisible],
+    () => completeStyleSuggestionsAll.slice(0, completeStyleVisible),
+    [completeStyleSuggestionsAll, completeStyleVisible],
   )
 
   const openUploadModal = (file: File) => {
@@ -300,6 +351,12 @@ export default function WardrobePage() {
   const openEditModal = (item: WardrobeItem) => {
     setEditingItem(item)
     setEditMeta(wardrobeMetaFormFromItem(item))
+  }
+
+  const openCompleteLook = (item: WardrobeItem) => {
+    setSelectedItem(item)
+    setCompleteStyleVisible(COMPLETE_LOOK_INITIAL_VISIBLE)
+    setShowCompleteStyle(true)
   }
 
   const metaFields = (
@@ -413,7 +470,7 @@ export default function WardrobePage() {
 
   const openCompleteStyle = (item: WardrobeItem) => {
     setSelectedItem(item)
-    setCompleteLookVisible(COMPLETE_STYLE_INITIAL_VISIBLE)
+    setCompleteStyleVisible(COMPLETE_LOOK_INITIAL_VISIBLE)
     setShowCompleteStyle(true)
   }
 
@@ -561,7 +618,7 @@ export default function WardrobePage() {
                   <div className="absolute bottom-0 inset-x-0 p-2 flex flex-wrap items-center gap-1.5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
                     <button
                       type="button"
-                      onClick={() => openCompleteStyle(item)}
+                      onClick={() => openCompleteLook(item)}
                       className="flex-1 min-w-[6rem] flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-[#2a2623] text-[11px] font-semibold hover:bg-white transition-colors"
                     >
                       <Wand2 className="w-3.5 h-3.5 shrink-0" />
@@ -697,9 +754,10 @@ export default function WardrobePage() {
                   >
                     {completeStyleSuggestionsVisible.map((s) => {
                         const pid = suggestionProductId(s)!
-                        const cents = s.price_cents
+                        const rawCents = s.price_cents
+                        const cents = typeof rawCents === 'string' ? Number(rawCents) : typeof rawCents === 'number' ? rawCents : 0
                         const priceLabel =
-                          typeof cents === 'number' && Number.isFinite(cents) && cents > 0
+                          Number.isFinite(cents) && cents > 0
                             ? formatStoredPriceAsUsd(Math.round(cents), s.currency, {
                                 minimumFractionDigits: 0,
                                 maximumFractionDigits: 0,
@@ -763,17 +821,17 @@ export default function WardrobePage() {
                   <div className="shrink-0 border-t border-neutral-100 bg-white px-6 py-4 rounded-b-3xl">
                     <p className="text-xs text-center text-neutral-500 mb-3">
                       Showing{' '}
-                      {Math.min(completeLookVisible, completeStyleSuggestionsAll.length)} of{' '}
+                      {Math.min(completeStyleVisible, completeStyleSuggestionsAll.length)} of{' '}
                       {completeStyleSuggestionsAll.length}
                     </p>
-                    {completeStyleSuggestionsAll.length > completeLookVisible ? (
+                    {completeStyleSuggestionsAll.length > completeStyleVisible ? (
                       <div className="flex justify-center">
                         <button
                           type="button"
                           onClick={() =>
-                            setCompleteLookVisible((n) =>
+                            setCompleteStyleVisible((n) =>
                               Math.min(
-                                n + COMPLETE_STYLE_PAGE_INCREMENT,
+                                n + COMPLETE_LOOK_PAGE_INCREMENT,
                                 completeStyleSuggestionsAll.length,
                                 COMPLETE_LOOK_FETCH_CAP,
                               ),

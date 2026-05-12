@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   return NextResponse.json({
     success: true,
-    message: 'Business dashboard data is proxied from the Bolden admin API.',
+    message: 'Dashboard data is served from the Bolden API.',
     endpoints: {
       summary: '/api/dashboard/summary',
       products: '/api/dashboard/products',

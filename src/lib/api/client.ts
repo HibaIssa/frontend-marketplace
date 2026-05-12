@@ -25,7 +25,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 
 const REACHABILITY_HINT =
   'Start the API from the repo root (pnpm dev), or point NEXT_PUBLIC_API_URL in apps/marketplace/.env.local at a running backend.'
-const DEFAULT_API_TIMEOUT_MS = 25_000
+const DEFAULT_API_TIMEOUT_MS = 0
 
 export type ApiResponse<T> = {
   success: boolean
@@ -99,15 +99,16 @@ function createApiClient(apiBase: string): { api: ApiClient; refreshTokens: (ref
 
   async function apiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
     const timeoutMs = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || DEFAULT_API_TIMEOUT_MS
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), timeoutMs)
-    if (init?.signal) {
+    const useTimeout = Number.isFinite(timeoutMs) && timeoutMs > 0
+    const controller = useTimeout ? new AbortController() : null
+    const timeout = useTimeout ? setTimeout(() => controller?.abort(), timeoutMs) : null
+    if (controller && init?.signal) {
       init.signal.addEventListener('abort', () => controller.abort(), { once: true })
     }
     try {
-      return await fetch(input, { ...init, signal: controller.signal })
+      return await fetch(input, { ...init, signal: controller?.signal ?? init?.signal })
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
+      if (useTimeout && e instanceof DOMException && e.name === 'AbortError') {
         throw new Error(`API request timed out after ${Math.round(timeoutMs / 1000)}s. Please retry.`)
       }
       if (e instanceof TypeError) {
@@ -115,9 +116,14 @@ function createApiClient(apiBase: string): { api: ApiClient; refreshTokens: (ref
       }
       throw e
     } finally {
-      clearTimeout(timeout)
+      if (timeout) clearTimeout(timeout)
     }
   }
+
+  // In-flight request dedupe map — prevents concurrent identical GETs from issuing
+  // duplicate network traffic when multiple components request the same resource.
+  const inflightGet = new Map<string, Promise<ApiResponse<unknown>>>()
+  const inflightGetRaw = new Map<string, Promise<{ ok: boolean; status: number; contentType: string; body: string | Record<string, unknown> }>>()
 
   async function refreshTokens(refreshToken: string): Promise<boolean> {
     const res = await apiFetch(joinApiUrl('/api/auth/refresh'), {
@@ -181,8 +187,18 @@ function createApiClient(apiBase: string): { api: ApiClient; refreshTokens: (ref
       if (params) {
         Object.entries(params).forEach(([k, v]) => v != null && url.searchParams.set(k, String(v)))
       }
-      const res = await apiFetch(url.toString(), { headers: await getAuthHeaders() })
-      return handleResponse<T>(res)
+      const key = `GET ${url.toString()}`
+      if (inflightGet.has(key)) return (inflightGet.get(key) as Promise<ApiResponse<T>>)
+      const promise = (async () => {
+        const res = await apiFetch(url.toString(), { headers: await getAuthHeaders() })
+        try {
+          return await handleResponse<T>(res)
+        } finally {
+          inflightGet.delete(key)
+        }
+      })()
+      inflightGet.set(key, promise as Promise<ApiResponse<unknown>>)
+      return promise
     },
 
     async post<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
@@ -233,14 +249,29 @@ function createApiClient(apiBase: string): { api: ApiClient; refreshTokens: (ref
       if (params) {
         Object.entries(params).forEach(([k, v]) => v != null && url.searchParams.set(k, String(v)))
       }
-      const res = await apiFetch(url.toString(), { headers: await getAuthHeaders() })
-      const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-        return { ok: res.ok, status: res.status, contentType, body }
-      }
-      const text = await res.text()
-      return { ok: res.ok, status: res.status, contentType, body: text }
+      const key = `GETRAW ${url.toString()}`
+      if (inflightGetRaw.has(key)) return inflightGetRaw.get(key) as Promise<{
+        ok: boolean
+        status: number
+        contentType: string
+        body: string | Record<string, unknown>
+      }>
+      const promise = (async () => {
+        const res = await apiFetch(url.toString(), { headers: await getAuthHeaders() })
+        try {
+          const contentType = res.headers.get('content-type') || ''
+          if (contentType.includes('application/json')) {
+            const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+            return { ok: res.ok, status: res.status, contentType, body }
+          }
+          const text = await res.text()
+          return { ok: res.ok, status: res.status, contentType, body: text }
+        } finally {
+          inflightGetRaw.delete(key)
+        }
+      })()
+      inflightGetRaw.set(key, promise)
+      return promise
     },
 
     async delete<T>(path: string): Promise<ApiResponse<T>> {
@@ -263,10 +294,8 @@ const adminDashboard = createApiClient(getAdminDashboardApiOrigin())
 export const adminDashboardApi = adminDashboard.api
 
 /**
- * Same-origin client for `/api/dashboard/*` (and other Next.js-proxied admin paths).
- * Hits the local Next.js route handlers in `src/app/api/...`, which forward to the
- * Bolden admin Cloud Run app server-side. Avoids CORS from the browser.
+ * Customer/business dashboard data lives on the storefront backend.
+ * Keep `/dashboard` calls on the same Cloud Run API as the shopper app:
+ * `NEXT_PUBLIC_API_URL` → https://marketplace-96918972071.asia-southeast1.run.app
  */
-const sameOriginBase = typeof window !== 'undefined' ? window.location.origin : ''
-const sameOrigin = createApiClient(sameOriginBase)
-export const dashboardApi = sameOrigin.api
+export const dashboardApi = storefront.api

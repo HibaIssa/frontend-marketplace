@@ -4,17 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Store, ShoppingBag } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { api } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { mapApiUser } from '@/lib/auth/mapUser'
 import { useAuthStore } from '@/store/auth'
-import type { UserType } from '@/store/auth'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [userType, setUserType] = useState<UserType>('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -25,26 +23,25 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await api.post<{ user: { id: number; email: string; user_type?: UserType }; access_token: string; refresh_token: string }>(
+      const res = await api.post<{ user: { id: number; email: string; user_type?: 'customer' }; access_token: string; refresh_token: string }>(
         endpoints.auth.signup,
-        { email, password, user_type: userType }
+        { email, password, user_type: 'customer' }
       )
       const token = (res as any).access_token ?? (res as any).accessToken
       const refresh = (res as any).refresh_token ?? (res as any).refreshToken
       const rawUser = (res as any).user
       if (res.success && rawUser && token) {
-        let user = mapApiUser(rawUser, userType)
+        let user = mapApiUser(rawUser, 'customer')
         setAuth(user, token, refresh || token)
         const meRes = (await api.get<unknown>(endpoints.auth.me)) as {
           success?: boolean
           user?: Parameters<typeof mapApiUser>[0]
         }
         if (meRes.success && meRes.user) {
-          user = mapApiUser(meRes.user, userType)
+          user = mapApiUser(meRes.user, 'customer')
           setAuth(user, token, refresh || token)
         }
         if (user.is_admin) router.push('/admin')
-        else if ((user.user_type ?? userType) === 'business') router.push('/dashboard')
         else router.push('/')
         router.refresh()
       } else {
@@ -67,36 +64,16 @@ export default function SignupPage() {
       >
         <div className="bg-white rounded-3xl shadow-elevated border border-neutral-200 p-8">
           <h1 className="font-display text-2xl font-bold text-neutral-800 text-center">Create account</h1>
-          <p className="text-neutral-500 text-center mt-2">Join Bolden to save favorites and use your wardrobe</p>
+          <p className="text-neutral-500 text-center mt-2">Welcome to Bolden. Create your personal shopping space.</p>
 
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-neutral-700 mb-2">I am a</label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setUserType('customer')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 font-medium transition-colors ${
-                  userType === 'customer'
-                    ? 'border-neutral-900 bg-neutral-50 text-neutral-900'
-                    : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-neutral-300'
-                }`}
-              >
-                <ShoppingBag className="w-5 h-5" />
-                Customer / Buyer
-              </button>
-              <button
-                type="button"
-                onClick={() => setUserType('business')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 font-medium transition-colors ${
-                  userType === 'business'
-                    ? 'border-neutral-900 bg-neutral-50 text-neutral-900'
-                    : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-neutral-300'
-                }`}
-              >
-                <Store className="w-5 h-5" />
-                Business / Seller
-              </button>
+          <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-center">
+            <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#3d3030] ring-1 ring-neutral-200">
+              <Sparkles className="h-4 w-4" />
             </div>
+            <p className="text-sm font-semibold text-neutral-800">A wardrobe made for you</p>
+            <p className="mt-1 text-sm text-neutral-500">
+              Save favorites, compare pieces, and build looks around your own style.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
