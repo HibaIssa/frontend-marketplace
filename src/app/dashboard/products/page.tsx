@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-/** Legacy path — main overview lists products by risk at `/dashboard`. */
+/** Legacy path — DSR overview now lives under `/admin`. */
 export default function DashboardProductsRedirectPage() {
-  redirect('/dashboard')
+  redirect('/admin')
 }

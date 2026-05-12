@@ -46,9 +46,12 @@ const QUERY_KEYS = {
   alerts: ['biz-dashboard', 'alerts'] as const,
 }
 
-const DASHBOARD_REQUEST_TIMEOUT_MS = 25_000
+const DASHBOARD_REQUEST_TIMEOUT_MS = 0
 
 async function withTimeout<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  if (DASHBOARD_REQUEST_TIMEOUT_MS <= 0) {
+    return await fn()
+  }
   return await Promise.race([
     fn(),
     new Promise<T>((_, reject) =>
@@ -77,18 +80,29 @@ function riskTone(level: Exclude<RiskLevel, 'all'>) {
   return 'bg-emerald-100 text-emerald-800'
 }
 
-export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?: 'overview' | 'products' | 'alerts' }) {
-  const [tab, setTab] = useState<'overview' | 'products' | 'alerts'>(initialTab)
+function responseData<T>(res: unknown): T | null {
+  const r = res as { success?: boolean; data?: T; error?: { message?: string } }
+  if (r?.success === false) throw new Error(r.error?.message || 'Dashboard request failed')
+  if (r && typeof r === 'object' && 'data' in r) return r.data ?? null
+  return res as T
+}
+
+export function AdminDsrDashboardView({ initialTab = 'overview' }: { initialTab?: 'overview' | 'alerts' }) {
+  const [tab, setTab] = useState<'overview' | 'alerts'>(initialTab)
   const [riskFilter, setRiskFilter] = useState<RiskLevel>('all')
 
   const summaryQ = useQuery({
     queryKey: QUERY_KEYS.summary,
     queryFn: async () => {
       const res = await withTimeout(() => dashboardApi.get<DashboardSummary>(endpoints.dashboard.summary), 'Summary')
-      if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load summary')
-      return res.data
+      const data = responseData<DashboardSummary>(res)
+      if (!data) throw new Error('Failed to load summary')
+      return data
     },
     retry: 1,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const productsQ = useQuery({
@@ -99,20 +113,30 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
         () => dashboardApi.get<DashboardProduct[]>(endpoints.dashboard.products, params),
         'Products',
       )
-      if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load products')
-      return res.data
+      const data = responseData<DashboardProduct[]>(res)
+      if (!Array.isArray(data)) throw new Error('Failed to load products')
+      return data
     },
     retry: 1,
+    enabled: tab === 'overview',
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const alertsQ = useQuery({
     queryKey: QUERY_KEYS.alerts,
     queryFn: async () => {
       const res = await withTimeout(() => dashboardApi.get<DashboardAlert[]>(endpoints.dashboard.alerts), 'Alerts')
-      if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed to load alerts')
-      return res.data
+      const data = responseData<DashboardAlert[]>(res)
+      if (!Array.isArray(data)) throw new Error('Failed to load alerts')
+      return data
     },
     retry: 1,
+    enabled: tab === 'alerts' || tab === 'overview',
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const topAtRisk = useMemo(() => (productsQ.data || []).slice(0, 8), [productsQ.data])
@@ -121,8 +145,8 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-neutral-200 bg-white p-4">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Business Dashboard</h1>
-          <p className="text-sm text-neutral-600">Risk summary, product signals, and vendor alerts.</p>
+          <h1 className="text-xl font-semibold text-neutral-900">Admin Dashboard</h1>
+          <p className="text-sm text-neutral-600">DSR summary, product signals, and alerts in one admin view.</p>
         </div>
       </div>
 
@@ -149,11 +173,10 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
 
       <div className="flex gap-2">
         <TabButton active={tab === 'overview'} onClick={() => setTab('overview')} label="Overview" />
-        <TabButton active={tab === 'products'} onClick={() => setTab('products')} label="Products" />
         <TabButton active={tab === 'alerts'} onClick={() => setTab('alerts')} label="Alerts" />
       </div>
 
-      {(tab === 'overview' || tab === 'products') && (
+      {tab === 'overview' && (
         <section className="rounded-2xl border border-neutral-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-neutral-900">Products</h2>
@@ -186,7 +209,7 @@ export function BusinessDashboardView({ initialTab = 'overview' }: { initialTab?
                   </tr>
                 </thead>
                 <tbody>
-                  {(tab === 'overview' ? topAtRisk : productsQ.data || []).map((p) => (
+                  {topAtRisk.map((p) => (
                     <tr key={p.id} className="border-t border-neutral-100 align-top">
                       <td className="py-2">
                         <p className="font-medium text-neutral-900">{p.title}</p>

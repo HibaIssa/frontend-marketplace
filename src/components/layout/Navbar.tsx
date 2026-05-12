@@ -72,11 +72,10 @@ export function Navbar() {
     return pathname === href || (href !== '/' && pathname.startsWith(href))
   }
 
-  const adminActive = pathname.startsWith('/admin') || pathname.startsWith('/dashboard')
+  const adminActive = pathname.startsWith('/admin')
 
   const { isAuthenticated, logout, user } = useAuthStore()
   const canSeeAdmin = mounted && isAuthenticated() && !!user?.is_admin
-  const canSeeBusinessDashboard = mounted && isAuthenticated() && user?.user_type === 'business'
 
   useEffect(() => setMounted(true), [])
 
@@ -300,6 +299,7 @@ export function Navbar() {
               <Link
                 key={`${link.href}-${link.label}`}
                 href={link.href}
+                prefetch={false}
                 onMouseEnter={() => warmSalesPrefetch(link.href)}
                 onFocus={() => warmSalesPrefetch(link.href)}
                 className={clsx(
@@ -325,6 +325,7 @@ export function Navbar() {
           {canSeeAdmin && (
             <Link
               href="/admin"
+              prefetch={false}
               className={clsx(
                 navLinkDiscover(adminActive) ??
                   (isHomeHero
@@ -342,28 +343,6 @@ export function Navbar() {
               )}
             >
               <Shield className={compact && !isSearchDiscoverLanding ? 'w-3 h-3' : 'w-3.5 h-3.5'} /> Admin
-            </Link>
-          )}
-          {canSeeBusinessDashboard && (
-            <Link
-              href="/dashboard"
-              className={clsx(
-                navLinkDiscover(adminActive) ??
-                  (isHomeHero
-                    ? adminActive
-                      ? navLinkHeroActive
-                      : navLinkHeroIdle
-                    : glassMode
-                      ? adminActive
-                        ? navLinkGlassActive
-                        : navLinkGlassIdle
-                      : adminActive
-                        ? navLinkHeroActive
-                        : navLinkHeroIdle),
-                'flex items-center gap-1.5',
-              )}
-            >
-              <Shield className={compact && !isSearchDiscoverLanding ? 'w-3 h-3' : 'w-3.5 h-3.5'} /> Dashboard
             </Link>
           )}
         </nav>
@@ -419,13 +398,8 @@ export function Navbar() {
                   Virtual Try-On
                 </Link>
                 {canSeeAdmin && (
-                  <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-[#2a2623] hover:bg-[#ebe6e0]">
+                  <Link href="/admin" prefetch={false} className="flex items-center gap-2 px-4 py-2 text-sm text-[#2a2623] hover:bg-[#ebe6e0]">
                     <Shield className="w-3.5 h-3.5" /> Admin
-                  </Link>
-                )}
-                {canSeeBusinessDashboard && (
-                  <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-[#2a2623] hover:bg-[#ebe6e0]">
-                    <Shield className="w-3.5 h-3.5" /> Dashboard
                   </Link>
                 )}
                 <div className="border-t border-[#e3ddd4] my-1" />
@@ -503,6 +477,7 @@ export function Navbar() {
                   <Link
                     key={`${link.href}-${link.label}-m`}
                     href={link.href}
+                    prefetch={false}
                     onMouseEnter={() => warmSalesPrefetch(link.href)}
                     onFocus={() => warmSalesPrefetch(link.href)}
                     className={clsx(
@@ -531,35 +506,6 @@ export function Navbar() {
                     {link.label}
                   </Link>
                 ))}
-                {canSeeBusinessDashboard && (
-                  <Link
-                    href="/dashboard"
-                    className={clsx(
-                      'px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-center',
-                      isSearchDiscoverLanding && scrolled
-                        ? adminActive
-                          ? 'font-semibold text-[#F8F3EE] underline decoration-[#7A4E3A] decoration-2 underline-offset-8'
-                          : 'text-[#F8F3EE]/90 hover:bg-white/10'
-                        : isHomeHero
-                          ? adminActive
-                            ? 'font-semibold !text-white visited:!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.22)]'
-                            : clsx(HOME_NAV_LINK_IDLE)
-                          : glassMode
-                            ? adminActive
-                              ? navLinkGlassActive
-                              : 'text-neutral-700 hover:bg-neutral-900/[0.05]'
-                            : isDarkHeroTop
-                              ? adminActive
-                                ? 'font-semibold !text-white visited:!text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.22)]'
-                                : clsx(HOME_NAV_LINK_IDLE)
-                              : adminActive
-                                ? 'font-semibold bg-[#2B2521]/10 text-[#2B2521] ring-1 ring-[#2B2521]/18'
-                                : 'text-[#2B2521] hover:bg-black/[0.06]',
-                    )}
-                  >
-                    Dashboard
-                  </Link>
-                )}
               </div>
               {!isAuthenticated() && (
                 <div

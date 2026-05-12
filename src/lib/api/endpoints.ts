@@ -92,6 +92,7 @@ export const endpoints = {
     compatibilityPrecompute: '/api/wardrobe/compatibility/precompute',
     outfitSuggestions: '/api/wardrobe/outfit-suggestions',
     completeLook: '/api/wardrobe/complete-look',
+    completeStyle: (id: number | string) => `/products/${id}/complete-style`,
     backfillEmbeddings: '/api/wardrobe/backfill-embeddings',
     similar: (itemId: string) => `/api/wardrobe/similar/${itemId}`,
     autoSyncSettings: '/api/wardrobe/auto-sync/settings',

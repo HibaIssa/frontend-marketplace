@@ -31,7 +31,6 @@ type Stats = {
 
 export function AdminOverviewSection() {
   const base = useAdminBasePath()
-  const isBusinessShell = base === '/dashboard'
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-stats', base],
@@ -110,10 +109,8 @@ export function AdminOverviewSection() {
   })
 
   const s = data
-  const title = isBusinessShell ? 'Business overview' : 'Admin overview'
-  const hint = isBusinessShell
-    ? 'Same tools and API calls as admin. Backend /admin/* routes require admin rights.'
-    : 'Moderation, canonicals, jobs, and API console.'
+  const title = 'Admin overview'
+  const hint = 'DSR overview, alerts, and catalog database health.'
 
   const histogramData = s
     ? [
@@ -252,14 +249,11 @@ export function AdminOverviewSection() {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Link href={`${base}/moderation`} className="btn-primary text-sm">
-          Moderation
+        <Link href={`${base}/alerts`} className="btn-primary text-sm">
+          Alerts
         </Link>
-        <Link href={`${base}/console`} className="btn-secondary text-sm">
-          API console
-        </Link>
-        <Link href={`${base}/system`} className="btn-secondary text-sm">
-          System health
+        <Link href={`${base}/catalog`} className="btn-secondary text-sm">
+          Catalog database
         </Link>
       </div>
     </div>

@@ -303,6 +303,7 @@ export function TryOnProvider({ children }: { children: React.ReactNode }) {
 
   const submitTryOn = useCallback(
     (personFile: File, garmentFile: File) => {
+      if (submitMutation.isPending) return
       submitMutation.mutate({ personFile, garmentFile })
     },
     [submitMutation],

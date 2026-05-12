@@ -172,7 +172,7 @@ function extractArray<T = unknown>(input: unknown): T[] {
 
 async function backendGet(path: string, params?: Record<string, string | number | undefined>): Promise<unknown> {
   const origin = getAdminDashboardApiOrigin().replace(/\/+$/, '')
-  const url = new URL(`${origin}/api/catalog-backend${path}`)
+  const url = new URL(`${origin}${path}`)
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v != null && v !== '') url.searchParams.set(k, String(v))

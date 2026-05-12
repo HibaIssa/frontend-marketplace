@@ -114,7 +114,7 @@ function LoginFormInner() {
           setAuth(user, token, refresh || token)
         }
         if (user.is_admin) router.push('/admin')
-        else if (user.user_type === 'business') router.push('/dashboard')
+        else if (user.user_type === 'business') router.push('/')
         else router.push(safeReturnPath())
         router.refresh()
       } else {

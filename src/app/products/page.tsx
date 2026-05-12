@@ -13,6 +13,8 @@ import { ProductCard } from '@/components/product/ProductCard'
 import { useCompareStore } from '@/store/compare'
 import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
+import { mergeWardrobeItem } from '@/lib/wardrobe/wardrobeCacheHelpers'
+import type { WardrobeListResponse } from '@/lib/wardrobe/wardrobeCacheHelpers'
 import type { Product } from '@/types/product'
 import { storedAmountToUsdCents } from '@/lib/money/displayUsd'
 import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
@@ -76,8 +78,9 @@ function ProductsContent() {
     onMutate: (product) => {
       setWardrobeAddedIds((prev) => new Set(prev).add(product.id))
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onSuccess: (item) => {
+      queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+      void queryClient.invalidateQueries({ queryKey: ['wardrobe'], refetchType: 'none' })
     },
     onError: (_err, product) => {
       setWardrobeAddedIds((prev) => {
@@ -377,7 +380,7 @@ function ProductsContent() {
             ))}
           </div>
         ) : products.length > 0 ? (
-          <>
+          <div className={`transition-opacity duration-300 ${isFetching && page > 1 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             <motion.div
               initial="hidden"
               animate="visible"
@@ -408,6 +411,15 @@ function ProductsContent() {
             </motion.div>
 
             {showPaginationControls && (
+              <>
+                {isFetching && page > 1 && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black/5 backdrop-blur-sm z-40 pointer-events-none">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 rounded-full border-3 border-[#e8e4df] border-t-brand animate-spin" />
+                      <p className="text-sm text-[#7a726b] font-medium">Loading page {page}...</p>
+                    </div>
+                  </div>
+                )}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
                 <div className="flex items-center gap-1.5">
                   <button
@@ -502,8 +514,9 @@ function ProductsContent() {
                         : `Page ${page}`}
                 </span>
               </div>
+              </>
             )}
-          </>
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 16 }}

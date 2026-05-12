@@ -34,6 +34,8 @@ import {
 import { useCompareStore } from '@/store/compare'
 import { useAuthStore } from '@/store/auth'
 import { addCatalogProductToWardrobe } from '@/lib/wardrobe/addCatalogProduct'
+import { mergeWardrobeItem } from '@/lib/wardrobe/wardrobeCacheHelpers'
+import type { WardrobeListResponse } from '@/lib/wardrobe/wardrobeCacheHelpers'
 import type { Product } from '@/types/product'
 import { mergeVendorFromHit } from '@/lib/vendorLogo'
 import { readAndClearListingScrollY } from '@/lib/navigation/listingScrollRestore'
@@ -312,8 +314,9 @@ function SearchContent() {
     onMutate: (product) => {
       setWardrobeAddedIds((prev) => new Set(prev).add(product.id))
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['wardrobe'] })
+    onSuccess: (item) => {
+      queryClient.setQueryData<WardrobeListResponse | undefined>(['wardrobe'], (prev) => mergeWardrobeItem(prev, item))
+      void queryClient.invalidateQueries({ queryKey: ['wardrobe'], refetchType: 'none' })
     },
     onError: (_err, product) => {
       setWardrobeAddedIds((prev) => {
@@ -629,7 +632,7 @@ function SearchContent() {
                 transition={{ duration: 0.5, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
                 className="relative flex w-full shrink-0 flex-col items-center justify-center min-h-0 lg:col-span-6 lg:self-stretch"
               >
-                <div className="relative h-[min(54vh,440px)] max-h-[440px] w-full max-w-[min(92vw,380px)] sm:h-[min(58vh,500px)] sm:max-h-[500px] sm:max-w-[420px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:max-h-none lg:max-w-[min(45vw,580px)] xl:max-w-[min(42vw,620px)]">
+                <div className="relative h-[min(54vh,440px)] max-h-[440px] w-full max-w-[min(92vw,380px)] sm:h-[min(58vh,500px)] sm:max-h-[500px] sm:max-w-[420px] lg:absolute lg:right-0 lg:top-[-104px] lg:bottom-[-96px] lg:h-auto lg:max-h-none lg:max-w-[min(45vw,580px)] xl:max-w-[min(42vw,620px)]">
                   <DiscoverHeroMasonry
                     className="h-full w-full min-h-0 max-h-full"
                     variant="full"
@@ -1018,6 +1021,7 @@ function SearchContent() {
                     </Link>
                   </div>
 
+                  <div className={`transition-opacity duration-300 ${textSearchPaged.isFetching && pageFromUrl > 1 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                   <TextSearchProductGrid
                     products={products}
                     addToCompare={addToCompare}
@@ -1027,6 +1031,7 @@ function SearchContent() {
                     pendingWardrobeProductId={addToWardrobeMutation.variables?.id}
                     fromReturnPath={discoverReturnPath}
                   />
+                  </div>
 
                   <div className="mt-8 rounded-[20px] bg-[#f3f1ee] border border-[#e8e4df] px-5 py-5 sm:px-8 sm:py-6">
                     <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -1064,9 +1069,17 @@ function SearchContent() {
               )}
               {textShowPagination ? (
                 <nav
-                  className="mt-10 flex flex-col items-center gap-5"
+                  className="mt-10 flex flex-col items-center gap-5 relative"
                   aria-label="Search results pagination"
                 >
+                  {textSearchPaged.isFetching && pageFromUrl > 1 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-sm z-40 pointer-events-none rounded-lg">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 rounded-full border-3 border-neutral-200 border-t-brand animate-spin" />
+                        <p className="text-sm text-neutral-600 font-medium">Loading page {pageFromUrl}...</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-3xl">
                     <div className="flex items-center gap-1.5">
                       <button

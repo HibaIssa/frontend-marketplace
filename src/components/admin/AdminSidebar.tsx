@@ -6,12 +6,6 @@ import clsx from 'clsx'
 import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard,
-  Shield,
-  Terminal,
-  GitMerge,
-  Timer,
-  Brain,
-  Activity,
   ChevronRight,
   Store,
   Package,
@@ -25,7 +19,7 @@ import { hostedCatalogNavHref } from '@/lib/admin/adminApiOrigin'
 import { BoldenLogoMark, boldenWordmarkClassName } from '@/components/brand/BoldenLogoMark'
 
 type NavItem = {
-  segment: '' | 'alerts' | 'moderation' | 'canonicals' | 'jobs' | 'reco' | 'system' | 'console'
+  segment: '' | 'alerts'
   label: string
   icon: LucideIcon
   exact?: boolean
@@ -54,27 +48,6 @@ const SECTIONS: { section: string; items: NavItem[] }[] = [
     items: [
       { segment: '', label: 'Overview', icon: LayoutDashboard, exact: true },
       { segment: 'alerts', label: 'Alerts', icon: Bell },
-      { segment: 'moderation', label: 'Moderation', icon: Shield },
-      { segment: 'canonicals', label: 'Canonicals', icon: GitMerge },
-      { segment: 'jobs', label: 'Jobs', icon: Timer },
-    ],
-  },
-  {
-    section: 'Intelligence & system',
-    items: [
-      { segment: 'reco', label: 'Reco labeling', icon: Brain },
-      { segment: 'system', label: 'System', icon: Activity },
-      { segment: 'console', label: 'API console', icon: Terminal },
-    ],
-  },
-]
-
-const BUSINESS_SECTIONS: { section: string; items: NavItem[] }[] = [
-  {
-    section: 'Business',
-    items: [
-      { segment: '', label: 'Overview', icon: LayoutDashboard, exact: true },
-      { segment: 'alerts', label: 'Alerts', icon: Bell },
     ],
   },
 ]
@@ -92,8 +65,7 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname()
   const base = useAdminBasePath()
-  const adminCatalogOnly = brandLabel === 'Admin'
-  const sections = brandLabel === 'Business' ? BUSINESS_SECTIONS : SECTIONS
+  const sections = SECTIONS
 
   return (
     <aside
@@ -107,7 +79,7 @@ export function AdminSidebar({
           <div className="min-w-0 flex-1">
             <p className={clsx('text-sm tz-burgundy', boldenWordmarkClassName)}>Bolden</p>
             <p className="mt-1 text-[10px] font-medium text-[#0a0a0a]/65">
-              {brandLabel === 'Business' ? 'Business · internal' : 'Admin · internal'}
+              Admin · internal
             </p>
           </div>
           {onDismiss ? (
@@ -124,8 +96,7 @@ export function AdminSidebar({
       </div>
 
       <nav className="flex-1 py-3">
-        {!adminCatalogOnly &&
-          sections.map(({ section, items }) => (
+        {sections.map(({ section, items }) => (
             <div key={section} className="mb-4">
               <p className="px-4 py-1 text-[10px] font-semibold text-[#0a0a0a]/55 uppercase tracking-widest">
                 {section}
@@ -163,8 +134,7 @@ export function AdminSidebar({
               })}
             </div>
           ))}
-        {adminCatalogOnly ? (
-          <div className={clsx('mb-4', adminCatalogOnly && 'pt-1')}>
+        <div className="mb-4">
             <p className="px-4 py-1 text-[10px] font-semibold text-[#0a0a0a]/55 uppercase tracking-widest">
               {CATALOG_LINKS.section}
             </p>
@@ -200,15 +170,12 @@ export function AdminSidebar({
                 </Link>
               )
             })}
-          </div>
-        ) : null}
+        </div>
       </nav>
 
       <div className="px-4 py-3 border-t border-[#0a0a0a]/10 mt-auto">
         <p className="text-[11px] text-[#0a0a0a]/65 leading-relaxed">
-          {brandLabel === 'Business'
-            ? 'Business dashboard — not shown to shoppers'
-            : 'Admin only — account must have admin role; not linked for guests'}
+          Admin only — account must have admin role; not linked for guests
         </p>
       </div>
     </aside>
