@@ -81,13 +81,13 @@ export const ADMIN_API_CATALOG: CatalogOp[] = [
   op({ id: 'search-prompt-suggestions', group: 'Search', label: 'Prompt suggestions', method: 'GET', pathTemplate: '/search/prompt-suggestions', auth: 'none', queryHint: '{"partial":""}' }),
 
   // —— Images API ——
-  op({ id: 'img-search', group: 'Images API', label: 'Images search', method: 'POST', pathTemplate: '/api/images/search', auth: 'user', defaultBody: '{}' }),
-  op({ id: 'img-search-sel', group: 'Images API', label: 'Images search selective', method: 'POST', pathTemplate: '/api/images/search/selective', auth: 'user', defaultBody: '{}' }),
-  op({ id: 'img-search-url', group: 'Images API', label: 'Images search by URL', method: 'POST', pathTemplate: '/api/images/search/url', auth: 'user', defaultBody: '{"url":""}' }),
-  op({ id: 'img-analyze', group: 'Images API', label: 'Analyze (multipart)', method: 'POST', pathTemplate: '/api/images/analyze', auth: 'user', multipartFields: ['image'] }),
-  op({ id: 'img-detect', group: 'Images API', label: 'Detect (multipart)', method: 'POST', pathTemplate: '/api/images/detect', auth: 'user', multipartFields: ['image'] }),
-  op({ id: 'img-detect-url', group: 'Images API', label: 'Detect URL', method: 'POST', pathTemplate: '/api/images/detect/url', auth: 'user', defaultBody: '{"url":""}' }),
-  op({ id: 'img-detect-batch', group: 'Images API', label: 'Detect batch', method: 'POST', pathTemplate: '/api/images/detect/batch', auth: 'user', defaultBody: '{"urls":[]}' }),
+  op({ id: 'img-search', group: 'Images API', label: 'Images search', method: 'POST', pathTemplate: '/search/image/alt', auth: 'user', defaultBody: '{}' }),
+  op({ id: 'img-search-sel', group: 'Images API', label: 'Images search selective', method: 'POST', pathTemplate: '/search/image/alt/selective', auth: 'user', defaultBody: '{}' }),
+  op({ id: 'img-search-url', group: 'Images API', label: 'Images search by URL', method: 'POST', pathTemplate: '/search/image/url', auth: 'user', defaultBody: '{"url":""}' }),
+  op({ id: 'img-analyze', group: 'Images API', label: 'Analyze (multipart)', method: 'POST', pathTemplate: '/search/analyze', auth: 'user', multipartFields: ['image'] }),
+  op({ id: 'img-detect', group: 'Images API', label: 'Detect (multipart)', method: 'POST', pathTemplate: '/search/detect', auth: 'user', multipartFields: ['image'] }),
+  op({ id: 'img-detect-url', group: 'Images API', label: 'Detect URL', method: 'POST', pathTemplate: '/search/detect/url', auth: 'user', defaultBody: '{"url":""}' }),
+  op({ id: 'img-detect-batch', group: 'Images API', label: 'Detect batch', method: 'POST', pathTemplate: '/search/detect/batch', auth: 'user', defaultBody: '{"urls":[]}' }),
   op({ id: 'img-labels', group: 'Images API', label: 'Labels', method: 'GET', pathTemplate: '/api/images/labels', auth: 'none' }),
   op({ id: 'img-status', group: 'Images API', label: 'Status', method: 'GET', pathTemplate: '/api/images/status', auth: 'none' }),
 
