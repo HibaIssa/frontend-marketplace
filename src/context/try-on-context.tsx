@@ -47,6 +47,15 @@ function extractJobPayload(res: unknown): TryOnJobPayload | null {
   if (data && typeof data === 'object') {
     const d = data as Record<string, unknown>
     if (d.job && typeof d.job === 'object') return normalizeTryOnJob(d.job as Record<string, unknown>)
+function extractJobPayload(res: unknown): TryOnJobPayload | null {
+  if (!res || typeof res !== 'object') return null
+  const r = res as Record<string, unknown>
+  if (r.job && typeof r.job === 'object') return r.job as TryOnJobPayload
+  const data = r.data
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>
+    if (d.job && typeof d.job === 'object') return d.job as TryOnJobPayload
+
     if (
       typeof d.status === 'string' ||
       typeof d.job_status === 'string' ||
